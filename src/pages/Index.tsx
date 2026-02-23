@@ -10,6 +10,7 @@ import MCPServersCard from "@/components/MCPServersCard";
 import SecurityPoliciesCard from "@/components/SecurityPoliciesCard";
 import BusinessPoliciesCard from "@/components/BusinessPoliciesCard";
 import MCPGatewayCard from "@/components/MCPGatewayCard";
+import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
 import { integrations, connections, sidebarItems } from "@/data/mockData";
 
 const tabs = ["Design", "Deploy", "Observe"];
