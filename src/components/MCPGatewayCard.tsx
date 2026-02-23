@@ -42,6 +42,13 @@ const availableBusinessPolicies = [
   { id: "bp4", name: "Vendor Validation", icon: UserCheck },
 ];
 
+interface ActiveMCPServer {
+  id: string;
+  name: string;
+  status: "Active" | "Configured";
+  icon: LucideIcon;
+}
+
 interface GatewayServer {
   id: string;
   name: string;
@@ -59,7 +66,11 @@ interface SavedGateway {
   businessPolicies: string[];
 }
 
-const MCPGatewayCard = () => {
+interface MCPGatewayCardProps {
+  activeMCPServers?: ActiveMCPServer[];
+}
+
+const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
   const [open, setOpen] = useState(false);
   const [gateways, setGateways] = useState<SavedGateway[]>(() => {
     try {
