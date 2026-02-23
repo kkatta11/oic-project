@@ -1,76 +1,87 @@
 
-# Security Policies Repository and Business Policies Expression Builder
+# MCP Server Tools Discovery and Agent Tools Integration
 
 ## Overview
 
-Transform the static Security Policies and Business Policies cards into fully functional CRUD components with persistence. Security policies will be sourced from a "repository" of seeded templates, and business policies will support conditional expression building on tool payload attributes.
+When registering a new MCP server or connecting a community catalog server, the system will simulate fetching the tools served by that endpoint and let users select which tools to include. Selected tools will then appear in the Agent tab's Tools card, namespaced by server name (e.g., `Filesystem / List Files`).
 
 ---
 
-## 1. Security Policies Card Enhancements
+## 1. Data Model Changes
 
-### Current State
-- Static list of 8 hardcoded policies with fixed enabled/disabled status
-- "+" button does nothing
+### Extend `MCPServer` interface
+Add a `tools` array to track which tools were selected from the server:
 
-### New Behavior
-- A **repository** (seeded data) of security policy templates is available
-- Clicking "+" opens a dialog where the user picks a policy from the repository, gives it a name/description override if desired, and adds it
-- Each created policy has an **Active/Inactive toggle** (switch) to activate or deactivate it
-- Only **Active** policies will appear as selectable in the Gateway Creation dialog
-- Policies persist in `localStorage` (key: `security-policies`)
-- Users can delete policies they created
+```typescript
+export interface MCPServerTool {
+  id: string;
+  name: string;
+  description: string;
+}
 
-### Repository (Seeded Templates)
-The existing 8 policies become the repository catalog:
-- PII Detection, Schema Validation, Tool Poisoning Check, Intrusion Detection, Rate Limiting, Payload Size, SQL Injection, Encryption
+export interface MCPServer {
+  id: string;
+  name: string;
+  status: "Active" | "Configured";
+  icon: LucideIcon;
+  tools: MCPServerTool[];  // NEW - selected tools from this server
+}
+```
 
-### UI Changes to `SecurityPoliciesCard.tsx`
-- State: `useState` initialized from `localStorage`, falling back to a default seeded set
-- "+" button opens a Dialog listing repository templates not yet added
-- Each policy row gets a `Switch` toggle for active/inactive and a `Trash2` delete icon
-- Status badge changes to reflect active (green) / inactive (muted)
+### Simulated tool catalogs per server
+Each server (both manual and catalog) will have a mock set of "discovered" tools. For example:
+- **Filesystem MCP Server**: List Files, Read File, Write File, Delete File
+- **Slack MCP Server**: Send Message, List Channels, Search Messages, Upload File
+- **GitHub MCP Server**: List Repos, Create Issue, Get PR, Search Code
+- **Notion MCP Server**: Query Database, Create Page, Update Page, Search
+- **Gmail MCP Server**: Send Email, Search Emails, Get Thread, Create Draft
 
-### Gateway Creation Integration
-- In `MCPGatewayCard.tsx`, replace the hardcoded `availableSecurityPolicies` array with a prop (`securityPolicies`) passed from `Index.tsx`
-- Only policies with `active: true` are shown as checkboxes in the gateway creation dialog
-
----
-
-## 2. Business Policies Card Enhancements
-
-### Current State
-- Static list of 4 hardcoded policies
-- "+" button and "..." menu do nothing
-
-### New Behavior
-- Clicking "+" opens a dialog to **create a new business policy** with a conditional expression builder
-- Expression builder lets users define rules on tool payload attributes:
-  - **Attribute** (free-text field, e.g., `invoice.amount`, `vendor.status`)
-  - **Operator** (dropdown: equals, not equals, greater than, less than, contains, is empty, is not empty)
-  - **Value** (free-text field)
-- Multiple conditions can be added per policy (AND logic)
-- Each policy has an **Active/Inactive toggle**
-- Only active policies appear in gateway creation
-- Policies persist in `localStorage` (key: `business-policies`)
-- Users can view/edit conditions via the "..." menu and delete policies
-
-### UI for Expression Builder (inside Dialog)
-- Policy Name input
-- "Add Condition" button that appends a row: `[Attribute input] [Operator select] [Value input] [Remove button]`
-- List of configured conditions displayed as compact rows
-- Create button saves to state and localStorage
-
-### Gateway Creation Integration
-- In `MCPGatewayCard.tsx`, replace hardcoded `availableBusinessPolicies` with a prop (`businessPolicies`) passed from `Index.tsx`
-- Only policies with `active: true` shown
+For manually registered servers, a generic set of placeholder tools will be shown (simulating endpoint discovery).
 
 ---
 
-## 3. State Lifting in Index.tsx
+## 2. MCPServersCard.tsx Changes
 
-- Create shared state for security policies and business policies in `Index.tsx`
-- Pass them as props to `SecurityPoliciesCard`, `BusinessPoliciesCard`, and `MCPGatewayCard`
+### Register New tab
+After filling in server name/URL/auth, add a **"Fetch Tools"** button that simulates discovering tools from the endpoint. Once fetched:
+- Display a checklist of tools with checkboxes
+- Users select which tools to include
+- The "Register Server" button saves the server with selected tools
+
+### Browse Catalog tab (detail dialog)
+When clicking "Connect" on a catalog server, the detail dialog will:
+- Show the pre-filled URL/auth fields (existing)
+- Additionally display the server's available tools as a checklist
+- Users select tools before confirming
+
+### Default servers update
+The two default servers will also have pre-assigned tools so they show up in the Agent tab immediately.
+
+---
+
+## 3. ToolsCard.tsx Changes
+
+### Accept MCP servers as a prop
+Convert from static `tools` array to dynamic: display both the existing hardcoded agent tools AND tools from MCP servers.
+
+### Namespaced display
+MCP server tools will be shown with a namespace badge/prefix:
+- `Filesystem / List Files`
+- `GitHub / Create Issue`
+
+This distinguishes them from native agent tools (Risk Assessment, etc.) and prevents name clashes.
+
+### Visual grouping
+- Native tools shown first (existing 6 tools)
+- A subtle separator or section header "MCP Server Tools"
+- MCP tools listed below, grouped by server, each showing `ServerName / ToolName`
+
+---
+
+## 4. Index.tsx Changes
+
+- Pass `mcpServers` as a prop to `ToolsCard` so it can render MCP-sourced tools
+- Update default MCP servers to include their pre-selected tools
 
 ---
 
@@ -78,55 +89,43 @@ The existing 8 policies become the repository catalog:
 
 ### Files Modified
 
-1. **`src/components/SecurityPoliciesCard.tsx`** -- Full rewrite
-   - Add state management with localStorage persistence
-   - Add "Create from Repository" dialog
-   - Add Switch toggle per policy for active/inactive
-   - Add delete functionality
-   - Export the `SecurityPolicy` interface
+1. **`src/components/MCPServersCard.tsx`**
+   - Add `MCPServerTool` interface export
+   - Add mock tool catalogs for each server type (manual + catalog)
+   - Register New: add "Fetch Tools" button and checkbox list of discovered tools
+   - Catalog detail dialog: add checkbox list of tools
+   - Save selected tools into the `MCPServer.tools` array
+   - Update default servers to include tools
 
-2. **`src/components/BusinessPoliciesCard.tsx`** -- Full rewrite
-   - Add state management with localStorage persistence
-   - Add "Create Policy with Conditions" dialog
-   - Expression builder UI with attribute/operator/value rows
-   - Add Switch toggle and delete
-   - Add view/edit conditions via popover or dialog
-   - Export the `BusinessPolicy` interface
+2. **`src/components/ToolsCard.tsx`**
+   - Accept `mcpServers?: MCPServer[]` prop
+   - Render native tools first, then MCP server tools with namespace prefix
+   - Add section divider between native and MCP tools
 
-3. **`src/components/MCPGatewayCard.tsx`** -- Modify
-   - Accept `securityPolicies` and `businessPolicies` as props
-   - Filter to show only active policies in the gateway creation dialog
-   - Remove hardcoded `availableSecurityPolicies` and `availableBusinessPolicies` arrays
+3. **`src/pages/Index.tsx`**
+   - Pass `mcpServers` to `ToolsCard`
+   - Update `defaultMCPServers` to include pre-selected tools
 
-4. **`src/pages/Index.tsx`** -- Modify
-   - Add state for `securityPolicies` and `businessPolicies` (initialized from localStorage)
-   - Pass as props to all three components
-
-### Data Structures
+### Mock Tool Data Structure
 
 ```typescript
-// Security Policy
-interface SecurityPolicy {
-  id: string;
-  name: string;
-  description: string;
-  icon: string; // icon name stored as string for serialization
-  active: boolean;
-  templateId: string; // reference to repository template
-}
-
-// Business Policy
-interface BusinessPolicy {
-  id: string;
-  name: string;
-  active: boolean;
-  conditions: PolicyCondition[];
-}
-
-interface PolicyCondition {
-  id: string;
-  attribute: string;   // e.g. "invoice.amount"
-  operator: string;     // "equals" | "not_equals" | "gt" | "lt" | "contains" | "is_empty" | "is_not_empty"
-  value: string;        // e.g. "1000"
-}
+const serverToolCatalog: Record<string, MCPServerTool[]> = {
+  "Filesystem MCP Server": [
+    { id: "t1", name: "List Files", description: "List files in a directory" },
+    { id: "t2", name: "Read File", description: "Read file contents" },
+    { id: "t3", name: "Write File", description: "Write content to a file" },
+    { id: "t4", name: "Delete File", description: "Delete a file" },
+  ],
+  "Slack MCP Server": [
+    { id: "t1", name: "Send Message", description: "Send a message to a channel" },
+    { id: "t2", name: "List Channels", description: "List available channels" },
+    // ...
+  ],
+  // ... similar for GitHub, Notion, Gmail, PostgreSQL
+  "_default": [
+    { id: "t1", name: "Execute", description: "Execute a server action" },
+    { id: "t2", name: "Query", description: "Query server data" },
+    { id: "t3", name: "List Resources", description: "List available resources" },
+  ],
+};
 ```
