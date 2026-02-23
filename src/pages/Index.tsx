@@ -5,23 +5,14 @@ import SidebarNav from "@/components/SidebarNav";
 import IntegrationsCard from "@/components/IntegrationsCard";
 import ConnectionsCard from "@/components/ConnectionsCard";
 import SimpleCard from "@/components/SimpleCard";
+import ToolsCard from "@/components/ToolsCard";
+import MCPServersCard from "@/components/MCPServersCard";
+import SecurityPoliciesCard from "@/components/SecurityPoliciesCard";
+import BusinessPoliciesCard from "@/components/BusinessPoliciesCard";
 import { integrations, connections, sidebarItems } from "@/data/mockData";
 
 const tabs = ["Design", "Deploy", "Observe"];
 
-const agentCards = [
-  { title: "Agents", description: "Create and manage AI agents for your integration workflows." },
-  { title: "Tools", description: "Define tools and capabilities available to your agents." },
-  { title: "Agent Patterns", description: "Configure reusable patterns for agent behavior." },
-  { title: "Prompt Templates", description: "Design and manage prompt templates for agent interactions." },
-];
-
-const gatewayCards = [
-  { title: "MCP Gateway", description: "Manage your Model Context Protocol gateway configuration." },
-  { title: "MCP Servers", description: "Configure and monitor MCP server connections." },
-  { title: "Security Policies", description: "Define security rules and access controls." },
-  { title: "Business Policies", description: "Set up business rules and policy enforcement." },
-];
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("Design");
@@ -29,14 +20,24 @@ const Index = () => {
 
   const renderContent = () => {
     if (activeSidebarItem === "agent") {
-      return agentCards.map((card) => (
-        <SimpleCard key={card.title} title={card.title} description={card.description} />
-      ));
+      return (
+        <>
+          <SimpleCard title="Agents" description="Create and manage AI agents for your integration workflows." />
+          <ToolsCard />
+          <SimpleCard title="Agent Patterns" description="Configure reusable patterns for agent behavior." />
+          <SimpleCard title="Prompt Templates" description="Design and manage prompt templates for agent interactions." />
+        </>
+      );
     }
     if (activeSidebarItem === "gateway") {
-      return gatewayCards.map((card) => (
-        <SimpleCard key={card.title} title={card.title} description={card.description} />
-      ));
+      return (
+        <>
+          <SimpleCard title="MCP Gateway" description="Manage your Model Context Protocol gateway configuration." />
+          <MCPServersCard />
+          <SecurityPoliciesCard />
+          <BusinessPoliciesCard />
+        </>
+      );
     }
     // Default: Design content
     return (
