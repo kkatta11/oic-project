@@ -7,7 +7,7 @@ import ConnectionsCard from "@/components/ConnectionsCard";
 import SimpleCard from "@/components/SimpleCard";
 import { integrations, connections, sidebarItems } from "@/data/mockData";
 
-const tabs = ["Design", "Deploy", "Observe"];
+const tabs = ["Design", "Agent", "MCP Gateway"];
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("Design");
@@ -92,16 +92,60 @@ const Index = () => {
 
           {/* Card grid */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <IntegrationsCard integrations={integrations} />
-            <ConnectionsCard connections={connections} />
-            <SimpleCard
-              title="Lookups"
-              description="Map values between applications."
-            />
-            <SimpleCard
-              title="Libraries"
-              description="Use JavaScript functions and libraries in your integrations."
-            />
+            {activeTab === "Design" && (
+              <>
+                <IntegrationsCard integrations={integrations} />
+                <ConnectionsCard connections={connections} />
+                <SimpleCard
+                  title="Lookups"
+                  description="Map values between applications."
+                />
+                <SimpleCard
+                  title="Libraries"
+                  description="Use JavaScript functions and libraries in your integrations."
+                />
+              </>
+            )}
+            {activeTab === "Agent" && (
+              <>
+                <SimpleCard
+                  title="Agents"
+                  description="Create and manage AI agents for automating tasks and workflows."
+                />
+                <SimpleCard
+                  title="Tools"
+                  description="Define tools that agents can use to interact with external services."
+                />
+                <SimpleCard
+                  title="Agent Patterns"
+                  description="Pre-built patterns for common agent architectures and behaviors."
+                />
+                <SimpleCard
+                  title="Prompt Templates"
+                  description="Reusable prompt templates for consistent agent interactions."
+                />
+              </>
+            )}
+            {activeTab === "MCP Gateway" && (
+              <>
+                <SimpleCard
+                  title="MCP Gateway"
+                  description="Configure and manage Model Context Protocol gateway endpoints."
+                />
+                <SimpleCard
+                  title="MCP Servers"
+                  description="Register and monitor MCP server instances and their availability."
+                />
+                <SimpleCard
+                  title="Security Policies"
+                  description="Define security rules and access controls for MCP communications."
+                />
+                <SimpleCard
+                  title="Business Policies"
+                  description="Set business rules and governance policies for agent operations."
+                />
+              </>
+            )}
           </div>
         </main>
       </div>
