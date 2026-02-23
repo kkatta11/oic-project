@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Plus, Server, Database, Globe, MessageSquare, FileJson, Mail,
   ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Lock,
-  Trash2, ChevronRight, ListChecks,
+  Trash2, ChevronRight, ListChecks, Wrench,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import type { SecurityPolicy } from "@/components/SecurityPoliciesCard";
 import type { BusinessPolicy } from "@/components/BusinessPoliciesCard";
+import type { MCPServer } from "@/components/MCPServersCard";
 
 const iconMap: Record<string, LucideIcon> = {
   ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock,
@@ -56,11 +57,20 @@ interface SavedGateway {
 
 interface MCPGatewayCardProps {
   activeMCPServers?: ActiveMCPServer[];
+  mcpServers?: MCPServer[];
   securityPolicies?: SecurityPolicy[];
   businessPolicies?: BusinessPolicy[];
 }
 
-const MCPGatewayCard = ({ activeMCPServers = [], securityPolicies = [], businessPolicies = [] }: MCPGatewayCardProps) => {
+const authLabel = (auth: string) => {
+  if (auth === "none") return "None";
+  if (auth === "api-key") return "API Key";
+  if (auth === "jwt") return "JWT";
+  if (auth === "client-credentials") return "Client Credentials";
+  return auth;
+};
+
+const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [] }: MCPGatewayCardProps) => {
   const [open, setOpen] = useState(false);
   const [gateways, setGateways] = useState<SavedGateway[]>(() => {
     try {
@@ -87,6 +97,10 @@ const MCPGatewayCard = ({ activeMCPServers = [], securityPolicies = [], business
   const [catalogUrl, setCatalogUrl] = useState("");
   const [catalogTransport, setCatalogTransport] = useState("streamable-http");
   const [catalogAuth, setCatalogAuth] = useState("none");
+
+  // Gateway detail/metadata dialog
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailGateway, setDetailGateway] = useState<SavedGateway | null>(null);
 
   const resetForm = () => {
     setGatewayName("");
@@ -155,12 +169,37 @@ const MCPGatewayCard = ({ activeMCPServers = [], securityPolicies = [], business
     setOpen(false);
   };
 
-  const handleDeleteGateway = (id: string) => {
+  const handleDeleteGateway = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setGateways((prev) => {
       const updated = prev.filter((g) => g.id !== id);
       localStorage.setItem("mcp-gateways", JSON.stringify(updated));
       return updated;
     });
+  };
+
+  const handleGatewayClick = (gw: SavedGateway) => {
+    setDetailGateway(gw);
+    setDetailOpen(true);
+  };
+
+  // Build namespaced tools for gateway detail
+  const getNamespacedTools = (gw: SavedGateway) => {
+    const tools: { serverName: string; toolName: string; description: string }[] = [];
+    for (const gwServer of gw.servers) {
+      const fullServer = mcpServers.find((s) => s.name === gwServer.name);
+      if (fullServer) {
+        for (const tool of fullServer.tools) {
+          tools.push({ serverName: fullServer.name.replace(/ MCP Server$/, ""), toolName: tool.name, description: tool.description });
+        }
+      }
+    }
+    return tools;
+  };
+
+  const getGatewayUrl = (name: string) => {
+    const slug = name.toLowerCase().replace(/\s+/g, "-");
+    return `https://gateway.example.com/${slug}/v1/mcp`;
   };
 
   return (
@@ -211,7 +250,15 @@ const MCPGatewayCard = ({ activeMCPServers = [], securityPolicies = [], business
                               </div>
                               <Button variant={added ? "ghost" : "outline"} size="sm" disabled={added} onClick={() => {
                                 if (added) return;
-                                setRegisteredServers((prev) => [...prev, { id: `active-${Date.now()}-${s.id}`, name: s.name, url: "", transport: "streamable-http", auth: "none", icon: s.icon }]);
+                                const fullServer = mcpServers.find((ms) => ms.name === s.name);
+                                setRegisteredServers((prev) => [...prev, {
+                                  id: `active-${Date.now()}-${s.id}`,
+                                  name: s.name,
+                                  url: fullServer?.url || "",
+                                  transport: fullServer?.transport || "streamable-http",
+                                  auth: fullServer?.auth || "none",
+                                  icon: s.icon,
+                                }]);
                               }} className="h-7 text-xs">{added ? "Added" : "Add"}</Button>
                             </div>
                           );
@@ -293,7 +340,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], securityPolicies = [], business
                 )}
               </div>
 
-              {/* Security Policies - from props, active only */}
+              {/* Security Policies */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-foreground">Security Policies</h4>
                 {activeSecurityPolicies.length === 0 ? (
@@ -318,7 +365,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], securityPolicies = [], business
                 )}
               </div>
 
-              {/* Business Policies - from props, active only */}
+              {/* Business Policies */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-foreground">Business Policies</h4>
                 {activeBusinessPolicies.length === 0 ? (
@@ -392,13 +439,143 @@ const MCPGatewayCard = ({ activeMCPServers = [], securityPolicies = [], business
         </DialogContent>
       </Dialog>
 
+      {/* Gateway Endpoint Metadata dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gateway: {detailGateway?.name}</DialogTitle>
+            <DialogDescription>Endpoint metadata, servers, tools, and applied policies.</DialogDescription>
+          </DialogHeader>
+          {detailGateway && (
+            <div className="mt-3 space-y-5">
+              {/* Endpoint Metadata */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">Endpoint Metadata</h4>
+                <div className="rounded-md border border-border divide-y divide-border text-sm">
+                  <div className="flex px-4 py-2.5">
+                    <span className="w-28 shrink-0 text-muted-foreground text-xs font-medium">Name</span>
+                    <span className="text-xs text-foreground">{detailGateway.name}</span>
+                  </div>
+                  <div className="flex px-4 py-2.5">
+                    <span className="w-28 shrink-0 text-muted-foreground text-xs font-medium">URL</span>
+                    <span className="text-xs text-foreground font-mono break-all">{getGatewayUrl(detailGateway.name)}</span>
+                  </div>
+                  <div className="flex px-4 py-2.5">
+                    <span className="w-28 shrink-0 text-muted-foreground text-xs font-medium">Transport</span>
+                    <span className="text-xs text-foreground">Streamable HTTP</span>
+                  </div>
+                  <div className="flex px-4 py-2.5">
+                    <span className="w-28 shrink-0 text-muted-foreground text-xs font-medium">Authorization</span>
+                    <span className="text-xs text-foreground">Inherited</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* MCP Servers */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">MCP Servers ({detailGateway.servers.length})</h4>
+                {detailGateway.servers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-2">No servers assigned.</p>
+                ) : (
+                  <div className="rounded-md border border-border divide-y divide-border">
+                    {detailGateway.servers.map((srv) => {
+                      const fullServer = mcpServers.find((s) => s.name === srv.name);
+                      return (
+                        <div key={srv.id} className="px-4 py-3 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Server size={14} className="text-muted-foreground" />
+                            <span className="text-xs font-semibold text-foreground">{srv.name}</span>
+                          </div>
+                          <div className="ml-6 text-[11px] text-muted-foreground space-y-0.5">
+                            <p>URL: <span className="font-mono text-foreground">{fullServer?.url || srv.url || "—"}</span></p>
+                            <p>Transport: {fullServer?.transport === "streamable-http" ? "Streamable HTTP" : (fullServer?.transport || srv.transport || "Streamable HTTP")} · Auth: {authLabel(fullServer?.auth || srv.auth || "none")}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Namespaced Tools */}
+              {(() => {
+                const nsTools = getNamespacedTools(detailGateway);
+                return (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <Wrench size={14} className="text-muted-foreground" />
+                      Namespaced Tools ({nsTools.length})
+                    </h4>
+                    {nsTools.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-2">No tools resolved. Ensure MCP servers have tools assigned.</p>
+                    ) : (
+                      <div className="rounded-md border border-border max-h-60 overflow-y-auto divide-y divide-border">
+                        {nsTools.map((t, i) => (
+                          <div key={i} className="flex items-center gap-2 px-4 py-2">
+                            <span className="text-xs font-medium text-foreground">{t.serverName} / {t.toolName}</span>
+                            <span className="text-[11px] text-muted-foreground ml-auto truncate max-w-[50%]">{t.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Policies */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">Applied Policies</h4>
+                <div className="rounded-md border border-border p-4 space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Security Policies</p>
+                    {detailGateway.securityPolicies.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">None</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {detailGateway.securityPolicies.map((pId) => {
+                          const pol = securityPolicies.find((p) => p.id === pId);
+                          return (
+                            <span key={pId} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
+                              <ShieldCheck size={10} className="text-muted-foreground" />
+                              {pol?.name || pId}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Business Policies</p>
+                    {detailGateway.businessPolicies.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">None</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {detailGateway.businessPolicies.map((pId) => {
+                          const pol = businessPolicies.find((p) => p.id === pId);
+                          return (
+                            <span key={pId} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
+                              <ListChecks size={10} className="text-muted-foreground" />
+                              {pol?.name || pId}{pol ? ` (${pol.conditions.length})` : ""}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Gateway list */}
       <div className="divide-y divide-border">
         {gateways.length === 0 && (
           <p className="px-5 py-4 text-sm text-muted-foreground">No gateways configured. Click + to create one.</p>
         )}
         {gateways.map((gw) => (
-          <div key={gw.id} className="flex items-center gap-3 px-5 py-3">
+          <div key={gw.id} className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleGatewayClick(gw)}>
             <div className="flex h-8 w-8 items-center justify-center rounded bg-muted text-muted-foreground"><Server size={16} /></div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-foreground">{gw.name}</p>
@@ -406,7 +583,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], securityPolicies = [], business
                 {gw.servers.length} server{gw.servers.length !== 1 ? "s" : ""} · {gw.securityPolicies.length} security · {gw.businessPolicies.length} business
               </p>
             </div>
-            <button onClick={() => handleDeleteGateway(gw.id)} className="text-muted-foreground hover:text-destructive"><Trash2 size={14} /></button>
+            <button onClick={(e) => handleDeleteGateway(gw.id, e)} className="text-muted-foreground hover:text-destructive"><Trash2 size={14} /></button>
             <ChevronRight size={14} className="text-muted-foreground" />
           </div>
         ))}
