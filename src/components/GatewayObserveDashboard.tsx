@@ -180,6 +180,7 @@ const stepIcon = (type: FlowStep["type"]) => {
 
 const GatewayObserveDashboard = () => {
   const [selectedInstance, setSelectedInstance] = useState<GatewayInstance | null>(null);
+  const [selectedMetricsGateway, setSelectedMetricsGateway] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
