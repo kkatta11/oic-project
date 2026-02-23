@@ -22,6 +22,26 @@ const gatewayMetrics = [
   { name: "ERP Sync Gateway", received: 2150, processed: 23, succeeded: 2098, errored: 29 },
 ];
 
+// Time-series mock data for gateway detail metrics
+const generateTimeSeriesData = (gatewayName: string) => {
+  const hours = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
+  const seed = gatewayName.length;
+  return hours.map((hour, i) => ({
+    time: hour,
+    uptime: Math.min(100, 97 + (Math.sin(i + seed) + 1) * 1.5),
+    responseTime: Math.max(40, 80 + Math.sin(i * 0.8 + seed) * 60 + (i > 8 ? 30 : 0)),
+    requestsPerMin: Math.max(5, Math.round(25 + Math.sin(i * 0.5 + seed) * 15 + (i > 4 && i < 10 ? 20 : 0))),
+    errorRate: Math.max(0, +(1.5 + Math.sin(i * 1.2 + seed) * 1.5).toFixed(2)),
+  }));
+};
+
+const metricsChartConfig = {
+  uptime: { label: "Uptime %", color: "hsl(var(--redwood-green))" },
+  responseTime: { label: "Response Time (ms)", color: "hsl(var(--redwood-gold))" },
+  requestsPerMin: { label: "Requests / min", color: "hsl(var(--primary))" },
+  errorRate: { label: "Error Rate %", color: "hsl(var(--destructive))" },
+};
+
 const gatewayHealth = [
   { name: "Invoice Validation Gateway", status: "Healthy", uptime: "99.97%", lastCheck: "2026-02-23 10:16:00", latencyP50: "120ms", latencyP99: "890ms", activeConnections: 14 },
   { name: "Procurement Gateway", status: "Healthy", uptime: "99.91%", lastCheck: "2026-02-23 10:16:00", latencyP50: "95ms", latencyP99: "620ms", activeConnections: 8 },
