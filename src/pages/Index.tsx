@@ -5,15 +5,9 @@ import SidebarNav from "@/components/SidebarNav";
 import IntegrationsCard from "@/components/IntegrationsCard";
 import ConnectionsCard from "@/components/ConnectionsCard";
 import SimpleCard from "@/components/SimpleCard";
-import { integrations, connections, sidebarItems, agentSidebarItems, gatewaySidebarItems } from "@/data/mockData";
+import { integrations, connections, sidebarItems } from "@/data/mockData";
 
-const tabs = ["Design", "Agent", "Gateway"];
-
-const tabSidebarMap = {
-  Design: { items: sidebarItems, defaultItem: "integrations" },
-  Agent: { items: agentSidebarItems, defaultItem: "agents" },
-  Gateway: { items: gatewaySidebarItems, defaultItem: "mcp-gateway" },
-} as const;
+const tabs = ["Design", "Deploy", "Observe"];
 
 const agentCards = [
   { title: "Agents", description: "Create and manage AI agents for your integration workflows." },
@@ -33,9 +27,26 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
 
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    setActiveSidebarItem(tabSidebarMap[tab].defaultItem);
+  const renderContent = () => {
+    if (activeSidebarItem === "agent") {
+      return agentCards.map((card) => (
+        <SimpleCard key={card.title} title={card.title} description={card.description} />
+      ));
+    }
+    if (activeSidebarItem === "gateway") {
+      return gatewayCards.map((card) => (
+        <SimpleCard key={card.title} title={card.title} description={card.description} />
+      ));
+    }
+    // Default: Design content
+    return (
+      <>
+        <IntegrationsCard integrations={integrations} />
+        <ConnectionsCard connections={connections} />
+        <SimpleCard title="Lookups" description="Map values between applications." />
+        <SimpleCard title="Libraries" description="Use JavaScript functions and libraries in your integrations." />
+      </>
+    );
   };
 
   return (
@@ -52,7 +63,7 @@ const Index = () => {
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => handleTabChange(tab)}
+              onClick={() => setActiveTab(tab)}
               className={`relative px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab
                   ? "text-foreground"
@@ -91,7 +102,7 @@ const Index = () => {
         <SidebarNav
           activeItem={activeSidebarItem}
           onItemClick={setActiveSidebarItem}
-          items={tabSidebarMap[activeTab].items}
+          items={sidebarItems}
         />
 
         <main className="flex-1 p-6">
@@ -107,22 +118,7 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {activeTab === "Design" && (
-              <>
-                <IntegrationsCard integrations={integrations} />
-                <ConnectionsCard connections={connections} />
-                <SimpleCard title="Lookups" description="Map values between applications." />
-                <SimpleCard title="Libraries" description="Use JavaScript functions and libraries in your integrations." />
-              </>
-            )}
-            {activeTab === "Agent" &&
-              agentCards.map((card) => (
-                <SimpleCard key={card.title} title={card.title} description={card.description} />
-              ))}
-            {activeTab === "Gateway" &&
-              gatewayCards.map((card) => (
-                <SimpleCard key={card.title} title={card.title} description={card.description} />
-              ))}
+            {renderContent()}
           </div>
         </main>
       </div>
