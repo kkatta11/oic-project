@@ -428,6 +428,97 @@ const GatewayObserveDashboard = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Gateway Metrics Detail Dialog */}
+      <Dialog open={!!selectedMetricsGateway} onOpenChange={(open) => !open && setSelectedMetricsGateway(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <BarChart3 size={18} /> {selectedMetricsGateway} — Metrics
+            </DialogTitle>
+            <DialogDescription>Last 12 hours performance overview</DialogDescription>
+          </DialogHeader>
+
+          {selectedMetricsGateway && (() => {
+            const data = generateTimeSeriesData(selectedMetricsGateway);
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                {/* Uptime */}
+                <Card>
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Uptime %</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <ChartContainer config={metricsChartConfig} className="h-[160px] w-full">
+                      <AreaChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} className="text-muted-foreground" />
+                        <YAxis domain={[95, 100]} tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area type="monotone" dataKey="uptime" stroke="var(--color-uptime)" fill="var(--color-uptime)" fillOpacity={0.15} strokeWidth={2} />
+                      </AreaChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Response Time */}
+                <Card>
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Response Time (ms)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <ChartContainer config={metricsChartConfig} className="h-[160px] w-full">
+                      <LineChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line type="monotone" dataKey="responseTime" stroke="var(--color-responseTime)" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Requests per Minute */}
+                <Card>
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Requests / min</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <ChartContainer config={metricsChartConfig} className="h-[160px] w-full">
+                      <AreaChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area type="monotone" dataKey="requestsPerMin" stroke="var(--color-requestsPerMin)" fill="var(--color-requestsPerMin)" fillOpacity={0.15} strokeWidth={2} />
+                      </AreaChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Error Rate */}
+                <Card>
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Error Rate %</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <ChartContainer config={metricsChartConfig} className="h-[160px] w-full">
+                      <LineChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line type="monotone" dataKey="errorRate" stroke="var(--color-errorRate)" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
