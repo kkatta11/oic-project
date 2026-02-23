@@ -1,66 +1,50 @@
-
-
-# Oracle Integration Project UI Template
+# Add Agent and Gateway Tabs with Card Content
 
 ## Overview
-A faithful recreation of the Oracle Integration Cloud (OIC) project dashboard using Oracle's Redwood design theme — featuring the characteristic warm color palette, clean typography, and card-based layout shown in the reference screenshot.
 
-## Design Theme — Oracle Redwood
-- **Color palette**: Dark header bar (#312D2A), warm neutrals, white card backgrounds, gold/amber accents
-- **Typography**: Clean sans-serif (Oracle Sans style via system fonts), bold section headers
-- **Status badges**: Green for "Active", olive/dark for "Configured"
-- **Subtle decorative banner strip** below the header (gold/amber marble pattern via CSS gradient)
+## Changes
 
-## Layout & Components
+### 2. Agent Tab Content (4 SimpleCards in 2x2 grid)
 
-### 1. Top Header Bar
-- Oracle logo/branding on the left
-- Project instance name on the right
-- Notification and user avatar icons
+- **Agents** -- "Create and manage AI agents for your integration workflows."
+- **Tools** -- "Define tools and capabilities available to your agents."
+- **Agent Patterns** -- "Configure reusable patterns for agent behavior."
+- **Prompt Templates** -- "Design and manage prompt templates for agent interactions."
 
-### 2. Project Title Bar
-- Bold project name (e.g., "Smart Invoice Validation AgAI")
+All cards include the existing Add (+) button.
 
-### 3. Navigation Tabs
-- Three tabs: **Design** (active), **Deploy**, **Observe**
-- Toggle view icons (list/card) and action icons (edit, save, etc.) on the right
+### 3. Gateway Tab Content (4 SimpleCards in 2x2 grid)
 
-### 4. Left Sidebar Navigation
-- Vertical icon-based navigation with icons for different sections (Integrations, Connections, Lookups, etc.)
-- Active state highlighting
+- **MCP Gateway** -- "Manage your Model Context Protocol gateway configuration."
+- **MCP Servers** -- "Configure and monitor MCP server connections."
+- **Security Policies** -- "Define security rules and access controls."
+- **Business Policies** -- "Set up business rules and policy enforcement."
 
-### 5. Main Content Area — Card Grid (2 columns)
+All cards include the existing Add (+) button.
 
-**Card 1: Integrations**
-- Header with title + "Add" button (+)
-- List of integration items, each showing: flow icons → name, version number, status badge (Active/Configured), actions menu (⋯)
-- Some items include a description subtitle
-- "View all 14 integration(s)" link at bottom
+### 4. Sidebar Icon Updates
 
-**Card 2: Connections**
-- Header with title + "Add" button (+)
-- List of connection items: icon, type label, connection name, role (Trigger/Invoke/Trigger and Invoke), status badge, actions menu
-- "View all 9 connection(s)" link at bottom
+- 2nd sidebar item: Change from "Connections" / Plug icon to **Bot** icon (for Agent tab)
+- 3rd sidebar item: Change from "Lookups" / Search icon to **Shield** icon (for Gateway tab)
 
-**Card 3: Lookups**
-- Header with title + "Add" button
-- Amber underline accent
-- Description: "Map values between applications."
+## Technical Details
 
-**Card 4: Libraries**
-- Header with title + "Add" button
-- Amber underline accent
-- Description: "Use JavaScript functions and libraries in your integrations."
+### Files Modified
 
-### 6. Search Bar
-- Positioned top-right of the content area
-- Placeholder: "Full or partial name or keyword or description"
+`**src/data/mockData.ts**`
 
-## Data
-- All content will use realistic sample/mock data matching the screenshot (integration names, connection types, versions, statuses)
-- No backend needed — purely static template with hardcoded sample data
+- Add `agentSidebarItems` array with 4 items and appropriate Lucide icons
+- Add `gatewaySidebarItems` array with 4 items and appropriate Lucide icons
 
-## Pages
-- Single-page dashboard (Design tab view)
-- Tab switching will be visual only (highlighting active tab)
+`**src/components/SidebarNav.tsx**`
 
+- Add new icon imports: `Bot`, `Wrench`, `Workflow`, `FileText`, `Network`, `Server`, `ShieldCheck`, `BookOpen`
+- Register them in the `iconMap`
+
+`**src/pages/Index.tsx**`
+
+- Import `agentSidebarItems` and `gatewaySidebarItems` from mockData
+- Conditionally render sidebar items and card content based on `activeTab`
+- Agent tab: render 4 SimpleCards (Agents, Tools, Agent Patterns, Prompt Templates)
+- Gateway tab: render 4 SimpleCards (MCP Gateway, MCP Servers, Security Policies, Business Policies)
+- Reset `activeSidebarItem` when switching tabs
