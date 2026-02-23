@@ -33,7 +33,6 @@ const SidebarNav = ({ activeItem, onItemClick, items }: SidebarNavProps) => {
             }`}
           >
             <Icon size={20} />
-            <span className="mt-0.5 leading-none truncate w-full text-center">{item.label.slice(0, 5)}</span>
           </button>
         );
       })}
