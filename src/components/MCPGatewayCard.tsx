@@ -208,11 +208,46 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
               {/* MCP Servers Section */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-foreground">MCP Servers</h4>
-                <Tabs defaultValue="register" className="w-full">
+                <Tabs defaultValue="active" className="w-full">
                   <TabsList className="w-full">
+                    <TabsTrigger value="active" className="flex-1">Active Servers</TabsTrigger>
                     <TabsTrigger value="register" className="flex-1">Register New</TabsTrigger>
                     <TabsTrigger value="catalog" className="flex-1">Browse Catalog</TabsTrigger>
                   </TabsList>
+                  <TabsContent value="active" className="pt-3">
+                    {activeMCPServers.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-3 text-center">No active MCP servers available.</p>
+                    ) : (
+                      <div className="divide-y divide-border rounded-md border border-border">
+                        {activeMCPServers.map((s) => {
+                          const Icon = s.icon;
+                          const added = registeredServers.some((r) => r.name === s.name);
+                          return (
+                            <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
+                              <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground">
+                                <Icon size={14} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium text-foreground">{s.name}</p>
+                                <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${s.status === "Active" ? "bg-redwood-green-light text-redwood-green" : "bg-redwood-olive-light text-redwood-olive"}`}>
+                                  {s.status}
+                                </span>
+                              </div>
+                              <Button variant={added ? "ghost" : "outline"} size="sm" disabled={added} onClick={() => {
+                                if (added) return;
+                                setRegisteredServers((prev) => [
+                                  ...prev,
+                                  { id: `active-${Date.now()}-${s.id}`, name: s.name, url: "", transport: "streamable-http", auth: "none", icon: s.icon },
+                                ]);
+                              }} className="h-7 text-xs">
+                                {added ? "Added" : "Add"}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </TabsContent>
                   <TabsContent value="register" className="space-y-3 pt-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
