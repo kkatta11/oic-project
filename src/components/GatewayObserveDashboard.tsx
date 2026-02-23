@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, CheckCircle2, XCircle, Shield, Briefcase, Server, Send, Inbox, Activity, Wifi, WifiOff } from "lucide-react";
+import { Eye, CheckCircle2, XCircle, Shield, Briefcase, Server, Send, Inbox, Activity, Wifi, WifiOff, BarChart3 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  ChartContainer, ChartTooltip, ChartTooltipContent,
+} from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area } from "recharts";
 
 // ── Mock Data ──────────────────────────────────────────────
 
@@ -17,6 +21,26 @@ const gatewayMetrics = [
   { name: "HCM Data Gateway", received: 432, processed: 0, succeeded: 430, errored: 2 },
   { name: "ERP Sync Gateway", received: 2150, processed: 23, succeeded: 2098, errored: 29 },
 ];
+
+// Time-series mock data for gateway detail metrics
+const generateTimeSeriesData = (gatewayName: string) => {
+  const hours = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
+  const seed = gatewayName.length;
+  return hours.map((hour, i) => ({
+    time: hour,
+    uptime: Math.min(100, 97 + (Math.sin(i + seed) + 1) * 1.5),
+    responseTime: Math.max(40, 80 + Math.sin(i * 0.8 + seed) * 60 + (i > 8 ? 30 : 0)),
+    requestsPerMin: Math.max(5, Math.round(25 + Math.sin(i * 0.5 + seed) * 15 + (i > 4 && i < 10 ? 20 : 0))),
+    errorRate: Math.max(0, +(1.5 + Math.sin(i * 1.2 + seed) * 1.5).toFixed(2)),
+  }));
+};
+
+const metricsChartConfig = {
+  uptime: { label: "Uptime %", color: "hsl(var(--redwood-green))" },
+  responseTime: { label: "Response Time (ms)", color: "hsl(var(--redwood-gold))" },
+  requestsPerMin: { label: "Requests / min", color: "hsl(var(--primary))" },
+  errorRate: { label: "Error Rate %", color: "hsl(var(--destructive))" },
+};
 
 const gatewayHealth = [
   { name: "Invoice Validation Gateway", status: "Healthy", uptime: "99.97%", lastCheck: "2026-02-23 10:16:00", latencyP50: "120ms", latencyP99: "890ms", activeConnections: 14 },
@@ -156,6 +180,7 @@ const stepIcon = (type: FlowStep["type"]) => {
 
 const GatewayObserveDashboard = () => {
   const [selectedInstance, setSelectedInstance] = useState<GatewayInstance | null>(null);
+  const [selectedMetricsGateway, setSelectedMetricsGateway] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -183,6 +208,7 @@ const GatewayObserveDashboard = () => {
                     <TableHead className="text-center">Processed</TableHead>
                     <TableHead className="text-center">Succeeded</TableHead>
                     <TableHead className="text-center">Errored</TableHead>
+                    <TableHead className="w-12">Metrics</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -193,6 +219,11 @@ const GatewayObserveDashboard = () => {
                       <TableCell className="text-center font-semibold text-[hsl(var(--redwood-gold))]">{g.processed}</TableCell>
                       <TableCell className="text-center font-semibold text-[hsl(var(--redwood-green))]">{g.succeeded.toLocaleString()}</TableCell>
                       <TableCell className="text-center font-semibold text-destructive">{g.errored}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedMetricsGateway(g.name)}>
+                          <BarChart3 size={16} />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -395,6 +426,97 @@ const GatewayObserveDashboard = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Gateway Metrics Detail Dialog */}
+      <Dialog open={!!selectedMetricsGateway} onOpenChange={(open) => !open && setSelectedMetricsGateway(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <BarChart3 size={18} /> {selectedMetricsGateway} — Metrics
+            </DialogTitle>
+            <DialogDescription>Last 12 hours performance overview</DialogDescription>
+          </DialogHeader>
+
+          {selectedMetricsGateway && (() => {
+            const data = generateTimeSeriesData(selectedMetricsGateway);
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                {/* Uptime */}
+                <Card>
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Uptime %</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <ChartContainer config={metricsChartConfig} className="h-[160px] w-full">
+                      <AreaChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} className="text-muted-foreground" />
+                        <YAxis domain={[95, 100]} tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area type="monotone" dataKey="uptime" stroke="var(--color-uptime)" fill="var(--color-uptime)" fillOpacity={0.15} strokeWidth={2} />
+                      </AreaChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Response Time */}
+                <Card>
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Response Time (ms)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <ChartContainer config={metricsChartConfig} className="h-[160px] w-full">
+                      <LineChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line type="monotone" dataKey="responseTime" stroke="var(--color-responseTime)" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Requests per Minute */}
+                <Card>
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Requests / min</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <ChartContainer config={metricsChartConfig} className="h-[160px] w-full">
+                      <AreaChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area type="monotone" dataKey="requestsPerMin" stroke="var(--color-requestsPerMin)" fill="var(--color-requestsPerMin)" fillOpacity={0.15} strokeWidth={2} />
+                      </AreaChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Error Rate */}
+                <Card>
+                  <CardHeader className="pb-2 pt-3 px-4">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Error Rate %</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    <ChartContainer config={metricsChartConfig} className="h-[160px] w-full">
+                      <LineChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line type="monotone" dataKey="errorRate" stroke="var(--color-errorRate)" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
