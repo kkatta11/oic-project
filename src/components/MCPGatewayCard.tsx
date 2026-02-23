@@ -61,7 +61,12 @@ interface SavedGateway {
 
 const MCPGatewayCard = () => {
   const [open, setOpen] = useState(false);
-  const [gateways, setGateways] = useState<SavedGateway[]>([]);
+  const [gateways, setGateways] = useState<SavedGateway[]>(() => {
+    try {
+      const stored = localStorage.getItem("mcp-gateways");
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
 
   // Form state
   const [gatewayName, setGatewayName] = useState("");
