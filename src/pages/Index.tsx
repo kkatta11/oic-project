@@ -12,7 +12,7 @@ import BusinessPoliciesCard, { type BusinessPolicy, loadBusinessPolicies, saveBu
 import MCPGatewayCard from "@/components/MCPGatewayCard";
 import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
 import { integrations, connections, sidebarItems } from "@/data/mockData";
-import { Server, Database } from "lucide-react";
+
 
 const tabs = ["Design", "Deploy", "Observe"];
 
