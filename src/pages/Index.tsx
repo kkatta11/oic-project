@@ -135,9 +135,13 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {renderContent()}
-          </div>
+          {activeTab === "Observe" ? (
+            renderContent()
+          ) : (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {renderContent()}
+            </div>
+          )}
         </main>
       </div>
     </div>
