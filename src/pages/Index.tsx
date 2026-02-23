@@ -9,6 +9,7 @@ import ToolsCard from "@/components/ToolsCard";
 import MCPServersCard from "@/components/MCPServersCard";
 import SecurityPoliciesCard from "@/components/SecurityPoliciesCard";
 import BusinessPoliciesCard from "@/components/BusinessPoliciesCard";
+import MCPGatewayCard from "@/components/MCPGatewayCard";
 import { integrations, connections, sidebarItems } from "@/data/mockData";
 
 const tabs = ["Design", "Deploy", "Observe"];
@@ -32,7 +33,7 @@ const Index = () => {
     if (activeSidebarItem === "gateway") {
       return (
         <>
-          <SimpleCard title="MCP Gateway" description="Manage your Model Context Protocol gateway configuration." />
+          <MCPGatewayCard />
           <MCPServersCard />
           <SecurityPoliciesCard />
           <BusinessPoliciesCard />
