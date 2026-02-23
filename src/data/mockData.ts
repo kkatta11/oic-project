@@ -52,3 +52,17 @@ export const sidebarItems = [
   { id: "schedules", label: "Schedules", icon: "Clock" as const },
   { id: "packages", label: "Packages", icon: "Package" as const },
 ];
+
+export const agentSidebarItems = [
+  { id: "agents", label: "Agents", icon: "Bot" as const },
+  { id: "tools", label: "Tools", icon: "Wrench" as const },
+  { id: "agent-patterns", label: "Agent Patterns", icon: "Workflow" as const },
+  { id: "prompt-templates", label: "Prompt Templates", icon: "FileText" as const },
+];
+
+export const gatewaySidebarItems = [
+  { id: "mcp-gateway", label: "MCP Gateway", icon: "Network" as const },
+  { id: "mcp-servers", label: "MCP Servers", icon: "Server" as const },
+  { id: "security-policies", label: "Security Policies", icon: "ShieldCheck" as const },
+  { id: "business-policies", label: "Business Policies", icon: "BookOpen" as const },
+];
