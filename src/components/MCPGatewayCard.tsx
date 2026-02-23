@@ -154,15 +154,21 @@ const MCPGatewayCard = () => {
       securityPolicies: [...selectedSecurityPolicies],
       businessPolicies: [...selectedBusinessPolicies],
     };
-    const updated = [...prev, newGateway];
-    localStorage.setItem("mcp-gateways", JSON.stringify(updated));
-    return updated;
-  });
+    setGateways((prev) => {
+      const updated = [...prev, newGateway];
+      localStorage.setItem("mcp-gateways", JSON.stringify(updated));
+      return updated;
+    });
+    resetForm();
     setOpen(false);
   };
 
   const handleDeleteGateway = (id: string) => {
-    setGateways((prev) => prev.filter((g) => g.id !== id));
+    setGateways((prev) => {
+      const updated = prev.filter((g) => g.id !== id);
+      localStorage.setItem("mcp-gateways", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   return (
