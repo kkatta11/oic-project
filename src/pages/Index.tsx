@@ -6,7 +6,7 @@ import IntegrationsCard from "@/components/IntegrationsCard";
 import ConnectionsCard from "@/components/ConnectionsCard";
 import SimpleCard from "@/components/SimpleCard";
 import ToolsCard from "@/components/ToolsCard";
-import MCPServersCard, { type MCPServer } from "@/components/MCPServersCard";
+import MCPServersCard, { type MCPServer, defaultServers as defaultMCPServers } from "@/components/MCPServersCard";
 import SecurityPoliciesCard, { type SecurityPolicy, loadSecurityPolicies, saveSecurityPolicies } from "@/components/SecurityPoliciesCard";
 import BusinessPoliciesCard, { type BusinessPolicy, loadBusinessPolicies, saveBusinessPolicies } from "@/components/BusinessPoliciesCard";
 import MCPGatewayCard from "@/components/MCPGatewayCard";
@@ -16,10 +16,6 @@ import { Server, Database } from "lucide-react";
 
 const tabs = ["Design", "Deploy", "Observe"];
 
-const defaultMCPServers: MCPServer[] = [
-  { id: "1", name: "Filesystem MCP Server", status: "Active", icon: Server },
-  { id: "2", name: "PostgreSQL MCP Server", status: "Configured", icon: Database },
-];
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("Design");
@@ -41,7 +37,7 @@ const Index = () => {
       return (
         <>
           <SimpleCard title="Agents" description="Create and manage AI agents for your integration workflows." />
-          <ToolsCard />
+          <ToolsCard mcpServers={mcpServers} />
           <SimpleCard title="Agent Patterns" description="Configure reusable patterns for agent behavior." />
           <SimpleCard title="Prompt Templates" description="Design and manage prompt templates for agent interactions." />
         </>
