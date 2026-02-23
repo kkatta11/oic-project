@@ -208,6 +208,7 @@ const GatewayObserveDashboard = () => {
                     <TableHead className="text-center">Processed</TableHead>
                     <TableHead className="text-center">Succeeded</TableHead>
                     <TableHead className="text-center">Errored</TableHead>
+                    <TableHead className="w-12">Metrics</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -218,6 +219,11 @@ const GatewayObserveDashboard = () => {
                       <TableCell className="text-center font-semibold text-[hsl(var(--redwood-gold))]">{g.processed}</TableCell>
                       <TableCell className="text-center font-semibold text-[hsl(var(--redwood-green))]">{g.succeeded.toLocaleString()}</TableCell>
                       <TableCell className="text-center font-semibold text-destructive">{g.errored}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedMetricsGateway(g.name)}>
+                          <BarChart3 size={16} />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
