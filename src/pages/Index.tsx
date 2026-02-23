@@ -7,15 +7,14 @@ import ConnectionsCard from "@/components/ConnectionsCard";
 import SimpleCard from "@/components/SimpleCard";
 import ToolsCard from "@/components/ToolsCard";
 import MCPServersCard, { type MCPServer } from "@/components/MCPServersCard";
-import SecurityPoliciesCard from "@/components/SecurityPoliciesCard";
-import BusinessPoliciesCard from "@/components/BusinessPoliciesCard";
+import SecurityPoliciesCard, { type SecurityPolicy, loadSecurityPolicies, saveSecurityPolicies } from "@/components/SecurityPoliciesCard";
+import BusinessPoliciesCard, { type BusinessPolicy, loadBusinessPolicies, saveBusinessPolicies } from "@/components/BusinessPoliciesCard";
 import MCPGatewayCard from "@/components/MCPGatewayCard";
 import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
 import { integrations, connections, sidebarItems } from "@/data/mockData";
 import { Server, Database } from "lucide-react";
 
 const tabs = ["Design", "Deploy", "Observe"];
-
 
 const defaultMCPServers: MCPServer[] = [
   { id: "1", name: "Filesystem MCP Server", status: "Active", icon: Server },
@@ -26,23 +25,18 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
   const [mcpServers, setMcpServers] = useState<MCPServer[]>(defaultMCPServers);
+  const [securityPolicies, setSecurityPolicies] = useState<SecurityPolicy[]>(loadSecurityPolicies);
+  const [businessPolicies, setBusinessPolicies] = useState<BusinessPolicy[]>(loadBusinessPolicies);
 
   const renderContent = () => {
-    // Observe tab — Gateway
     if (activeTab === "Observe" && activeSidebarItem === "gateway") {
       return <GatewayObserveDashboard />;
     }
-
-    // Observe tab — other sidebar items (placeholder)
     if (activeTab === "Observe") {
       return (
-        <SimpleCard
-          title="Observe"
-          description="Monitoring and observability for this section is coming soon."
-        />
+        <SimpleCard title="Observe" description="Monitoring and observability for this section is coming soon." />
       );
     }
-
     if (activeSidebarItem === "agent") {
       return (
         <>
@@ -56,14 +50,13 @@ const Index = () => {
     if (activeSidebarItem === "gateway") {
       return (
         <>
-          <MCPGatewayCard activeMCPServers={mcpServers} />
+          <MCPGatewayCard activeMCPServers={mcpServers} securityPolicies={securityPolicies} businessPolicies={businessPolicies} />
           <MCPServersCard servers={mcpServers} onServersChange={setMcpServers} />
-          <SecurityPoliciesCard />
-          <BusinessPoliciesCard />
+          <SecurityPoliciesCard policies={securityPolicies} onPoliciesChange={setSecurityPolicies} />
+          <BusinessPoliciesCard policies={businessPolicies} onPoliciesChange={setBusinessPolicies} />
         </>
       );
     }
-    // Default: Design content
     return (
       <>
         <IntegrationsCard integrations={integrations} />

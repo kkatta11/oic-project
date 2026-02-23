@@ -1,8 +1,8 @@
 import { useState } from "react";
 import {
   Plus, Server, Database, Globe, MessageSquare, FileJson, Mail,
-  ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Lock,
-  DollarSign, ListChecks, BarChart3, UserCheck, Trash2, ChevronRight,
+  ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Lock,
+  Trash2, ChevronRight, ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -16,30 +16,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import type { SecurityPolicy } from "@/components/SecurityPoliciesCard";
+import type { BusinessPolicy } from "@/components/BusinessPoliciesCard";
+
+const iconMap: Record<string, LucideIcon> = {
+  ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock,
+};
 
 const catalogServers = [
   { id: "c1", name: "Slack MCP Server", description: "Connect to Slack workspaces", icon: MessageSquare, defaultUrl: "https://mcp.slack.com/v1/stream" },
   { id: "c2", name: "GitHub MCP Server", description: "Access GitHub repositories", icon: Globe, defaultUrl: "https://mcp.github.com/v1/stream" },
   { id: "c3", name: "Notion MCP Server", description: "Read and write Notion pages", icon: FileJson, defaultUrl: "https://mcp.notion.so/v1/stream" },
   { id: "c4", name: "Gmail MCP Server", description: "Send and read emails", icon: Mail, defaultUrl: "https://mcp.googleapis.com/gmail/v1/stream" },
-];
-
-const availableSecurityPolicies = [
-  { id: "sp1", name: "PII Detection", description: "Scan for sensitive data", icon: ShieldAlert },
-  { id: "sp2", name: "Schema Validation", description: "Ensure format compliance", icon: FileCheck },
-  { id: "sp3", name: "Tool Poisoning Check", description: "Detect malicious payloads", icon: Bug },
-  { id: "sp4", name: "Intrusion Detection", description: "Identify suspicious patterns", icon: ShieldCheck },
-  { id: "sp5", name: "Rate Limiting", description: "Check quota consumption", icon: Gauge },
-  { id: "sp6", name: "Payload Size", description: "Validate request size", icon: Package },
-  { id: "sp7", name: "SQL Injection", description: "Detect injection attempts", icon: Database },
-  { id: "sp8", name: "Encryption", description: "Prepare encrypted transmission", icon: Lock },
-];
-
-const availableBusinessPolicies = [
-  { id: "bp1", name: "Invoice Amount Check", icon: DollarSign },
-  { id: "bp2", name: "No Line Items", icon: ListChecks },
-  { id: "bp3", name: "Variance Tolerance", icon: BarChart3 },
-  { id: "bp4", name: "Vendor Validation", icon: UserCheck },
 ];
 
 interface ActiveMCPServer {
@@ -68,9 +56,11 @@ interface SavedGateway {
 
 interface MCPGatewayCardProps {
   activeMCPServers?: ActiveMCPServer[];
+  securityPolicies?: SecurityPolicy[];
+  businessPolicies?: BusinessPolicy[];
 }
 
-const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
+const MCPGatewayCard = ({ activeMCPServers = [], securityPolicies = [], businessPolicies = [] }: MCPGatewayCardProps) => {
   const [open, setOpen] = useState(false);
   const [gateways, setGateways] = useState<SavedGateway[]>(() => {
     try {
@@ -79,17 +69,19 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
     } catch { return []; }
   });
 
-  // Form state
   const [gatewayName, setGatewayName] = useState("");
   const [registeredServers, setRegisteredServers] = useState<GatewayServer[]>([]);
   const [newServerName, setNewServerName] = useState("");
   const [newServerUrl, setNewServerUrl] = useState("");
   const [transportType, setTransportType] = useState("streamable-http");
   const [authType, setAuthType] = useState("none");
-  const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>(["sp1", "sp2", "sp5", "sp7", "sp8"]);
-  const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>(["bp1", "bp4"]);
 
-  // Catalog connect detail dialog
+  const activeSecurityPolicies = securityPolicies.filter((p) => p.active);
+  const activeBusinessPolicies = businessPolicies.filter((p) => p.active);
+
+  const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>([]);
+  const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>([]);
+
   const [catalogDetailOpen, setCatalogDetailOpen] = useState(false);
   const [catalogDetailServer, setCatalogDetailServer] = useState<typeof catalogServers[0] | null>(null);
   const [catalogUrl, setCatalogUrl] = useState("");
@@ -103,8 +95,8 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
     setNewServerUrl("");
     setTransportType("streamable-http");
     setAuthType("none");
-    setSelectedSecurityPolicies(["sp1", "sp2", "sp5", "sp7", "sp8"]);
-    setSelectedBusinessPolicies(["bp1", "bp4"]);
+    setSelectedSecurityPolicies([]);
+    setSelectedBusinessPolicies([]);
   };
 
   const handleAddRegisteredServer = () => {
@@ -131,29 +123,18 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
     if (!catalogDetailServer) return;
     setRegisteredServers((prev) => [
       ...prev,
-      {
-        id: `cat-${Date.now()}`,
-        name: catalogDetailServer.name,
-        url: catalogUrl,
-        transport: catalogTransport,
-        auth: catalogAuth,
-        icon: catalogDetailServer.icon,
-      },
+      { id: `cat-${Date.now()}`, name: catalogDetailServer.name, url: catalogUrl, transport: catalogTransport, auth: catalogAuth, icon: catalogDetailServer.icon },
     ]);
     setCatalogDetailOpen(false);
     setCatalogDetailServer(null);
   };
 
   const toggleSecurityPolicy = (id: string) => {
-    setSelectedSecurityPolicies((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
+    setSelectedSecurityPolicies((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
   };
 
   const toggleBusinessPolicy = (id: string) => {
-    setSelectedBusinessPolicies((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
+    setSelectedBusinessPolicies((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
   };
 
   const handleCreate = () => {
@@ -199,7 +180,6 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
             </DialogHeader>
 
             <div className="mt-4 space-y-6">
-              {/* Gateway Name */}
               <div className="space-y-2">
                 <Label htmlFor="gw-name">Gateway Name</Label>
                 <Input id="gw-name" placeholder="My MCP Gateway" value={gatewayName} onChange={(e) => setGatewayName(e.target.value)} />
@@ -224,24 +204,15 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
                           const added = registeredServers.some((r) => r.name === s.name);
                           return (
                             <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-                              <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground">
-                                <Icon size={14} />
-                              </div>
+                              <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground"><Icon size={14} /></div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs font-medium text-foreground">{s.name}</p>
-                                <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${s.status === "Active" ? "bg-redwood-green-light text-redwood-green" : "bg-redwood-olive-light text-redwood-olive"}`}>
-                                  {s.status}
-                                </span>
+                                <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-redwood-green-light text-redwood-green">Active</span>
                               </div>
                               <Button variant={added ? "ghost" : "outline"} size="sm" disabled={added} onClick={() => {
                                 if (added) return;
-                                setRegisteredServers((prev) => [
-                                  ...prev,
-                                  { id: `active-${Date.now()}-${s.id}`, name: s.name, url: "", transport: "streamable-http", auth: "none", icon: s.icon },
-                                ]);
-                              }} className="h-7 text-xs">
-                                {added ? "Added" : "Add"}
-                              </Button>
+                                setRegisteredServers((prev) => [...prev, { id: `active-${Date.now()}-${s.id}`, name: s.name, url: "", transport: "streamable-http", auth: "none", icon: s.icon }]);
+                              }} className="h-7 text-xs">{added ? "Added" : "Add"}</Button>
                             </div>
                           );
                         })}
@@ -264,9 +235,7 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
                         <Label className="text-xs">Transport Type</Label>
                         <Select value={transportType} onValueChange={setTransportType}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="streamable-http">Streamable HTTP</SelectItem>
-                          </SelectContent>
+                          <SelectContent><SelectItem value="streamable-http">Streamable HTTP</SelectItem></SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1.5">
@@ -282,9 +251,7 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
                         </Select>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" onClick={handleAddRegisteredServer} disabled={!newServerName.trim()} className="w-full">
-                      Add Server
-                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleAddRegisteredServer} disabled={!newServerName.trim()} className="w-full">Add Server</Button>
                   </TabsContent>
                   <TabsContent value="catalog" className="pt-3">
                     <div className="divide-y divide-border rounded-md border border-border">
@@ -293,16 +260,12 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
                         const added = registeredServers.some((r) => r.name === s.name);
                         return (
                           <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-                            <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground">
-                              <Icon size={14} />
-                            </div>
+                            <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground"><Icon size={14} /></div>
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-medium text-foreground">{s.name}</p>
                               <p className="text-[11px] text-muted-foreground">{s.description}</p>
                             </div>
-                            <Button variant={added ? "ghost" : "outline"} size="sm" disabled={added} onClick={() => handleCatalogClick(s)} className="h-7 text-xs">
-                              {added ? "Added" : "Connect"}
-                            </Button>
+                            <Button variant={added ? "ghost" : "outline"} size="sm" disabled={added} onClick={() => handleCatalogClick(s)} className="h-7 text-xs">{added ? "Added" : "Connect"}</Button>
                           </div>
                         );
                       })}
@@ -310,16 +273,13 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
                   </TabsContent>
                 </Tabs>
 
-                {/* Selected servers list */}
                 {registeredServers.length > 0 && (
                   <div className="rounded-md border border-border divide-y divide-border">
                     {registeredServers.map((s) => {
                       const Icon = s.icon;
                       return (
                         <div key={s.id} className="flex items-center gap-2 px-3 py-2">
-                          <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground">
-                            <Icon size={12} />
-                          </div>
+                          <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground"><Icon size={12} /></div>
                           <div className="flex-1 min-w-0">
                             <span className="text-xs font-medium text-foreground">{s.name}</span>
                             <p className="text-[10px] text-muted-foreground truncate">{s.url}</p>
@@ -333,52 +293,56 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
                 )}
               </div>
 
-              {/* Security Policies */}
+              {/* Security Policies - from props, active only */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-foreground">Security Policies</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {availableSecurityPolicies.map((p) => {
-                    const Icon = p.icon;
-                    const checked = selectedSecurityPolicies.includes(p.id);
-                    return (
-                      <label key={p.id} className="flex items-center gap-2.5 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50">
-                        <Checkbox checked={checked} onCheckedChange={() => toggleSecurityPolicy(p.id)} />
-                        <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground">
-                          <Icon size={12} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-foreground">{p.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{p.description}</p>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
+                {activeSecurityPolicies.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">No active security policies available. Add and activate them in the Security Policies card.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {activeSecurityPolicies.map((p) => {
+                      const Icon = iconMap[p.icon] || ShieldCheck;
+                      const checked = selectedSecurityPolicies.includes(p.id);
+                      return (
+                        <label key={p.id} className="flex items-center gap-2.5 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50">
+                          <Checkbox checked={checked} onCheckedChange={() => toggleSecurityPolicy(p.id)} />
+                          <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground"><Icon size={12} /></div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-foreground">{p.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{p.description}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Business Policies */}
+              {/* Business Policies - from props, active only */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-foreground">Business Policies</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {availableBusinessPolicies.map((p) => {
-                    const Icon = p.icon;
-                    const checked = selectedBusinessPolicies.includes(p.id);
-                    return (
-                      <label key={p.id} className="flex items-center gap-2.5 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50">
-                        <Checkbox checked={checked} onCheckedChange={() => toggleBusinessPolicy(p.id)} />
-                        <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground">
-                          <Icon size={12} />
-                        </div>
-                        <span className="text-xs font-medium text-foreground">{p.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                {activeBusinessPolicies.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 text-center">No active business policies available. Create and activate them in the Business Policies card.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {activeBusinessPolicies.map((p) => {
+                      const checked = selectedBusinessPolicies.includes(p.id);
+                      return (
+                        <label key={p.id} className="flex items-center gap-2.5 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50">
+                          <Checkbox checked={checked} onCheckedChange={() => toggleBusinessPolicy(p.id)} />
+                          <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground"><ListChecks size={12} /></div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-foreground">{p.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{p.conditions.length} condition{p.conditions.length !== 1 ? "s" : ""}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              <Button className="w-full" onClick={handleCreate} disabled={!gatewayName.trim()}>
-                Create Gateway
-              </Button>
+              <Button className="w-full" onClick={handleCreate} disabled={!gatewayName.trim()}>Create Gateway</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -406,9 +370,7 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
                   <Label className="text-xs">Transport Type</Label>
                   <Select value={catalogTransport} onValueChange={setCatalogTransport}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="streamable-http">Streamable HTTP</SelectItem>
-                    </SelectContent>
+                    <SelectContent><SelectItem value="streamable-http">Streamable HTTP</SelectItem></SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
@@ -424,9 +386,7 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
                   </Select>
                 </div>
               </div>
-              <Button className="w-full" onClick={handleCatalogConfirm}>
-                Add to Gateway
-              </Button>
+              <Button className="w-full" onClick={handleCatalogConfirm}>Add to Gateway</Button>
             </div>
           )}
         </DialogContent>
@@ -439,18 +399,14 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
         )}
         {gateways.map((gw) => (
           <div key={gw.id} className="flex items-center gap-3 px-5 py-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-muted text-muted-foreground">
-              <Server size={16} />
-            </div>
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-muted text-muted-foreground"><Server size={16} /></div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-foreground">{gw.name}</p>
               <p className="text-xs text-muted-foreground">
                 {gw.servers.length} server{gw.servers.length !== 1 ? "s" : ""} · {gw.securityPolicies.length} security · {gw.businessPolicies.length} business
               </p>
             </div>
-            <button onClick={() => handleDeleteGateway(gw.id)} className="text-muted-foreground hover:text-destructive">
-              <Trash2 size={14} />
-            </button>
+            <button onClick={() => handleDeleteGateway(gw.id)} className="text-muted-foreground hover:text-destructive"><Trash2 size={14} /></button>
             <ChevronRight size={14} className="text-muted-foreground" />
           </div>
         ))}
