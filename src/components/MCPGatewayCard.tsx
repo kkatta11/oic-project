@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { Plus, Server, Database, Globe, MessageSquare, FileJson, Mail, ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Lock, DollarSign, ListChecks, BarChart3, UserCheck, type LucideIcon } from "lucide-react";
+import {
+  Plus, Server, Database, Globe, MessageSquare, FileJson, Mail,
+  ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Lock,
+  DollarSign, ListChecks, BarChart3, UserCheck, Trash2, ChevronRight,
+  type LucideIcon,
+} from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -13,10 +18,10 @@ import {
 } from "@/components/ui/select";
 
 const catalogServers = [
-  { id: "c1", name: "Slack MCP Server", description: "Connect to Slack workspaces", icon: MessageSquare },
-  { id: "c2", name: "GitHub MCP Server", description: "Access GitHub repositories", icon: Globe },
-  { id: "c3", name: "Notion MCP Server", description: "Read and write Notion pages", icon: FileJson },
-  { id: "c4", name: "Gmail MCP Server", description: "Send and read emails", icon: Mail },
+  { id: "c1", name: "Slack MCP Server", description: "Connect to Slack workspaces", icon: MessageSquare, defaultUrl: "https://mcp.slack.com/v1/stream" },
+  { id: "c2", name: "GitHub MCP Server", description: "Access GitHub repositories", icon: Globe, defaultUrl: "https://mcp.github.com/v1/stream" },
+  { id: "c3", name: "Notion MCP Server", description: "Read and write Notion pages", icon: FileJson, defaultUrl: "https://mcp.notion.so/v1/stream" },
+  { id: "c4", name: "Gmail MCP Server", description: "Send and read emails", icon: Mail, defaultUrl: "https://mcp.googleapis.com/gmail/v1/stream" },
 ];
 
 const availableSecurityPolicies = [
@@ -37,38 +42,90 @@ const availableBusinessPolicies = [
   { id: "bp4", name: "Vendor Validation", icon: UserCheck },
 ];
 
-interface RegisteredServer {
+interface GatewayServer {
   id: string;
   name: string;
+  url: string;
+  transport: string;
+  auth: string;
   icon: LucideIcon;
+}
+
+interface SavedGateway {
+  id: string;
+  name: string;
+  servers: GatewayServer[];
+  securityPolicies: string[];
+  businessPolicies: string[];
 }
 
 const MCPGatewayCard = () => {
   const [open, setOpen] = useState(false);
-  const [gatewayName, setGatewayName] = useState("");
+  const [gateways, setGateways] = useState<SavedGateway[]>([]);
 
-  // MCP Servers step
-  const [registeredServers, setRegisteredServers] = useState<RegisteredServer[]>([]);
+  // Form state
+  const [gatewayName, setGatewayName] = useState("");
+  const [registeredServers, setRegisteredServers] = useState<GatewayServer[]>([]);
   const [newServerName, setNewServerName] = useState("");
   const [newServerUrl, setNewServerUrl] = useState("");
   const [transportType, setTransportType] = useState("streamable-http");
   const [authType, setAuthType] = useState("none");
-
-  // Policy selections
   const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>(["sp1", "sp2", "sp5", "sp7", "sp8"]);
   const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>(["bp1", "bp4"]);
 
+  // Catalog connect detail dialog
+  const [catalogDetailOpen, setCatalogDetailOpen] = useState(false);
+  const [catalogDetailServer, setCatalogDetailServer] = useState<typeof catalogServers[0] | null>(null);
+  const [catalogUrl, setCatalogUrl] = useState("");
+  const [catalogTransport, setCatalogTransport] = useState("streamable-http");
+  const [catalogAuth, setCatalogAuth] = useState("none");
+
+  const resetForm = () => {
+    setGatewayName("");
+    setRegisteredServers([]);
+    setNewServerName("");
+    setNewServerUrl("");
+    setTransportType("streamable-http");
+    setAuthType("none");
+    setSelectedSecurityPolicies(["sp1", "sp2", "sp5", "sp7", "sp8"]);
+    setSelectedBusinessPolicies(["bp1", "bp4"]);
+  };
+
   const handleAddRegisteredServer = () => {
     if (!newServerName.trim()) return;
-    setRegisteredServers((prev) => [...prev, { id: `rs-${Date.now()}`, name: newServerName.trim(), icon: Server }]);
+    setRegisteredServers((prev) => [
+      ...prev,
+      { id: `rs-${Date.now()}`, name: newServerName.trim(), url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server },
+    ]);
     setNewServerName("");
     setNewServerUrl("");
     setAuthType("none");
   };
 
-  const handleCatalogAdd = (s: typeof catalogServers[0]) => {
+  const handleCatalogClick = (s: typeof catalogServers[0]) => {
     if (registeredServers.some((r) => r.name === s.name)) return;
-    setRegisteredServers((prev) => [...prev, { id: `cat-${Date.now()}`, name: s.name, icon: s.icon }]);
+    setCatalogDetailServer(s);
+    setCatalogUrl(s.defaultUrl);
+    setCatalogTransport("streamable-http");
+    setCatalogAuth("none");
+    setCatalogDetailOpen(true);
+  };
+
+  const handleCatalogConfirm = () => {
+    if (!catalogDetailServer) return;
+    setRegisteredServers((prev) => [
+      ...prev,
+      {
+        id: `cat-${Date.now()}`,
+        name: catalogDetailServer.name,
+        url: catalogUrl,
+        transport: catalogTransport,
+        auth: catalogAuth,
+        icon: catalogDetailServer.icon,
+      },
+    ]);
+    setCatalogDetailOpen(false);
+    setCatalogDetailServer(null);
   };
 
   const toggleSecurityPolicy = (id: string) => {
@@ -84,19 +141,28 @@ const MCPGatewayCard = () => {
   };
 
   const handleCreate = () => {
-    // In a real app this would persist the gateway config
+    if (!gatewayName.trim()) return;
+    const newGateway: SavedGateway = {
+      id: `gw-${Date.now()}`,
+      name: gatewayName.trim(),
+      servers: [...registeredServers],
+      securityPolicies: [...selectedSecurityPolicies],
+      businessPolicies: [...selectedBusinessPolicies],
+    };
+    setGateways((prev) => [...prev, newGateway]);
+    resetForm();
     setOpen(false);
-    setGatewayName("");
-    setRegisteredServers([]);
-    setSelectedSecurityPolicies(["sp1", "sp2", "sp5", "sp7", "sp8"]);
-    setSelectedBusinessPolicies(["bp1", "bp4"]);
+  };
+
+  const handleDeleteGateway = (id: string) => {
+    setGateways((prev) => prev.filter((g) => g.id !== id));
   };
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <h3 className="text-sm font-semibold text-foreground">MCP Gateway</h3>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
             <button className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
               <Plus size={16} />
@@ -175,8 +241,8 @@ const MCPGatewayCard = () => {
                               <p className="text-xs font-medium text-foreground">{s.name}</p>
                               <p className="text-[11px] text-muted-foreground">{s.description}</p>
                             </div>
-                            <Button variant={added ? "ghost" : "outline"} size="sm" disabled={added} onClick={() => handleCatalogAdd(s)} className="h-7 text-xs">
-                              {added ? "Added" : "Add"}
+                            <Button variant={added ? "ghost" : "outline"} size="sm" disabled={added} onClick={() => handleCatalogClick(s)} className="h-7 text-xs">
+                              {added ? "Added" : "Connect"}
                             </Button>
                           </div>
                         );
@@ -195,7 +261,11 @@ const MCPGatewayCard = () => {
                           <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground">
                             <Icon size={12} />
                           </div>
-                          <span className="flex-1 text-xs font-medium text-foreground">{s.name}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-medium text-foreground">{s.name}</span>
+                            <p className="text-[10px] text-muted-foreground truncate">{s.url}</p>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground capitalize">{s.auth === "none" ? "No Auth" : s.auth}</span>
                           <button onClick={() => setRegisteredServers((p) => p.filter((x) => x.id !== s.id))} className="text-xs text-muted-foreground hover:text-destructive">Remove</button>
                         </div>
                       );
@@ -255,8 +325,76 @@ const MCPGatewayCard = () => {
         </Dialog>
       </div>
 
-      <div className="px-5 py-4">
-        <p className="text-sm text-muted-foreground">Manage your Model Context Protocol gateway configuration.</p>
+      {/* Catalog connect detail dialog */}
+      <Dialog open={catalogDetailOpen} onOpenChange={setCatalogDetailOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Connect {catalogDetailServer?.name}</DialogTitle>
+            <DialogDescription>Review and confirm the server details below.</DialogDescription>
+          </DialogHeader>
+          {catalogDetailServer && (
+            <div className="mt-3 space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Server Name</Label>
+                <Input value={catalogDetailServer.name} disabled className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">URL</Label>
+                <Input value={catalogUrl} onChange={(e) => setCatalogUrl(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Transport Type</Label>
+                  <Select value={catalogTransport} onValueChange={setCatalogTransport}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="streamable-http">Streamable HTTP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Authorization</Label>
+                  <Select value={catalogAuth} onValueChange={setCatalogAuth}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="api-key">API Key</SelectItem>
+                      <SelectItem value="jwt">JWT</SelectItem>
+                      <SelectItem value="client-credentials">Client Credentials</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button className="w-full" onClick={handleCatalogConfirm}>
+                Add to Gateway
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Gateway list */}
+      <div className="divide-y divide-border">
+        {gateways.length === 0 && (
+          <p className="px-5 py-4 text-sm text-muted-foreground">No gateways configured. Click + to create one.</p>
+        )}
+        {gateways.map((gw) => (
+          <div key={gw.id} className="flex items-center gap-3 px-5 py-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-muted text-muted-foreground">
+              <Server size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">{gw.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {gw.servers.length} server{gw.servers.length !== 1 ? "s" : ""} · {gw.securityPolicies.length} security · {gw.businessPolicies.length} business
+              </p>
+            </div>
+            <button onClick={() => handleDeleteGateway(gw.id)} className="text-muted-foreground hover:text-destructive">
+              <Trash2 size={14} />
+            </button>
+            <ChevronRight size={14} className="text-muted-foreground" />
+          </div>
+        ))}
       </div>
     </div>
   );
