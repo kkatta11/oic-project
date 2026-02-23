@@ -6,19 +6,26 @@ import IntegrationsCard from "@/components/IntegrationsCard";
 import ConnectionsCard from "@/components/ConnectionsCard";
 import SimpleCard from "@/components/SimpleCard";
 import ToolsCard from "@/components/ToolsCard";
-import MCPServersCard from "@/components/MCPServersCard";
+import MCPServersCard, { type MCPServer } from "@/components/MCPServersCard";
 import SecurityPoliciesCard from "@/components/SecurityPoliciesCard";
 import BusinessPoliciesCard from "@/components/BusinessPoliciesCard";
 import MCPGatewayCard from "@/components/MCPGatewayCard";
 import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
 import { integrations, connections, sidebarItems } from "@/data/mockData";
+import { Server, Database } from "lucide-react";
 
 const tabs = ["Design", "Deploy", "Observe"];
 
 
+const defaultMCPServers: MCPServer[] = [
+  { id: "1", name: "Filesystem MCP Server", status: "Active", icon: Server },
+  { id: "2", name: "PostgreSQL MCP Server", status: "Configured", icon: Database },
+];
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
+  const [mcpServers, setMcpServers] = useState<MCPServer[]>(defaultMCPServers);
 
   const renderContent = () => {
     // Observe tab — Gateway
@@ -49,8 +56,8 @@ const Index = () => {
     if (activeSidebarItem === "gateway") {
       return (
         <>
-          <MCPGatewayCard />
-          <MCPServersCard />
+          <MCPGatewayCard activeMCPServers={mcpServers} />
+          <MCPServersCard servers={mcpServers} onServersChange={setMcpServers} />
           <SecurityPoliciesCard />
           <BusinessPoliciesCard />
         </>
