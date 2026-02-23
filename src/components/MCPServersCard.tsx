@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -24,6 +25,9 @@ export interface MCPServer {
   status: "Active" | "Configured";
   icon: LucideIcon;
   tools: MCPServerTool[];
+  url?: string;
+  transport?: string;
+  auth?: string;
 }
 
 // Mock tool catalogs per server type
@@ -79,10 +83,12 @@ const defaultServers: MCPServer[] = [
   {
     id: "1", name: "Filesystem MCP Server", status: "Active", icon: Server,
     tools: serverToolCatalog["Filesystem MCP Server"],
+    url: "https://mcp.filesystem.com/v1/stream", transport: "streamable-http", auth: "none",
   },
   {
     id: "2", name: "PostgreSQL MCP Server", status: "Configured", icon: Database,
     tools: serverToolCatalog["PostgreSQL MCP Server"],
+    url: "https://mcp.postgresql.com/v1/stream", transport: "streamable-http", auth: "api-key",
   },
 ];
 
@@ -164,6 +170,17 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
   const [catalogTools, setCatalogTools] = useState<MCPServerTool[]>([]);
   const [catalogSelectedToolIds, setCatalogSelectedToolIds] = useState<Set<string>>(new Set());
 
+  // Edit dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editServerId, setEditServerId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editUrl, setEditUrl] = useState("");
+  const [editTransport, setEditTransport] = useState("streamable-http");
+  const [editAuth, setEditAuth] = useState("none");
+  const [editStatus, setEditStatus] = useState<"Active" | "Configured">("Active");
+  const [editAvailableTools, setEditAvailableTools] = useState<MCPServerTool[]>([]);
+  const [editSelectedToolIds, setEditSelectedToolIds] = useState<Set<string>>(new Set());
+
   const servers = externalServers ?? internalServers;
 
   const updateServers = (updated: MCPServer[]) => {
@@ -176,7 +193,6 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
 
   const handleFetchTools = () => {
     setIsFetching(true);
-    // Simulate network delay
     setTimeout(() => {
       const tools = getToolsForServer(serverName.trim());
       setFetchedTools(tools);
@@ -204,9 +220,11 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
       status: "Configured",
       icon: Server,
       tools: selectedTools,
+      url: serverUrl.trim(),
+      transport: transportType,
+      auth: authType,
     };
     updateServers([...servers, newServer]);
-    // Reset
     setServerName("");
     setServerUrl("");
     setAuthType("none");
@@ -222,7 +240,6 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
     setCatalogUrl(catalogServer.defaultUrl);
     setCatalogTransport("streamable-http");
     setCatalogAuth("none");
-    // Pre-load tools for this catalog server
     const tools = getToolsForServer(catalogServer.name);
     setCatalogTools(tools);
     setCatalogSelectedToolIds(new Set(tools.map((t) => t.id)));
@@ -247,6 +264,9 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
       status: "Active",
       icon: catalogDetailServer.icon,
       tools: selectedTools,
+      url: catalogUrl,
+      transport: catalogTransport,
+      auth: catalogAuth,
     };
     updateServers([...servers, newServer]);
     setCatalogDetailOpen(false);
@@ -264,6 +284,42 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
     setFetchedTools([]);
     setSelectedToolIds(new Set());
     setToolsFetched(false);
+  };
+
+  // --- Edit handlers ---
+  const handleEditClick = (server: MCPServer) => {
+    setEditServerId(server.id);
+    setEditName(server.name);
+    setEditUrl(server.url || "");
+    setEditTransport(server.transport || "streamable-http");
+    setEditAuth(server.auth || "none");
+    setEditStatus(server.status);
+    const allTools = getToolsForServer(server.name);
+    setEditAvailableTools(allTools);
+    setEditSelectedToolIds(new Set(server.tools.map((t) => t.id)));
+    setEditOpen(true);
+  };
+
+  const toggleEditToolId = (id: string) => {
+    setEditSelectedToolIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleEditSave = () => {
+    if (!editServerId || !editName.trim()) return;
+    const selectedTools = editAvailableTools.filter((t) => editSelectedToolIds.has(t.id));
+    const updated = servers.map((s) =>
+      s.id === editServerId
+        ? { ...s, name: editName.trim(), url: editUrl.trim(), transport: editTransport, auth: editAuth, status: editStatus, tools: selectedTools }
+        : s
+    );
+    updateServers(updated);
+    setEditOpen(false);
+    setEditServerId(null);
   };
 
   return (
@@ -317,7 +373,6 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
                   </Select>
                 </div>
 
-                {/* Fetch Tools */}
                 {!toolsFetched ? (
                   <Button
                     variant="outline"
@@ -414,15 +469,72 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
                   </Select>
                 </div>
               </div>
-
-              {/* Tool selection for catalog server */}
               <ToolChecklist tools={catalogTools} selectedIds={catalogSelectedToolIds} onToggle={toggleCatalogToolId} />
-
               <Button className="w-full" onClick={handleCatalogConfirm} disabled={catalogSelectedToolIds.size === 0}>
                 Connect Server
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit MCP Server dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit MCP Server</DialogTitle>
+            <DialogDescription>Modify server configuration, status, and tool selection.</DialogDescription>
+          </DialogHeader>
+          <div className="mt-3 space-y-4">
+            <div className="space-y-2">
+              <Label>Server Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>URL</Label>
+              <Input placeholder="https://mcp.example.com" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Transport Type</Label>
+                <Select value={editTransport} onValueChange={setEditTransport}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="streamable-http">Streamable HTTP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Authorization</Label>
+                <Select value={editAuth} onValueChange={setEditAuth}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="api-key">API Key</SelectItem>
+                    <SelectItem value="jwt">JWT</SelectItem>
+                    <SelectItem value="client-credentials">Client Credentials</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border p-3">
+              <div>
+                <Label className="text-sm">Status</Label>
+                <p className="text-xs text-muted-foreground">{editStatus === "Active" ? "Server is active and available" : "Server is configured but inactive"}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{editStatus}</span>
+                <Switch
+                  checked={editStatus === "Active"}
+                  onCheckedChange={(checked) => setEditStatus(checked ? "Active" : "Configured")}
+                />
+              </div>
+            </div>
+            <ToolChecklist tools={editAvailableTools} selectedIds={editSelectedToolIds} onToggle={toggleEditToolId} />
+            <Button className="w-full" onClick={handleEditSave} disabled={!editName.trim() || editSelectedToolIds.size === 0}>
+              Save Changes
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -449,7 +561,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
               <button onClick={() => handleRemove(server.id)} className="ml-1 text-muted-foreground hover:text-destructive">
                 <Trash2 size={14} />
               </button>
-              <button className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => handleEditClick(server)} className="text-muted-foreground hover:text-foreground">
                 <MoreHorizontal size={16} />
               </button>
             </div>
