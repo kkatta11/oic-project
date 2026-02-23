@@ -215,11 +215,11 @@ const MCPGatewayCard = ({ activeMCPServers = [] }: MCPGatewayCardProps) => {
                     <TabsTrigger value="catalog" className="flex-1">Browse Catalog</TabsTrigger>
                   </TabsList>
                   <TabsContent value="active" className="pt-3">
-                    {activeMCPServers.length === 0 ? (
+                    {activeMCPServers.filter((s) => s.status === "Active").length === 0 ? (
                       <p className="text-xs text-muted-foreground py-3 text-center">No active MCP servers available.</p>
                     ) : (
                       <div className="divide-y divide-border rounded-md border border-border">
-                        {activeMCPServers.map((s) => {
+                        {activeMCPServers.filter((s) => s.status === "Active").map((s) => {
                           const Icon = s.icon;
                           const added = registeredServers.some((r) => r.name === s.name);
                           return (
