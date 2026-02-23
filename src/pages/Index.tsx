@@ -10,6 +10,7 @@ import MCPServersCard from "@/components/MCPServersCard";
 import SecurityPoliciesCard from "@/components/SecurityPoliciesCard";
 import BusinessPoliciesCard from "@/components/BusinessPoliciesCard";
 import MCPGatewayCard from "@/components/MCPGatewayCard";
+import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
 import { integrations, connections, sidebarItems } from "@/data/mockData";
 
 const tabs = ["Design", "Deploy", "Observe"];
@@ -20,6 +21,21 @@ const Index = () => {
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
 
   const renderContent = () => {
+    // Observe tab — Gateway
+    if (activeTab === "Observe" && activeSidebarItem === "gateway") {
+      return <GatewayObserveDashboard />;
+    }
+
+    // Observe tab — other sidebar items (placeholder)
+    if (activeTab === "Observe") {
+      return (
+        <SimpleCard
+          title="Observe"
+          description="Monitoring and observability for this section is coming soon."
+        />
+      );
+    }
+
     if (activeSidebarItem === "agent") {
       return (
         <>
@@ -119,9 +135,13 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {renderContent()}
-          </div>
+          {activeTab === "Observe" ? (
+            renderContent()
+          ) : (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {renderContent()}
+            </div>
+          )}
         </main>
       </div>
     </div>
