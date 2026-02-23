@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Eye, CheckCircle2, XCircle, Clock, ArrowDown, Shield, Briefcase, Server, Send, Inbox } from "lucide-react";
+import { Eye, CheckCircle2, XCircle, Shield, Briefcase, Server, Send, Inbox, Activity, Wifi, WifiOff } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -15,6 +16,21 @@ const gatewayMetrics = [
   { name: "Procurement Gateway", received: 876, processed: 5, succeeded: 860, errored: 11 },
   { name: "HCM Data Gateway", received: 432, processed: 0, succeeded: 430, errored: 2 },
   { name: "ERP Sync Gateway", received: 2150, processed: 23, succeeded: 2098, errored: 29 },
+];
+
+const gatewayHealth = [
+  { name: "Invoice Validation Gateway", status: "Healthy", uptime: "99.97%", lastCheck: "2026-02-23 10:16:00", latencyP50: "120ms", latencyP99: "890ms", activeConnections: 14 },
+  { name: "Procurement Gateway", status: "Healthy", uptime: "99.91%", lastCheck: "2026-02-23 10:16:00", latencyP50: "95ms", latencyP99: "620ms", activeConnections: 8 },
+  { name: "HCM Data Gateway", status: "Degraded", uptime: "98.40%", lastCheck: "2026-02-23 10:15:45", latencyP50: "340ms", latencyP99: "2100ms", activeConnections: 3 },
+  { name: "ERP Sync Gateway", status: "Healthy", uptime: "99.99%", lastCheck: "2026-02-23 10:16:01", latencyP50: "80ms", latencyP99: "450ms", activeConnections: 22 },
+];
+
+const mcpServerHealth = [
+  { name: "Slack MCP Server", status: "Online", uptime: "99.99%", lastPing: "2026-02-23 10:16:02", responseTime: "45ms", requestsServed: 3420 },
+  { name: "GitHub MCP Server", status: "Online", uptime: "99.95%", lastPing: "2026-02-23 10:16:01", responseTime: "82ms", requestsServed: 1870 },
+  { name: "Gmail MCP Server", status: "Offline", uptime: "94.20%", lastPing: "2026-02-23 09:42:18", responseTime: "—", requestsServed: 980 },
+  { name: "Notion MCP Server", status: "Online", uptime: "99.88%", lastPing: "2026-02-23 10:16:00", responseTime: "110ms", requestsServed: 2150 },
+  { name: "Jira MCP Server", status: "Degraded", uptime: "97.60%", lastPing: "2026-02-23 10:15:50", responseTime: "520ms", requestsServed: 640 },
 ];
 
 interface FlowStep {
@@ -112,6 +128,14 @@ const statusBadge = (status: string) => {
   return <Badge className="bg-[hsl(var(--redwood-gold))] text-[hsl(var(--accent-foreground))] border-transparent">Running</Badge>;
 };
 
+const healthBadge = (status: string) => {
+  if (status === "Healthy" || status === "Online")
+    return <Badge className="bg-[hsl(var(--redwood-green))] text-white border-transparent">{status}</Badge>;
+  if (status === "Degraded")
+    return <Badge className="bg-[hsl(var(--redwood-gold))] text-[hsl(var(--accent-foreground))] border-transparent">{status}</Badge>;
+  return <Badge variant="destructive">{status}</Badge>;
+};
+
 const actionBadge = (action: string) => {
   if (action === "Created") return <Badge className="bg-[hsl(var(--redwood-green))] text-white border-transparent">Created</Badge>;
   if (action === "Updated") return <Badge className="bg-[hsl(var(--redwood-gold))] text-[hsl(var(--accent-foreground))] border-transparent">Updated</Badge>;
@@ -134,105 +158,198 @@ const GatewayObserveDashboard = () => {
   const [selectedInstance, setSelectedInstance] = useState<GatewayInstance | null>(null);
 
   return (
-    <div className="space-y-6">
-      {/* Gateways Metrics */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Gateways</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Gateway Name</TableHead>
-                <TableHead className="text-center">Received</TableHead>
-                <TableHead className="text-center">Processed</TableHead>
-                <TableHead className="text-center">Succeeded</TableHead>
-                <TableHead className="text-center">Errored</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {gatewayMetrics.map((g) => (
-                <TableRow key={g.name}>
-                  <TableCell className="font-medium">{g.name}</TableCell>
-                  <TableCell className="text-center font-semibold text-foreground">{g.received.toLocaleString()}</TableCell>
-                  <TableCell className="text-center font-semibold text-[hsl(var(--redwood-gold))]">{g.processed}</TableCell>
-                  <TableCell className="text-center font-semibold text-[hsl(var(--redwood-green))]">{g.succeeded.toLocaleString()}</TableCell>
-                  <TableCell className="text-center font-semibold text-destructive">{g.errored}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <Tabs defaultValue="gateways" className="w-full">
+        <TabsList className="w-full justify-start">
+          <TabsTrigger value="gateways">Gateways</TabsTrigger>
+          <TabsTrigger value="instances">Instances</TabsTrigger>
+          <TabsTrigger value="gateway-health">Gateway Health</TabsTrigger>
+          <TabsTrigger value="mcp-health">MCP Servers Health</TabsTrigger>
+          <TabsTrigger value="audit">Audit Log</TabsTrigger>
+        </TabsList>
 
-      {/* Gateway Instances */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Gateway Instances</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Gateway</TableHead>
-                <TableHead>Tool Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead className="w-12">View</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {gatewayInstances.map((inst) => (
-                <TableRow key={inst.id}>
-                  <TableCell className="text-muted-foreground text-xs font-mono">{inst.timestamp}</TableCell>
-                  <TableCell className="font-medium">{inst.gateway}</TableCell>
-                  <TableCell className="font-mono text-xs">{inst.toolName}</TableCell>
-                  <TableCell>{statusBadge(inst.status)}</TableCell>
-                  <TableCell>{inst.duration}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedInstance(inst)}>
-                      <Eye size={16} />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        {/* Gateways Metrics */}
+        <TabsContent value="gateways">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Gateways Metrics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Gateway Name</TableHead>
+                    <TableHead className="text-center">Received</TableHead>
+                    <TableHead className="text-center">Processed</TableHead>
+                    <TableHead className="text-center">Succeeded</TableHead>
+                    <TableHead className="text-center">Errored</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {gatewayMetrics.map((g) => (
+                    <TableRow key={g.name}>
+                      <TableCell className="font-medium">{g.name}</TableCell>
+                      <TableCell className="text-center font-semibold text-foreground">{g.received.toLocaleString()}</TableCell>
+                      <TableCell className="text-center font-semibold text-[hsl(var(--redwood-gold))]">{g.processed}</TableCell>
+                      <TableCell className="text-center font-semibold text-[hsl(var(--redwood-green))]">{g.succeeded.toLocaleString()}</TableCell>
+                      <TableCell className="text-center font-semibold text-destructive">{g.errored}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Audit Log */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Audit Log</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Artifact Type</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>User</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {auditLog.map((entry, i) => (
-                <TableRow key={i}>
-                  <TableCell className="text-muted-foreground text-xs font-mono">{entry.timestamp}</TableCell>
-                  <TableCell>{actionBadge(entry.action)}</TableCell>
-                  <TableCell>{entry.artifactType}</TableCell>
-                  <TableCell className="font-medium">{entry.name}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs">{entry.user}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        {/* Instances */}
+        <TabsContent value="instances">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Gateway Instances</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Gateway</TableHead>
+                    <TableHead>Tool Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead className="w-12">View</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {gatewayInstances.map((inst) => (
+                    <TableRow key={inst.id}>
+                      <TableCell className="text-muted-foreground text-xs font-mono">{inst.timestamp}</TableCell>
+                      <TableCell className="font-medium">{inst.gateway}</TableCell>
+                      <TableCell className="font-mono text-xs">{inst.toolName}</TableCell>
+                      <TableCell>{statusBadge(inst.status)}</TableCell>
+                      <TableCell>{inst.duration}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedInstance(inst)}>
+                          <Eye size={16} />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Gateway Health */}
+        <TabsContent value="gateway-health">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Gateway Health & Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Gateway Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Uptime</TableHead>
+                    <TableHead>Latency (P50)</TableHead>
+                    <TableHead>Latency (P99)</TableHead>
+                    <TableHead className="text-center">Active Conn.</TableHead>
+                    <TableHead>Last Check</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {gatewayHealth.map((g) => (
+                    <TableRow key={g.name}>
+                      <TableCell className="font-medium">{g.name}</TableCell>
+                      <TableCell>{healthBadge(g.status)}</TableCell>
+                      <TableCell className="font-mono text-sm">{g.uptime}</TableCell>
+                      <TableCell className="font-mono text-sm">{g.latencyP50}</TableCell>
+                      <TableCell className="font-mono text-sm">{g.latencyP99}</TableCell>
+                      <TableCell className="text-center font-semibold">{g.activeConnections}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs font-mono">{g.lastCheck}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* MCP Servers Health */}
+        <TabsContent value="mcp-health">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">MCP Servers Health & Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Server Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Uptime</TableHead>
+                    <TableHead>Response Time</TableHead>
+                    <TableHead className="text-center">Requests Served</TableHead>
+                    <TableHead>Last Ping</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mcpServerHealth.map((s) => (
+                    <TableRow key={s.name}>
+                      <TableCell className="font-medium flex items-center gap-2">
+                        {s.status === "Online" ? <Wifi size={14} className="text-[hsl(var(--redwood-green))]" /> :
+                         s.status === "Offline" ? <WifiOff size={14} className="text-destructive" /> :
+                         <Activity size={14} className="text-[hsl(var(--redwood-gold))]" />}
+                        {s.name}
+                      </TableCell>
+                      <TableCell>{healthBadge(s.status)}</TableCell>
+                      <TableCell className="font-mono text-sm">{s.uptime}</TableCell>
+                      <TableCell className="font-mono text-sm">{s.responseTime}</TableCell>
+                      <TableCell className="text-center font-semibold">{s.requestsServed.toLocaleString()}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs font-mono">{s.lastPing}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Audit Log */}
+        <TabsContent value="audit">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Audit Log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Artifact Type</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>User</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {auditLog.map((entry, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-muted-foreground text-xs font-mono">{entry.timestamp}</TableCell>
+                      <TableCell>{actionBadge(entry.action)}</TableCell>
+                      <TableCell>{entry.artifactType}</TableCell>
+                      <TableCell className="font-medium">{entry.name}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{entry.user}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Instance Detail Dialog */}
       <Dialog open={!!selectedInstance} onOpenChange={(open) => !open && setSelectedInstance(null)}>
@@ -248,12 +365,9 @@ const GatewayObserveDashboard = () => {
             <div className="space-y-0">
               {selectedInstance.flow.map((step, idx) => (
                 <div key={idx} className="relative flex items-start gap-3 pb-4 last:pb-0">
-                  {/* Connecting line */}
                   {idx < selectedInstance.flow.length - 1 && (
                     <div className="absolute left-[15px] top-8 h-[calc(100%-16px)] w-px bg-border" />
                   )}
-
-                  {/* Icon circle */}
                   <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
                     step.status === "passed"
                       ? "border-[hsl(var(--redwood-green))] bg-[hsl(var(--redwood-green-light))] text-[hsl(var(--redwood-green))]"
@@ -261,8 +375,6 @@ const GatewayObserveDashboard = () => {
                   }`}>
                     {stepIcon(step.type)}
                   </div>
-
-                  {/* Details */}
                   <div className="flex flex-1 items-center justify-between pt-1">
                     <div>
                       <p className="text-sm font-medium">{step.name}</p>
@@ -277,8 +389,6 @@ const GatewayObserveDashboard = () => {
                   </div>
                 </div>
               ))}
-
-              {/* Total duration */}
               <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                 <span className="text-sm font-medium">Total Duration</span>
                 <span className="text-sm font-semibold font-mono">{selectedInstance.duration}</span>
