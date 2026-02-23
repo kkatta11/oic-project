@@ -1,87 +1,40 @@
 
-# MCP Server Tools Discovery and Agent Tools Integration
+# Fix Business Policy Condition Builder: Focus Bug and Declarative Attribute Picker
 
-## Overview
+## Problems Identified
 
-When registering a new MCP server or connecting a community catalog server, the system will simulate fetching the tools served by that endpoint and let users select which tools to include. Selected tools will then appear in the Agent tab's Tools card, namespaced by server name (e.g., `Filesystem / List Files`).
+1. **Focus loss while typing**: The `ConditionBuilder` is defined as an inline component function inside `BusinessPoliciesCard`. Every keystroke triggers a state update, which re-creates the `ConditionBuilder` function, causing React to unmount and remount it -- losing input focus.
 
----
-
-## 1. Data Model Changes
-
-### Extend `MCPServer` interface
-Add a `tools` array to track which tools were selected from the server:
-
-```typescript
-export interface MCPServerTool {
-  id: string;
-  name: string;
-  description: string;
-}
-
-export interface MCPServer {
-  id: string;
-  name: string;
-  status: "Active" | "Configured";
-  icon: LucideIcon;
-  tools: MCPServerTool[];  // NEW - selected tools from this server
-}
-```
-
-### Simulated tool catalogs per server
-Each server (both manual and catalog) will have a mock set of "discovered" tools. For example:
-- **Filesystem MCP Server**: List Files, Read File, Write File, Delete File
-- **Slack MCP Server**: Send Message, List Channels, Search Messages, Upload File
-- **GitHub MCP Server**: List Repos, Create Issue, Get PR, Search Code
-- **Notion MCP Server**: Query Database, Create Page, Update Page, Search
-- **Gmail MCP Server**: Send Email, Search Emails, Get Thread, Create Draft
-
-For manually registered servers, a generic set of placeholder tools will be shown (simulating endpoint discovery).
+2. **No tool/payload browsing**: The attribute field is a plain free-text input with no way to browse available MCP server tools and their payload attributes.
 
 ---
 
-## 2. MCPServersCard.tsx Changes
+## Solution
 
-### Register New tab
-After filling in server name/URL/auth, add a **"Fetch Tools"** button that simulates discovering tools from the endpoint. Once fetched:
-- Display a checklist of tools with checkboxes
-- Users select which tools to include
-- The "Register Server" button saves the server with selected tools
+### 1. Fix Focus Loss
 
-### Browse Catalog tab (detail dialog)
-When clicking "Connect" on a catalog server, the detail dialog will:
-- Show the pre-filled URL/auth fields (existing)
-- Additionally display the server's available tools as a checklist
-- Users select tools before confirming
+Move `ConditionBuilder` out of the component body. Instead of defining it as an inner function component, inline the JSX directly where it's used (in both create and edit dialogs), or extract it as a standalone component that receives stable props. The simplest fix is to inline the condition rows directly into the dialog JSX -- no wrapper component needed.
 
-### Default servers update
-The two default servers will also have pre-assigned tools so they show up in the Agent tab immediately.
+### 2. Add Declarative Attribute Picker
 
----
+Add a "Browse" button next to each condition's attribute field. Clicking it opens a popover that shows:
 
-## 3. ToolsCard.tsx Changes
+- A list of MCP servers (from props)
+- Under each server, its tools
+- Under each tool, mock payload attributes (e.g., `amount`, `status`, `vendor_id`)
 
-### Accept MCP servers as a prop
-Convert from static `tools` array to dynamic: display both the existing hardcoded agent tools AND tools from MCP servers.
+When a user clicks an attribute, it auto-fills the attribute field with a namespaced path like `ServerName.ToolName.attribute`.
 
-### Namespaced display
-MCP server tools will be shown with a namespace badge/prefix:
-- `Filesystem / List Files`
-- `GitHub / Create Issue`
+This gives users a declarative way to pick attributes instead of typing them manually, while still allowing free-text input for custom attributes.
 
-This distinguishes them from native agent tools (Risk Assessment, etc.) and prevents name clashes.
+### 3. Mock Payload Schema
 
-### Visual grouping
-- Native tools shown first (existing 6 tools)
-- A subtle separator or section header "MCP Server Tools"
-- MCP tools listed below, grouped by server, each showing `ServerName / ToolName`
+Each tool will have a simulated set of payload attributes, for example:
+- `List Files` -> `path`, `recursive`, `pattern`
+- `Send Message` -> `channel`, `message`, `thread_id`
+- `Run Query` -> `query`, `database`, `timeout`
 
----
-
-## 4. Index.tsx Changes
-
-- Pass `mcpServers` as a prop to `ToolsCard` so it can render MCP-sourced tools
-- Update default MCP servers to include their pre-selected tools
+A static mapping `toolPayloadAttributes` will provide these.
 
 ---
 
@@ -89,43 +42,58 @@ This distinguishes them from native agent tools (Risk Assessment, etc.) and prev
 
 ### Files Modified
 
-1. **`src/components/MCPServersCard.tsx`**
-   - Add `MCPServerTool` interface export
-   - Add mock tool catalogs for each server type (manual + catalog)
-   - Register New: add "Fetch Tools" button and checkbox list of discovered tools
-   - Catalog detail dialog: add checkbox list of tools
-   - Save selected tools into the `MCPServer.tools` array
-   - Update default servers to include tools
+**`src/components/BusinessPoliciesCard.tsx`** -- Primary changes:
 
-2. **`src/components/ToolsCard.tsx`**
-   - Accept `mcpServers?: MCPServer[]` prop
-   - Render native tools first, then MCP server tools with namespace prefix
-   - Add section divider between native and MCP tools
+1. Remove the inner `ConditionBuilder` function component. Inline the condition-building JSX directly into both dialogs.
+2. Accept `mcpServers` as a new prop (`MCPServer[]`).
+3. Add a `toolPayloadAttributes` map providing mock attribute names per tool.
+4. Add a "Browse" button (folder/search icon) next to each attribute input that opens a Popover with a tree: Server -> Tool -> Attributes.
+5. Clicking an attribute auto-fills the input with `ServerName.ToolName.attributeName`.
 
-3. **`src/pages/Index.tsx`**
-   - Pass `mcpServers` to `ToolsCard`
-   - Update `defaultMCPServers` to include pre-selected tools
+**`src/pages/Index.tsx`** -- Minor change:
 
-### Mock Tool Data Structure
+1. Pass `mcpServers` prop to `BusinessPoliciesCard`.
+
+### Attribute Browsing UI
+
+Each condition row will look like:
+
+```
+[Browse icon] [Attribute input (pre-filled or free-text)] [Operator select] [Value input] [X]
+```
+
+The Browse popover will display:
+
+```
+Server: Filesystem
+  Tool: List Files
+    - path
+    - recursive
+    - pattern
+  Tool: Read File
+    - file_path
+    - encoding
+Server: PostgreSQL
+  Tool: Run Query
+    - query
+    - database
+    ...
+```
+
+Clicking an attribute like `path` under `List Files` under `Filesystem` sets the attribute field to `Filesystem.ListFiles.path`.
+
+### Mock Payload Data
 
 ```typescript
-const serverToolCatalog: Record<string, MCPServerTool[]> = {
-  "Filesystem MCP Server": [
-    { id: "t1", name: "List Files", description: "List files in a directory" },
-    { id: "t2", name: "Read File", description: "Read file contents" },
-    { id: "t3", name: "Write File", description: "Write content to a file" },
-    { id: "t4", name: "Delete File", description: "Delete a file" },
-  ],
-  "Slack MCP Server": [
-    { id: "t1", name: "Send Message", description: "Send a message to a channel" },
-    { id: "t2", name: "List Channels", description: "List available channels" },
-    // ...
-  ],
-  // ... similar for GitHub, Notion, Gmail, PostgreSQL
-  "_default": [
-    { id: "t1", name: "Execute", description: "Execute a server action" },
-    { id: "t2", name: "Query", description: "Query server data" },
-    { id: "t3", name: "List Resources", description: "List available resources" },
-  ],
+const toolPayloadAttributes: Record<string, string[]> = {
+  "List Files": ["path", "recursive", "pattern"],
+  "Read File": ["file_path", "encoding"],
+  "Write File": ["file_path", "content", "overwrite"],
+  "Delete File": ["file_path", "force"],
+  "Run Query": ["query", "database", "timeout"],
+  "List Tables": ["schema", "include_views"],
+  "Send Message": ["channel", "message", "thread_id"],
+  "Send Email": ["to", "subject", "body", "cc"],
+  // ... one entry per known tool
 };
 ```
