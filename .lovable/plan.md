@@ -1,67 +1,132 @@
 
-# Gateway Observe Tab -- Monitoring Dashboard
+# Security Policies Repository and Business Policies Expression Builder
 
 ## Overview
-When the user selects the "Observe" top tab while the "Gateway" sidebar item is active, the main content area will switch from the design-time cards to a runtime monitoring view with three sections: Gateways metrics matrix, Instances table, and an Instance Detail visualization dialog.
 
-## Changes
+Transform the static Security Policies and Business Policies cards into fully functional CRUD components with persistence. Security policies will be sourced from a "repository" of seeded templates, and business policies will support conditional expression building on tool payload attributes.
 
-### 1. Gateways Metrics Card
-A card showing a summary matrix for each configured gateway with columns:
-- **Gateway Name**
-- **Received** (total requests)
-- **Processed** (currently processing)
-- **Succeeded** (completed successfully)
-- **Errored** (failed)
+---
 
-Each metric displayed as a colored number in a grid/table layout. Uses mock data for several gateways.
+## 1. Security Policies Card Enhancements
 
-### 2. Gateway Instances Card
-A table listing individual gateway invocations with columns:
-- **Timestamp** (e.g., "2026-02-23 10:15:32")
-- **Gateway** (name of the gateway)
-- **Tool Name** (which tool was invoked)
-- **Status** (Succeeded / Failed / Running -- shown as colored badge)
-- **Duration** (e.g., "1.2s")
-- **View** icon button (Eye icon) to open the detail dialog
+### Current State
+- Static list of 8 hardcoded policies with fixed enabled/disabled status
+- "+" button does nothing
 
-### 3. Instance Detail Dialog (Flow Visualization)
-Clicking the View icon opens a Dialog showing an end-to-end request-to-response flow:
-- A vertical timeline/step visualization showing each artifact that executed in sequence:
-  1. Request Received
-  2. Security Policy checks (e.g., PII Detection, Schema Validation) with pass/fail and duration
-  3. Business Policy checks with pass/fail and duration
-  4. MCP Server invocation with duration
-  5. Response Sent
-- Each step shows: artifact name, status (passed/failed), and time taken
-- Total duration displayed at the bottom
+### New Behavior
+- A **repository** (seeded data) of security policy templates is available
+- Clicking "+" opens a dialog where the user picks a policy from the repository, gives it a name/description override if desired, and adds it
+- Each created policy has an **Active/Inactive toggle** (switch) to activate or deactivate it
+- Only **Active** policies will appear as selectable in the Gateway Creation dialog
+- Policies persist in `localStorage` (key: `security-policies`)
+- Users can delete policies they created
 
-### 4. Audit Log Card
-A card showing recent create/update/delete operations on gateway design-time artifacts:
-- Columns: **Timestamp**, **Action** (Created/Updated/Deleted), **Artifact Type** (Gateway/MCP Server/Security Policy/Business Policy), **Name**, **User**
-- Mock data with ~6 audit entries
+### Repository (Seeded Templates)
+The existing 8 policies become the repository catalog:
+- PII Detection, Schema Validation, Tool Poisoning Check, Intrusion Detection, Rate Limiting, Payload Size, SQL Injection, Encryption
 
-### 5. Index.tsx Logic Update
-The `renderContent` function will check both `activeTab` and `activeSidebarItem`:
-- When `activeTab === "Observe"` AND `activeSidebarItem === "gateway"`: render the Observe components
-- Otherwise keep existing behavior (Design tab content)
+### UI Changes to `SecurityPoliciesCard.tsx`
+- State: `useState` initialized from `localStorage`, falling back to a default seeded set
+- "+" button opens a Dialog listing repository templates not yet added
+- Each policy row gets a `Switch` toggle for active/inactive and a `Trash2` delete icon
+- Status badge changes to reflect active (green) / inactive (muted)
+
+### Gateway Creation Integration
+- In `MCPGatewayCard.tsx`, replace the hardcoded `availableSecurityPolicies` array with a prop (`securityPolicies`) passed from `Index.tsx`
+- Only policies with `active: true` are shown as checkboxes in the gateway creation dialog
+
+---
+
+## 2. Business Policies Card Enhancements
+
+### Current State
+- Static list of 4 hardcoded policies
+- "+" button and "..." menu do nothing
+
+### New Behavior
+- Clicking "+" opens a dialog to **create a new business policy** with a conditional expression builder
+- Expression builder lets users define rules on tool payload attributes:
+  - **Attribute** (free-text field, e.g., `invoice.amount`, `vendor.status`)
+  - **Operator** (dropdown: equals, not equals, greater than, less than, contains, is empty, is not empty)
+  - **Value** (free-text field)
+- Multiple conditions can be added per policy (AND logic)
+- Each policy has an **Active/Inactive toggle**
+- Only active policies appear in gateway creation
+- Policies persist in `localStorage` (key: `business-policies`)
+- Users can view/edit conditions via the "..." menu and delete policies
+
+### UI for Expression Builder (inside Dialog)
+- Policy Name input
+- "Add Condition" button that appends a row: `[Attribute input] [Operator select] [Value input] [Remove button]`
+- List of configured conditions displayed as compact rows
+- Create button saves to state and localStorage
+
+### Gateway Creation Integration
+- In `MCPGatewayCard.tsx`, replace hardcoded `availableBusinessPolicies` with a prop (`businessPolicies`) passed from `Index.tsx`
+- Only policies with `active: true` shown
+
+---
+
+## 3. State Lifting in Index.tsx
+
+- Create shared state for security policies and business policies in `Index.tsx`
+- Pass them as props to `SecurityPoliciesCard`, `BusinessPoliciesCard`, and `MCPGatewayCard`
+
+---
 
 ## Technical Details
 
-### New Files
-- `src/components/GatewayObserveDashboard.tsx` -- Single component containing all four sections (Gateways Metrics, Instances table, Audit log). Uses inline mock data. Contains the instance detail dialog with flow visualization.
+### Files Modified
 
-### Modified Files
-- `src/pages/Index.tsx` -- Import `GatewayObserveDashboard`, update `renderContent` to check `activeTab === "Observe" && activeSidebarItem === "gateway"` and render the observe dashboard. For other Observe tab + sidebar combinations, show a placeholder.
+1. **`src/components/SecurityPoliciesCard.tsx`** -- Full rewrite
+   - Add state management with localStorage persistence
+   - Add "Create from Repository" dialog
+   - Add Switch toggle per policy for active/inactive
+   - Add delete functionality
+   - Export the `SecurityPolicy` interface
 
-### Mock Data (inline in GatewayObserveDashboard)
-- `gatewayMetrics`: Array of gateway stats (name, received, processed, succeeded, errored)
-- `gatewayInstances`: Array of instance records (id, timestamp, gateway, toolName, status, duration, flow steps)
-- `auditLog`: Array of audit entries (timestamp, action, artifactType, name, user)
+2. **`src/components/BusinessPoliciesCard.tsx`** -- Full rewrite
+   - Add state management with localStorage persistence
+   - Add "Create Policy with Conditions" dialog
+   - Expression builder UI with attribute/operator/value rows
+   - Add Switch toggle and delete
+   - Add view/edit conditions via popover or dialog
+   - Export the `BusinessPolicy` interface
 
-### UI Patterns
-- Metrics matrix uses the existing card + table styling
-- Instances table uses the existing Table components from `@/components/ui/table`
-- Status badges use the existing Badge component with color variants
-- Flow visualization in the detail dialog uses a vertical list with connecting lines (CSS borders), step icons, and duration labels
-- All styling consistent with the Oracle Redwood design tokens already in use
+3. **`src/components/MCPGatewayCard.tsx`** -- Modify
+   - Accept `securityPolicies` and `businessPolicies` as props
+   - Filter to show only active policies in the gateway creation dialog
+   - Remove hardcoded `availableSecurityPolicies` and `availableBusinessPolicies` arrays
+
+4. **`src/pages/Index.tsx`** -- Modify
+   - Add state for `securityPolicies` and `businessPolicies` (initialized from localStorage)
+   - Pass as props to all three components
+
+### Data Structures
+
+```typescript
+// Security Policy
+interface SecurityPolicy {
+  id: string;
+  name: string;
+  description: string;
+  icon: string; // icon name stored as string for serialization
+  active: boolean;
+  templateId: string; // reference to repository template
+}
+
+// Business Policy
+interface BusinessPolicy {
+  id: string;
+  name: string;
+  active: boolean;
+  conditions: PolicyCondition[];
+}
+
+interface PolicyCondition {
+  id: string;
+  attribute: string;   // e.g. "invoice.amount"
+  operator: string;     // "equals" | "not_equals" | "gt" | "lt" | "contains" | "is_empty" | "is_not_empty"
+  value: string;        // e.g. "1000"
+}
+```
