@@ -154,8 +154,10 @@ const MCPGatewayCard = () => {
       securityPolicies: [...selectedSecurityPolicies],
       businessPolicies: [...selectedBusinessPolicies],
     };
-    setGateways((prev) => [...prev, newGateway]);
-    resetForm();
+    const updated = [...prev, newGateway];
+    localStorage.setItem("mcp-gateways", JSON.stringify(updated));
+    return updated;
+  });
     setOpen(false);
   };
 
