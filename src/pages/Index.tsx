@@ -5,34 +5,54 @@ import SidebarNav from "@/components/SidebarNav";
 import IntegrationsCard from "@/components/IntegrationsCard";
 import ConnectionsCard from "@/components/ConnectionsCard";
 import SimpleCard from "@/components/SimpleCard";
-import { integrations, connections, sidebarItems } from "@/data/mockData";
+import { integrations, connections, sidebarItems, agentSidebarItems, gatewaySidebarItems } from "@/data/mockData";
 
-const tabs = ["Design", "Deploy", "Observe"];
+const tabs = ["Design", "Agent", "Gateway"];
+
+const tabSidebarMap = {
+  Design: { items: sidebarItems, defaultItem: "integrations" },
+  Agent: { items: agentSidebarItems, defaultItem: "agents" },
+  Gateway: { items: gatewaySidebarItems, defaultItem: "mcp-gateway" },
+} as const;
+
+const agentCards = [
+  { title: "Agents", description: "Create and manage AI agents for your integration workflows." },
+  { title: "Tools", description: "Define tools and capabilities available to your agents." },
+  { title: "Agent Patterns", description: "Configure reusable patterns for agent behavior." },
+  { title: "Prompt Templates", description: "Design and manage prompt templates for agent interactions." },
+];
+
+const gatewayCards = [
+  { title: "MCP Gateway", description: "Manage your Model Context Protocol gateway configuration." },
+  { title: "MCP Servers", description: "Configure and monitor MCP server connections." },
+  { title: "Security Policies", description: "Define security rules and access controls." },
+  { title: "Business Policies", description: "Set up business rules and policy enforcement." },
+];
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setActiveSidebarItem(tabSidebarMap[tab].defaultItem);
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Header */}
       <OracleHeader />
-
-      {/* Gold decorative banner */}
       <div className="h-1.5 bg-gradient-to-r from-redwood-gold via-redwood-banner to-redwood-gold" />
 
-      {/* Project title bar */}
       <div className="border-b border-border bg-card px-6 py-4">
         <h1 className="text-xl font-bold text-foreground">Smart Invoice Validation AgAI</h1>
       </div>
 
-      {/* Tabs bar */}
       <div className="flex items-center justify-between border-b border-border bg-card px-6">
         <div className="flex">
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleTabChange(tab)}
               className={`relative px-5 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab
                   ? "text-foreground"
@@ -67,18 +87,14 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Main area */}
       <div className="flex flex-1">
-        {/* Sidebar */}
         <SidebarNav
           activeItem={activeSidebarItem}
           onItemClick={setActiveSidebarItem}
-          items={sidebarItems}
+          items={tabSidebarMap[activeTab].items}
         />
 
-        {/* Content */}
         <main className="flex-1 p-6">
-          {/* Search */}
           <div className="mb-6 flex justify-end">
             <div className="relative w-full max-w-md">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -90,18 +106,23 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Card grid */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <IntegrationsCard integrations={integrations} />
-            <ConnectionsCard connections={connections} />
-            <SimpleCard
-              title="Lookups"
-              description="Map values between applications."
-            />
-            <SimpleCard
-              title="Libraries"
-              description="Use JavaScript functions and libraries in your integrations."
-            />
+            {activeTab === "Design" && (
+              <>
+                <IntegrationsCard integrations={integrations} />
+                <ConnectionsCard connections={connections} />
+                <SimpleCard title="Lookups" description="Map values between applications." />
+                <SimpleCard title="Libraries" description="Use JavaScript functions and libraries in your integrations." />
+              </>
+            )}
+            {activeTab === "Agent" &&
+              agentCards.map((card) => (
+                <SimpleCard key={card.title} title={card.title} description={card.description} />
+              ))}
+            {activeTab === "Gateway" &&
+              gatewayCards.map((card) => (
+                <SimpleCard key={card.title} title={card.title} description={card.description} />
+              ))}
           </div>
         </main>
       </div>
