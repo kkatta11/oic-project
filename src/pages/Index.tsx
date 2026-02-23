@@ -46,7 +46,7 @@ const Index = () => {
     if (activeSidebarItem === "gateway") {
       return (
         <>
-          <MCPGatewayCard activeMCPServers={mcpServers} securityPolicies={securityPolicies} businessPolicies={businessPolicies} />
+          <MCPGatewayCard activeMCPServers={mcpServers} mcpServers={mcpServers} securityPolicies={securityPolicies} businessPolicies={businessPolicies} />
           <MCPServersCard servers={mcpServers} onServersChange={setMcpServers} />
           <SecurityPoliciesCard policies={securityPolicies} onPoliciesChange={setSecurityPolicies} />
           <BusinessPoliciesCard policies={businessPolicies} onPoliciesChange={setBusinessPolicies} mcpServers={mcpServers} />
