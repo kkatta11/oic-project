@@ -1,66 +1,67 @@
 
-# Enrich Agent and Gateway Tab Cards with Detailed Content
+# Gateway Observe Tab -- Monitoring Dashboard
 
 ## Overview
-Replace the simple description-only cards for Tools, MCP Servers, Security Policies, and Business Policies with rich list-based cards showing specific items. Add an "Add MCP Server" dialog with options for creating a new server or browsing a catalog.
+When the user selects the "Observe" top tab while the "Gateway" sidebar item is active, the main content area will switch from the design-time cards to a runtime monitoring view with three sections: Gateways metrics matrix, Instances table, and an Instance Detail visualization dialog.
 
 ## Changes
 
-### 1. Tools Card (Agent tab)
-Create a new `ToolsCard` component (similar to IntegrationsCard pattern) listing 6 tools:
-1. Risk Assessment
-2. Get Invoice Details
-3. Contract Search
-4. Validate and Create Invoice
-5. Extract Invoice Data
-6. Match PO
+### 1. Gateways Metrics Card
+A card showing a summary matrix for each configured gateway with columns:
+- **Gateway Name**
+- **Received** (total requests)
+- **Processed** (currently processing)
+- **Succeeded** (completed successfully)
+- **Errored** (failed)
 
-Each tool shown as a row with an icon, name, and action menu. Header has an Add (+) button.
+Each metric displayed as a colored number in a grid/table layout. Uses mock data for several gateways.
 
-### 2. MCP Servers Card (Gateway tab)
-Create a new `MCPServersCard` component listing 1-2 pre-configured servers (e.g., "Filesystem MCP Server", "PostgreSQL MCP Server") with status badges.
+### 2. Gateway Instances Card
+A table listing individual gateway invocations with columns:
+- **Timestamp** (e.g., "2026-02-23 10:15:32")
+- **Gateway** (name of the gateway)
+- **Tool Name** (which tool was invoked)
+- **Status** (Succeeded / Failed / Running -- shown as colored badge)
+- **Duration** (e.g., "1.2s")
+- **View** icon button (Eye icon) to open the detail dialog
 
-Includes an Add (+) button that opens a **Dialog** with two options:
-- **Register New Server** -- form with fields for Server Name, URL, Transport Type (Streamable HTTP), and Authorization (dropdown: None, API Key, JWT, Client Credentials)
-- **Browse Catalog** -- a list view of community MCP servers the user can connect to
+### 3. Instance Detail Dialog (Flow Visualization)
+Clicking the View icon opens a Dialog showing an end-to-end request-to-response flow:
+- A vertical timeline/step visualization showing each artifact that executed in sequence:
+  1. Request Received
+  2. Security Policy checks (e.g., PII Detection, Schema Validation) with pass/fail and duration
+  3. Business Policy checks with pass/fail and duration
+  4. MCP Server invocation with duration
+  5. Response Sent
+- Each step shows: artifact name, status (passed/failed), and time taken
+- Total duration displayed at the bottom
 
-### 3. Security Policies Card (Gateway tab)
-Create a new `SecurityPoliciesCard` component listing 8 policies as toggleable rows:
-1. PII Detection -- Scan for sensitive data
-2. Schema Validation -- Ensure format compliance
-3. Tool Poisoning Check -- Detect malicious payloads
-4. Intrusion Detection -- Identify suspicious patterns
-5. Rate Limiting -- Check quota consumption
-6. Payload Size -- Validate request size
-7. SQL Injection -- Detect injection attempts
-8. Encryption -- Prepare encrypted transmission
+### 4. Audit Log Card
+A card showing recent create/update/delete operations on gateway design-time artifacts:
+- Columns: **Timestamp**, **Action** (Created/Updated/Deleted), **Artifact Type** (Gateway/MCP Server/Security Policy/Business Policy), **Name**, **User**
+- Mock data with ~6 audit entries
 
-Each row shows: policy name, description, and a status indicator (enabled/disabled style).
-
-### 4. Business Policies Card (Gateway tab)
-Create a new `BusinessPoliciesCard` component listing 4 policies:
-1. Invoice Amount Check
-2. No Line Items
-3. Variance Tolerance
-4. Vendor Validation
-
-Each row shows a policy name with an action menu.
-
-### 5. Update Index.tsx
-Replace the `SimpleCard` usage for these specific cards with the new dedicated components in the `renderContent` function. The Agents, Agent Patterns, and Prompt Templates cards remain as SimpleCards. MCP Gateway also remains as a SimpleCard.
+### 5. Index.tsx Logic Update
+The `renderContent` function will check both `activeTab` and `activeSidebarItem`:
+- When `activeTab === "Observe"` AND `activeSidebarItem === "gateway"`: render the Observe components
+- Otherwise keep existing behavior (Design tab content)
 
 ## Technical Details
 
 ### New Files
-- `src/components/ToolsCard.tsx` -- List card with 6 tool items, follows IntegrationsCard pattern
-- `src/components/MCPServersCard.tsx` -- List card with 1-2 servers + Add dialog (using Radix Dialog) with Register New / Browse Catalog tabs
-- `src/components/SecurityPoliciesCard.tsx` -- List card with 8 policy rows showing name + description
-- `src/components/BusinessPoliciesCard.tsx` -- List card with 4 policy rows
+- `src/components/GatewayObserveDashboard.tsx` -- Single component containing all four sections (Gateways Metrics, Instances table, Audit log). Uses inline mock data. Contains the instance detail dialog with flow visualization.
 
 ### Modified Files
-- `src/pages/Index.tsx` -- Import new card components; update `renderContent()` to use them for Agent and Gateway sidebar items instead of generic SimpleCards
+- `src/pages/Index.tsx` -- Import `GatewayObserveDashboard`, update `renderContent` to check `activeTab === "Observe" && activeSidebarItem === "gateway"` and render the observe dashboard. For other Observe tab + sidebar combinations, show a placeholder.
 
-### Patterns
-- All new cards follow the existing card styling: `rounded-lg border border-border bg-card shadow-sm`, header with Plus button, `divide-y divide-border` rows
-- MCP Server Add dialog uses existing Radix `Dialog` component already installed
-- Mock data for tools, servers, and policies will be defined inline in each component (keeps it simple and self-contained)
+### Mock Data (inline in GatewayObserveDashboard)
+- `gatewayMetrics`: Array of gateway stats (name, received, processed, succeeded, errored)
+- `gatewayInstances`: Array of instance records (id, timestamp, gateway, toolName, status, duration, flow steps)
+- `auditLog`: Array of audit entries (timestamp, action, artifactType, name, user)
+
+### UI Patterns
+- Metrics matrix uses the existing card + table styling
+- Instances table uses the existing Table components from `@/components/ui/table`
+- Status badges use the existing Badge component with color variants
+- Flow visualization in the detail dialog uses a vertical list with connecting lines (CSS borders), step icons, and duration labels
+- All styling consistent with the Oracle Redwood design tokens already in use
