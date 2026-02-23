@@ -21,6 +21,21 @@ const Index = () => {
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
 
   const renderContent = () => {
+    // Observe tab — Gateway
+    if (activeTab === "Observe" && activeSidebarItem === "gateway") {
+      return <GatewayObserveDashboard />;
+    }
+
+    // Observe tab — other sidebar items (placeholder)
+    if (activeTab === "Observe") {
+      return (
+        <SimpleCard
+          title="Observe"
+          description="Monitoring and observability for this section is coming soon."
+        />
+      );
+    }
+
     if (activeSidebarItem === "agent") {
       return (
         <>
