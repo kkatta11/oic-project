@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, X, ListChecks, Eye, FolderSearch } from "lucide-react";
+import { Plus, Trash2, X, ListChecks, Eye, FolderSearch, Wrench } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { MCPServer } from "@/components/MCPServersCard";
 
 export interface PolicyCondition {
@@ -21,6 +22,7 @@ export interface BusinessPolicy {
   id: string;
   name: string;
   active: boolean;
+  selectedTools: string[]; // e.g. ["ServerName.ToolName", ...]
   conditions: PolicyCondition[];
 }
 
