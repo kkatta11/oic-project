@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, X, ListChecks, Eye, FolderSearch } from "lucide-react";
+import { Plus, Trash2, X, ListChecks, Eye, FolderSearch, Wrench } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { MCPServer } from "@/components/MCPServersCard";
 
 export interface PolicyCondition {
@@ -21,6 +22,7 @@ export interface BusinessPolicy {
   id: string;
   name: string;
   active: boolean;
+  selectedTools: string[]; // e.g. ["ServerName.ToolName", ...]
   conditions: PolicyCondition[];
 }
 
@@ -189,10 +191,26 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   const [editPolicy, setEditPolicy] = useState<BusinessPolicy | null>(null);
 
   const [policyName, setPolicyName] = useState("");
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [conditions, setConditions] = useState<PolicyCondition[]>([]);
+
+  // Build flat list of tool identifiers from MCP servers
+  const availableTools = mcpServers.flatMap((server) =>
+    server.tools.map((tool) => ({
+      id: `${server.name.replace(/\s+/g, "")}.${tool.name.replace(/\s+/g, "")}`,
+      label: `${server.name} → ${tool.name}`,
+    }))
+  );
+
+  const toggleTool = (toolId: string) => {
+    setSelectedTools((prev) =>
+      prev.includes(toolId) ? prev.filter((t) => t !== toolId) : [...prev, toolId]
+    );
+  };
 
   const resetForm = () => {
     setPolicyName("");
+    setSelectedTools([]);
     setConditions([]);
   };
 
@@ -209,11 +227,12 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   };
 
   const handleCreate = () => {
-    if (!policyName.trim() || conditions.length === 0) return;
+    if (!policyName.trim() || conditions.length === 0 || selectedTools.length === 0) return;
     const newPolicy: BusinessPolicy = {
       id: `bp-${Date.now()}`,
       name: policyName.trim(),
       active: true,
+      selectedTools: [...selectedTools],
       conditions: conditions.filter((c) => c.attribute.trim()),
     };
     const updated = [...policies, newPolicy];
@@ -225,10 +244,11 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
 
   const handleSaveEdit = () => {
     if (!editPolicy) return;
-    const updated = policies.map((p) => p.id === editPolicy.id ? { ...editPolicy, conditions: conditions.filter((c) => c.attribute.trim()) } : p);
+    const updated = policies.map((p) => p.id === editPolicy.id ? { ...editPolicy, selectedTools: [...selectedTools], conditions: conditions.filter((c) => c.attribute.trim()) } : p);
     onPoliciesChange(updated);
     saveBusinessPolicies(updated);
     setEditPolicy(null);
+    setSelectedTools([]);
     setConditions([]);
   };
 
@@ -246,6 +266,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
 
   const openEdit = (policy: BusinessPolicy) => {
     setEditPolicy(policy);
+    setSelectedTools([...(policy.selectedTools || [])]);
     setConditions([...policy.conditions]);
   };
 
@@ -271,7 +292,28 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                 <Label className="text-xs">Policy Name</Label>
                 <Input placeholder="e.g. Invoice Amount Check" value={policyName} onChange={(e) => setPolicyName(e.target.value)} className="h-8 text-xs" />
               </div>
-              {/* Inlined condition builder */}
+              {/* Tool selector */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Apply to Tools</Label>
+                {availableTools.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-1">No tools available. Configure MCP servers first.</p>
+                ) : (
+                  <ScrollArea className="max-h-36 rounded border border-border p-2">
+                    <div className="space-y-1.5">
+                      {availableTools.map((tool) => (
+                        <label key={tool.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted rounded px-1 py-0.5">
+                          <Checkbox checked={selectedTools.includes(tool.id)} onCheckedChange={() => toggleTool(tool.id)} className="h-3.5 w-3.5" />
+                          <span className="text-foreground">{tool.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+                {selectedTools.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground">{selectedTools.length} tool{selectedTools.length !== 1 ? "s" : ""} selected</p>
+                )}
+              </div>
+              {/* Condition builder */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Conditions (AND logic)</Label>
@@ -286,7 +328,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                   <ConditionRow key={c.id} condition={c} mcpServers={mcpServers} onUpdate={updateCondition} onRemove={removeCondition} />
                 ))}
               </div>
-              <Button className="w-full" onClick={handleCreate} disabled={!policyName.trim() || conditions.length === 0}>
+              <Button className="w-full" onClick={handleCreate} disabled={!policyName.trim() || conditions.length === 0 || selectedTools.length === 0}>
                 Create Policy
               </Button>
             </div>
@@ -295,13 +337,35 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
       </div>
 
       {/* Edit dialog */}
-      <Dialog open={!!editPolicy} onOpenChange={(v) => { if (!v) { setEditPolicy(null); setConditions([]); } }}>
+      <Dialog open={!!editPolicy} onOpenChange={(v) => { if (!v) { setEditPolicy(null); setSelectedTools([]); setConditions([]); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit: {editPolicy?.name}</DialogTitle>
-            <DialogDescription>Modify conditions for this policy.</DialogDescription>
+            <DialogDescription>Modify tool scope and conditions for this policy.</DialogDescription>
           </DialogHeader>
           <div className="mt-2 space-y-4">
+            {/* Tool selector */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Apply to Tools</Label>
+              {availableTools.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-1">No tools available.</p>
+              ) : (
+                <ScrollArea className="max-h-36 rounded border border-border p-2">
+                  <div className="space-y-1.5">
+                    {availableTools.map((tool) => (
+                      <label key={tool.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted rounded px-1 py-0.5">
+                        <Checkbox checked={selectedTools.includes(tool.id)} onCheckedChange={() => toggleTool(tool.id)} className="h-3.5 w-3.5" />
+                        <span className="text-foreground">{tool.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+              {selectedTools.length > 0 && (
+                <p className="text-[11px] text-muted-foreground">{selectedTools.length} tool{selectedTools.length !== 1 ? "s" : ""} selected</p>
+              )}
+            </div>
+            {/* Conditions */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Conditions (AND logic)</Label>
@@ -332,7 +396,12 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
             </div>
             <div className="min-w-0 flex-1">
               <span className="text-sm font-medium text-foreground">{policy.name}</span>
-              <p className="text-xs text-muted-foreground">{policy.conditions.length} condition{policy.conditions.length !== 1 ? "s" : ""}</p>
+              <p className="text-xs text-muted-foreground">
+                {(policy.selectedTools || []).length > 0
+                  ? `${(policy.selectedTools || []).length} tool${(policy.selectedTools || []).length !== 1 ? "s" : ""} · `
+                  : ""}
+                {policy.conditions.length} condition{policy.conditions.length !== 1 ? "s" : ""}
+              </p>
             </div>
             <Popover>
               <PopoverTrigger asChild>
@@ -342,7 +411,18 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
               </PopoverTrigger>
               <PopoverContent className="w-80">
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-foreground">{policy.name} – Conditions</p>
+                  <p className="text-xs font-semibold text-foreground">{policy.name}</p>
+                  {(policy.selectedTools || []).length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-medium text-muted-foreground mb-1">Applied to:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {(policy.selectedTools || []).map((t) => (
+                          <span key={t} className="inline-flex items-center rounded bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[11px] font-medium text-muted-foreground mt-1">Conditions:</p>
                   {policy.conditions.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No conditions defined.</p>
                   ) : (
@@ -357,7 +437,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                     ))
                   )}
                   <Button size="sm" variant="outline" className="w-full h-7 text-xs mt-1" onClick={() => openEdit(policy)}>
-                    Edit Conditions
+                    Edit Policy
                   </Button>
                 </div>
               </PopoverContent>
