@@ -25,6 +25,7 @@ export interface MCPServer {
   status: "Active" | "Configured";
   icon: LucideIcon;
   tools: MCPServerTool[];
+  allTools: MCPServerTool[];
   url?: string;
   transport?: string;
   auth?: string;
