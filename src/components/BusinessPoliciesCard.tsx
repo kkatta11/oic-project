@@ -411,7 +411,18 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
               </PopoverTrigger>
               <PopoverContent className="w-80">
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-foreground">{policy.name} – Conditions</p>
+                  <p className="text-xs font-semibold text-foreground">{policy.name}</p>
+                  {(policy.selectedTools || []).length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-medium text-muted-foreground mb-1">Applied to:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {(policy.selectedTools || []).map((t) => (
+                          <span key={t} className="inline-flex items-center rounded bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[11px] font-medium text-muted-foreground mt-1">Conditions:</p>
                   {policy.conditions.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No conditions defined.</p>
                   ) : (
@@ -426,7 +437,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                     ))
                   )}
                   <Button size="sm" variant="outline" className="w-full h-7 text-xs mt-1" onClick={() => openEdit(policy)}>
-                    Edit Conditions
+                    Edit Policy
                   </Button>
                 </div>
               </PopoverContent>
