@@ -251,7 +251,12 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     e.stopPropagation();
     setEditGateway(gw);
     setGatewayName(gw.name);
-    setRegisteredServers([...gw.servers]);
+    // Restore icon references that are lost during JSON serialization
+    const restoredServers = gw.servers.map((srv) => {
+      const catalogMatch = catalogServers.find((c) => c.name === srv.name);
+      return { ...srv, icon: catalogMatch?.icon || Server };
+    });
+    setRegisteredServers(restoredServers);
     setSelectedSecurityPolicies([...gw.securityPolicies]);
     setSelectedBusinessPolicies([...gw.businessPolicies]);
     setOpen(true);
