@@ -239,7 +239,13 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
         <h3 className="text-sm font-semibold text-foreground">MCP Gateway</h3>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
-            <button className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
+            <button onClick={() => {
+              // Pre-select all active tool filter policies when opening the dialog
+              const autoFilterIds = activeSecurityPolicies
+                .filter((p) => p.templateId?.startsWith("auto-tool-filter-"))
+                .map((p) => p.id);
+              setSelectedSecurityPolicies(autoFilterIds);
+            }} className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
               <Plus size={16} />
             </button>
           </DialogTrigger>
