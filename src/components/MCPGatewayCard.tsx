@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Plus, Server, Database, Globe, MessageSquare, FileJson, Mail,
   ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Lock,
-  Trash2, ChevronRight, ListChecks, Wrench,
+  Trash2, ChevronRight, ListChecks, Wrench, Pencil, AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -57,6 +59,7 @@ interface SavedGateway {
   servers: GatewayServer[];
   securityPolicies: string[];
   businessPolicies: string[];
+  active: boolean;
 }
 
 interface MCPGatewayCardProps {
@@ -79,7 +82,10 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   const [gateways, setGateways] = useState<SavedGateway[]>(() => {
     try {
       const stored = localStorage.getItem("mcp-gateways");
-      return stored ? JSON.parse(stored) : [];
+      if (!stored) return [];
+      const parsed = JSON.parse(stored) as SavedGateway[];
+      // Migration: default active to true for old gateways
+      return parsed.map((gw) => ({ ...gw, active: gw.active !== false }));
     } catch { return []; }
   });
 
@@ -96,6 +102,10 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>([]);
   const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>([]);
   const [warnFilterPolicyId, setWarnFilterPolicyId] = useState<string | null>(null);
+
+  // Edit mode state
+  const [editGateway, setEditGateway] = useState<SavedGateway | null>(null);
+  const isEditing = !!editGateway;
 
   // Helper: auto-select tool filter policy for a given server name
   const autoSelectFilterPolicy = (serverName: string) => {
@@ -130,6 +140,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setAuthType("none");
     setSelectedSecurityPolicies([]);
     setSelectedBusinessPolicies([]);
+    setEditGateway(null);
   };
 
   const handleAddRegisteredServer = () => {
@@ -168,7 +179,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   const toggleSecurityPolicy = (id: string) => {
     const isCurrentlySelected = selectedSecurityPolicies.includes(id);
     if (isCurrentlySelected) {
-      // Check if this is an auto tool filter policy
       const policy = activeSecurityPolicies.find((p) => p.id === id);
       if (policy?.templateId?.startsWith("auto-tool-filter-")) {
         setWarnFilterPolicyId(id);
@@ -182,20 +192,39 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setSelectedBusinessPolicies((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
   };
 
+  const persistGateways = (updated: SavedGateway[]) => {
+    localStorage.setItem("mcp-gateways", JSON.stringify(updated));
+  };
+
   const handleCreate = () => {
     if (!gatewayName.trim()) return;
-    const newGateway: SavedGateway = {
-      id: `gw-${Date.now()}`,
-      name: gatewayName.trim(),
-      servers: [...registeredServers],
-      securityPolicies: [...selectedSecurityPolicies],
-      businessPolicies: [...selectedBusinessPolicies],
-    };
-    setGateways((prev) => {
-      const updated = [...prev, newGateway];
-      localStorage.setItem("mcp-gateways", JSON.stringify(updated));
-      return updated;
-    });
+    if (isEditing) {
+      // Edit mode: update existing gateway
+      setGateways((prev) => {
+        const updated = prev.map((gw) =>
+          gw.id === editGateway.id
+            ? { ...gw, name: gatewayName.trim(), servers: [...registeredServers], securityPolicies: [...selectedSecurityPolicies], businessPolicies: [...selectedBusinessPolicies] }
+            : gw
+        );
+        persistGateways(updated);
+        return updated;
+      });
+    } else {
+      // Create mode
+      const newGateway: SavedGateway = {
+        id: `gw-${Date.now()}`,
+        name: gatewayName.trim(),
+        servers: [...registeredServers],
+        securityPolicies: [...selectedSecurityPolicies],
+        businessPolicies: [...selectedBusinessPolicies],
+        active: true,
+      };
+      setGateways((prev) => {
+        const updated = [...prev, newGateway];
+        persistGateways(updated);
+        return updated;
+      });
+    }
     resetForm();
     setOpen(false);
   };
@@ -204,9 +233,28 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     e.stopPropagation();
     setGateways((prev) => {
       const updated = prev.filter((g) => g.id !== id);
-      localStorage.setItem("mcp-gateways", JSON.stringify(updated));
+      persistGateways(updated);
       return updated;
     });
+  };
+
+  const handleToggleActive = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setGateways((prev) => {
+      const updated = prev.map((gw) => gw.id === id ? { ...gw, active: !gw.active } : gw);
+      persistGateways(updated);
+      return updated;
+    });
+  };
+
+  const handleEditClick = (gw: SavedGateway, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditGateway(gw);
+    setGatewayName(gw.name);
+    setRegisteredServers([...gw.servers]);
+    setSelectedSecurityPolicies([...gw.securityPolicies]);
+    setSelectedBusinessPolicies([...gw.businessPolicies]);
+    setOpen(true);
   };
 
   const handleGatewayClick = (gw: SavedGateway) => {
@@ -251,7 +299,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
           </DialogTrigger>
           <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add MCP Gateway</DialogTitle>
+              <DialogTitle>{isEditing ? "Edit MCP Gateway" : "Add MCP Gateway"}</DialogTitle>
               <DialogDescription>Configure a gateway with MCP servers, security policies, and business policies.</DialogDescription>
             </DialogHeader>
 
@@ -427,7 +475,9 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 )}
               </div>
 
-              <Button className="w-full" onClick={handleCreate} disabled={!gatewayName.trim()}>Create Gateway</Button>
+              <Button className="w-full" onClick={handleCreate} disabled={!gatewayName.trim()}>
+                {isEditing ? "Save Changes" : "Create Gateway"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -486,6 +536,14 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
           </DialogHeader>
           {detailGateway && (
             <div className="mt-3 space-y-5">
+              {/* Deactivated warning */}
+              {!detailGateway.active && (
+                <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3">
+                  <AlertTriangle size={16} className="text-destructive shrink-0" />
+                  <p className="text-xs font-medium text-destructive">This gateway is deactivated. The endpoint is not available.</p>
+                </div>
+              )}
+
               {/* Endpoint Metadata */}
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-foreground">Endpoint Metadata</h4>
@@ -496,7 +554,15 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                   </div>
                   <div className="flex px-4 py-2.5">
                     <span className="w-28 shrink-0 text-muted-foreground text-xs font-medium">URL</span>
-                    <span className="text-xs text-foreground font-mono break-all">{getGatewayUrl(detailGateway.name)}</span>
+                    <span className={`text-xs font-mono break-all ${detailGateway.active ? "text-foreground" : "text-muted-foreground line-through"}`}>
+                      {getGatewayUrl(detailGateway.name)}
+                    </span>
+                  </div>
+                  <div className="flex px-4 py-2.5">
+                    <span className="w-28 shrink-0 text-muted-foreground text-xs font-medium">Status</span>
+                    <Badge variant={detailGateway.active ? "default" : "secondary"} className="text-[10px]">
+                      {detailGateway.active ? "Active" : "Inactive"}
+                    </Badge>
                   </div>
                   <div className="flex px-4 py-2.5">
                     <span className="w-28 shrink-0 text-muted-foreground text-xs font-medium">Transport</span>
@@ -613,15 +679,31 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
           <p className="px-5 py-4 text-sm text-muted-foreground">No gateways configured. Click + to create one.</p>
         )}
         {gateways.map((gw) => (
-          <div key={gw.id} className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => handleGatewayClick(gw)}>
+          <div key={gw.id} className={`flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-muted/30 transition-colors ${!gw.active ? "opacity-60" : ""}`} onClick={() => handleGatewayClick(gw)}>
             <div className="flex h-8 w-8 items-center justify-center rounded bg-muted text-muted-foreground"><Server size={16} /></div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground">{gw.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-foreground">{gw.name}</p>
+                <Badge variant={gw.active ? "default" : "secondary"} className="text-[10px]">
+                  {gw.active ? "Active" : "Inactive"}
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {gw.servers.length} server{gw.servers.length !== 1 ? "s" : ""} · {gw.securityPolicies.length} security · {gw.businessPolicies.length} business
               </p>
             </div>
-            <button onClick={(e) => handleDeleteGateway(gw.id, e)} className="text-muted-foreground hover:text-destructive"><Trash2 size={14} /></button>
+            <Switch
+              checked={gw.active}
+              onCheckedChange={() => {}}
+              onClick={(e) => handleToggleActive(gw.id, e)}
+              className="shrink-0"
+            />
+            <button onClick={(e) => handleEditClick(gw, e)} className="text-muted-foreground hover:text-foreground" title="Edit gateway">
+              <Pencil size={14} />
+            </button>
+            <button onClick={(e) => handleDeleteGateway(gw.id, e)} className="text-muted-foreground hover:text-destructive" title="Delete gateway">
+              <Trash2 size={14} />
+            </button>
             <ChevronRight size={14} className="text-muted-foreground" />
           </div>
         ))}
