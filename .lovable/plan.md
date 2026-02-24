@@ -1,128 +1,97 @@
-
-
-# Security Policy Configuration and Edit Capability
+# Add Action Field to Business Policies
 
 ## Overview
 
-Add per-policy configurable parameters that are exposed when a security policy is added from the repository, and provide an edit button to modify those parameters after creation. Each policy template has its own unique set of configuration fields based on the specifications provided.
+When a business policy's conditions evaluate to true, the gateway needs to know what to do. This adds an **action** selector to each business policy, letting the user choose what happens when conditions match.
+
+## Actions
+
+The following actions will be available:
+
+
+| Action              | Description                                                           |
+| ------------------- | --------------------------------------------------------------------- |
+| **Block**           | Reject the request with an error; do not forward to the origin server |
+| **Log Warning**     | Allow the request but log a warning entry in the audit trail          |
+| &nbsp;              | &nbsp;                                                                |
+| **Flag for Review** | Allow the request but mark it for post-execution review               |
+| **Notify Admin**    | Allow the request but send an alert notification to administrators    |
+| &nbsp;              | &nbsp;                                                                |
+
 
 ## Changes
 
-### 1. Data Model Updates (`SecurityPoliciesCard.tsx`)
+### 1. Data Model (`BusinessPolicy` interface)
 
-Extend the `SecurityPolicy` interface to include a `config` record:
+Add an `action` field:
 
 ```typescript
-export interface SecurityPolicy {
+export interface BusinessPolicy {
   id: string;
   name: string;
-  description: string;
-  icon: string;
   active: boolean;
-  templateId: string;
-  config: Record<string, any>; // Policy-specific configuration
+  selectedTools: string[];
+  conditions: PolicyCondition[];
+  action: string; // "block" | "log_warning" | "require_approval" | "flag_review" | "notify_admin" | "throttle"
 }
 ```
 
-### 2. Policy Configuration Definitions
+### 2. Action Options Constant
 
-Define a configuration schema for each template that describes the fields, types, options, and defaults:
+Define an `actions` array similar to the existing `operators` array:
 
-| Template | Configurable Parameters |
-|----------|------------------------|
-| **PII Detection** (t1) | Action: Block / Redact / Log Warning; Sensitivity: Low / Medium / High |
-| **Schema Validation** (t2) | (enabled/disabled only -- no additional params beyond the toggle) |
-| **Tool Poisoning Check** (t3) | Action: Block / Log & Alert / Redact; IP block duration: 15 min / 1 hour / 24 hours; Alert recipients (text); Whitelist exceptions (text) |
-| **Intrusion Detection** (t4) | Sensitivity: Low / Medium / High; Brute force threshold (number) in (number) seconds; Rate spike multiplier (number); Behavioral monitoring: Yes / No; Geographic checks interval (number) minutes; Response action: Alert / Throttle / Require MFA / Block; Exceptions (text) |
-| **Rate Limiting** (t5) | Threshold (number); Time window: Per Minute / Per Hour; Action on violation: Block / Throttle / Warn |
-| **Payload Size** (t6) | Max request size (number) MB; Max response size (number) MB; Action: Block / Warn & Throttle / Warn Only; Allowed file types (text); Compression: Allow gzip/brotli (toggle); Max decompressed size (number) MB |
-| **SQL Injection** (t7) | (merged into Intrusion Detection -- no separate config, or minimal: enabled only) |
-| **Encryption** (t8) | Mode: Optional / Required; Key rotation days (number); Key storage: HSM / Cloud KMS / Internal Vault; Compliance badges multi-select: PCI-DSS, HIPAA, GDPR, FIPS |
+```typescript
+const actions = [
+  { value: "block", label: "Block Request" },
+  { value: "log_warning", label: "Log Warning" },
+  { value: "notify_admin", label: "Notify Admin" },
+];
+```
 
-### 3. UI Flow -- Add Policy with Configuration
+### 3. Create and Edit Dialogs
 
-When the user clicks "Add" on a policy template:
-- Instead of immediately adding, open a **configuration dialog** showing the relevant fields for that template
-- Fields are pre-populated with defaults
-- User adjusts settings and clicks "Save" to add the policy with the chosen configuration
+Add an **Action** `Select` dropdown after the conditions section in both the Create and Edit dialogs. Default value: `"block"`.
 
-### 4. UI Flow -- Edit Policy
+### 4. Form State
 
-- Add a **Pencil icon button** next to the toggle and delete button on each policy row
-- Clicking it opens the same configuration dialog, pre-populated with current `config` values
-- User modifies settings and clicks "Save" to persist changes
+- Add `selectedAction` state variable, defaulting to `"block"`
+- Include in `resetForm`
+- Populate from policy in `openEdit`
+- Include in `handleCreate` and `handleSaveEdit`
 
 ### 5. Policy Row Display
 
-Each policy row will show a brief summary of key configuration values beneath the description (e.g., "Action: Block | Sensitivity: High").
+Update the summary line to include the action label, e.g.:
+
+```
+2 tools · 3 conditions · Block Request
+```
+
+### 6. Popover Detail View
+
+Show the configured action in the detail popover alongside tools and conditions.
+
+### 7. Migration
+
+Existing policies without an `action` field default to `"block"` via fallback: `policy.action || "block"`.
 
 ---
 
 ## Technical Details
 
-### File: `src/components/SecurityPoliciesCard.tsx`
+### File: `src/components/BusinessPoliciesCard.tsx`
 
-**New data structure** -- policy config schema definitions:
 
-```typescript
-interface PolicyFieldDef {
-  key: string;
-  label: string;
-  type: "select" | "number" | "text" | "toggle" | "multi-select";
-  options?: { value: string; label: string }[];
-  default: any;
-}
-
-const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
-  t1: [ // PII Detection
-    { key: "action", label: "Action", type: "select",
-      options: [
-        { value: "block", label: "Block" },
-        { value: "redact", label: "Redact" },
-        { value: "log-warning", label: "Log Warning" }
-      ], default: "block" },
-    { key: "sensitivity", label: "Sensitivity Level", type: "select",
-      options: [
-        { value: "low", label: "Low" },
-        { value: "medium", label: "Medium" },
-        { value: "high", label: "High" }
-      ], default: "medium" },
-  ],
-  // ... similar for t2-t8
-};
-```
-
-**New state variables:**
-
-| State | Type | Purpose |
-|-------|------|---------|
-| `configDialogOpen` | boolean | Controls the config dialog visibility |
-| `configTemplate` | template object or null | The template being configured (add mode) |
-| `configEditPolicy` | SecurityPolicy or null | The policy being edited (edit mode) |
-| `configValues` | Record<string, any> | Current form values in the config dialog |
-
-**Modified functions:**
-
-- `handleAddFromRepo` -- instead of immediately adding, opens config dialog with defaults
-- New `handleConfigSave` -- creates or updates the policy with config values, persists
-- New `handleEditPolicy` -- opens config dialog pre-populated from existing policy's config
-
-**Config dialog rendering:**
-
-- Dynamically renders form fields based on the schema for the given templateId
-- Uses Select for dropdowns, Input for numbers/text, Switch for toggles, Checkbox group for multi-select
-- Displays field labels and groups logically
-
-**Policy row update:**
-
-```
-[Icon] Policy Name                    [config summary]  [Toggle] [Edit] [Delete]
-       Description
-```
-
-**Auto-generated tool filter policies** (templateId starting with `auto-tool-filter-`) will NOT have a config dialog -- they remain as-is since they are system-managed.
-
-### File: `src/components/MCPGatewayCard.tsx`
-
-No changes needed -- the gateway card already references policies by ID and the new `config` field is purely additive.
-
+| Area                       | Change                                             |
+| -------------------------- | -------------------------------------------------- |
+| `BusinessPolicy` interface | Add `action: string`                               |
+| New constant `actions`     | Array of action options                            |
+| New state `selectedAction` | Tracks selected action in form, default `"block"`  |
+| `resetForm`                | Reset `selectedAction` to `"block"`                |
+| `openEdit`                 | Set `selectedAction` from `policy.action`          |
+| `handleCreate`             | Include `action: selectedAction` in new policy     |
+| `handleSaveEdit`           | Include `action: selectedAction` in updated policy |
+| Create dialog              | Add Action Select dropdown after conditions        |
+| Edit dialog                | Add Action Select dropdown after conditions        |
+| Policy row summary         | Append action label                                |
+| Popover detail             | Show action under a "When matched" heading         |
