@@ -153,7 +153,7 @@ interface MCPServersCardProps {
   onPoliciesChange?: (policies: SecurityPolicy[]) => void;
 }
 
-const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServersCardProps) => {
+const MCPServersCard = ({ servers: externalServers, onServersChange, securityPolicies = [], onPoliciesChange }: MCPServersCardProps) => {
   const [internalServers, setInternalServers] = useState<MCPServer[]>(defaultServers);
   const [open, setOpen] = useState(false);
   const [serverName, setServerName] = useState("");
