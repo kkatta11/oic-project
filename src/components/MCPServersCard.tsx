@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MoreHorizontal, Plus, Server, Globe, Database, MessageSquare, FileJson, Mail, Trash2, Loader2, type LucideIcon } from "lucide-react";
+import { type SecurityPolicy, createToolFilterPolicy, saveSecurityPolicies } from "@/components/SecurityPoliciesCard";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -84,11 +85,13 @@ const defaultServers: MCPServer[] = [
   {
     id: "1", name: "Filesystem MCP Server", status: "Active", icon: Server,
     tools: serverToolCatalog["Filesystem MCP Server"],
+    allTools: serverToolCatalog["Filesystem MCP Server"],
     url: "https://mcp.filesystem.com/v1/stream", transport: "streamable-http", auth: "none",
   },
   {
     id: "2", name: "PostgreSQL MCP Server", status: "Configured", icon: Database,
     tools: serverToolCatalog["PostgreSQL MCP Server"],
+    allTools: serverToolCatalog["PostgreSQL MCP Server"],
     url: "https://mcp.postgresql.com/v1/stream", transport: "streamable-http", auth: "api-key",
   },
 ];
@@ -146,6 +149,8 @@ const ToolChecklist = ({
 interface MCPServersCardProps {
   servers?: MCPServer[];
   onServersChange?: (servers: MCPServer[]) => void;
+  securityPolicies?: SecurityPolicy[];
+  onPoliciesChange?: (policies: SecurityPolicy[]) => void;
 }
 
 const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServersCardProps) => {
