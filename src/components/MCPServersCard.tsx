@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MoreHorizontal, Plus, Server, Globe, Database, MessageSquare, FileJson, Mail, Trash2, Loader2, type LucideIcon } from "lucide-react";
+import { type SecurityPolicy, createToolFilterPolicy, saveSecurityPolicies } from "@/components/SecurityPoliciesCard";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -25,6 +26,7 @@ export interface MCPServer {
   status: "Active" | "Configured";
   icon: LucideIcon;
   tools: MCPServerTool[];
+  allTools: MCPServerTool[];
   url?: string;
   transport?: string;
   auth?: string;
@@ -83,11 +85,13 @@ const defaultServers: MCPServer[] = [
   {
     id: "1", name: "Filesystem MCP Server", status: "Active", icon: Server,
     tools: serverToolCatalog["Filesystem MCP Server"],
+    allTools: serverToolCatalog["Filesystem MCP Server"],
     url: "https://mcp.filesystem.com/v1/stream", transport: "streamable-http", auth: "none",
   },
   {
     id: "2", name: "PostgreSQL MCP Server", status: "Configured", icon: Database,
     tools: serverToolCatalog["PostgreSQL MCP Server"],
+    allTools: serverToolCatalog["PostgreSQL MCP Server"],
     url: "https://mcp.postgresql.com/v1/stream", transport: "streamable-http", auth: "api-key",
   },
 ];
@@ -145,9 +149,11 @@ const ToolChecklist = ({
 interface MCPServersCardProps {
   servers?: MCPServer[];
   onServersChange?: (servers: MCPServer[]) => void;
+  securityPolicies?: SecurityPolicy[];
+  onPoliciesChange?: (policies: SecurityPolicy[]) => void;
 }
 
-const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServersCardProps) => {
+const MCPServersCard = ({ servers: externalServers, onServersChange, securityPolicies = [], onPoliciesChange }: MCPServersCardProps) => {
   const [internalServers, setInternalServers] = useState<MCPServer[]>(defaultServers);
   const [open, setOpen] = useState(false);
   const [serverName, setServerName] = useState("");
@@ -191,6 +197,19 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
     }
   };
 
+  const updateFilterPolicy = (serverId: string, serverName: string, allTools: MCPServerTool[], selectedTools: MCPServerTool[]) => {
+    if (!onPoliciesChange) return;
+    const selectedIds = new Set(selectedTools.map((t) => t.id));
+    const blockedTools = allTools.filter((t) => !selectedIds.has(t.id));
+    const autoTemplateId = `auto-tool-filter-${serverId}`;
+    let updatedPolicies = securityPolicies.filter((p) => p.templateId !== autoTemplateId);
+    if (blockedTools.length > 0) {
+      updatedPolicies = [...updatedPolicies, createToolFilterPolicy(serverId, serverName, blockedTools.map((t) => t.name))];
+    }
+    onPoliciesChange(updatedPolicies);
+    saveSecurityPolicies(updatedPolicies);
+  };
+
   const handleFetchTools = () => {
     setIsFetching(true);
     setTimeout(() => {
@@ -214,17 +233,20 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
   const handleRegister = () => {
     if (!serverName.trim()) return;
     const selectedTools = fetchedTools.filter((t) => selectedToolIds.has(t.id));
+    const serverId = `reg-${Date.now()}`;
     const newServer: MCPServer = {
-      id: `reg-${Date.now()}`,
+      id: serverId,
       name: serverName.trim(),
       status: "Configured",
       icon: Server,
       tools: selectedTools,
+      allTools: fetchedTools,
       url: serverUrl.trim(),
       transport: transportType,
       auth: authType,
     };
     updateServers([...servers, newServer]);
+    updateFilterPolicy(serverId, serverName.trim(), fetchedTools, selectedTools);
     setServerName("");
     setServerUrl("");
     setAuthType("none");
@@ -258,23 +280,33 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
   const handleCatalogConfirm = () => {
     if (!catalogDetailServer) return;
     const selectedTools = catalogTools.filter((t) => catalogSelectedToolIds.has(t.id));
+    const serverId = `cat-${Date.now()}`;
     const newServer: MCPServer = {
-      id: `cat-${Date.now()}`,
+      id: serverId,
       name: catalogDetailServer.name,
       status: "Active",
       icon: catalogDetailServer.icon,
       tools: selectedTools,
+      allTools: catalogTools,
       url: catalogUrl,
       transport: catalogTransport,
       auth: catalogAuth,
     };
     updateServers([...servers, newServer]);
+    updateFilterPolicy(serverId, catalogDetailServer.name, catalogTools, selectedTools);
     setCatalogDetailOpen(false);
     setCatalogDetailServer(null);
   };
 
   const handleRemove = (id: string) => {
     updateServers(servers.filter((s) => s.id !== id));
+    // Remove auto-generated filter policy for this server
+    if (onPoliciesChange) {
+      const autoTemplateId = `auto-tool-filter-${id}`;
+      const updatedPolicies = securityPolicies.filter((p) => p.templateId !== autoTemplateId);
+      onPoliciesChange(updatedPolicies);
+      saveSecurityPolicies(updatedPolicies);
+    }
   };
 
   const resetRegisterForm = () => {
@@ -294,7 +326,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
     setEditTransport(server.transport || "streamable-http");
     setEditAuth(server.auth || "none");
     setEditStatus(server.status);
-    const allTools = getToolsForServer(server.name);
+    const allTools = server.allTools.length > 0 ? server.allTools : getToolsForServer(server.name);
     setEditAvailableTools(allTools);
     setEditSelectedToolIds(new Set(server.tools.map((t) => t.id)));
     setEditOpen(true);
@@ -314,10 +346,11 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
     const selectedTools = editAvailableTools.filter((t) => editSelectedToolIds.has(t.id));
     const updated = servers.map((s) =>
       s.id === editServerId
-        ? { ...s, name: editName.trim(), url: editUrl.trim(), transport: editTransport, auth: editAuth, status: editStatus, tools: selectedTools }
+        ? { ...s, name: editName.trim(), url: editUrl.trim(), transport: editTransport, auth: editAuth, status: editStatus, tools: selectedTools, allTools: editAvailableTools }
         : s
     );
     updateServers(updated);
+    updateFilterPolicy(editServerId, editName.trim(), editAvailableTools, selectedTools);
     setEditOpen(false);
     setEditServerId(null);
   };

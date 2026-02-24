@@ -149,5 +149,16 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCa
   );
 };
 
+export function createToolFilterPolicy(serverId: string, serverName: string, blockedToolNames: string[]): SecurityPolicy {
+  return {
+    id: `sp-auto-${serverId}`,
+    name: `Tool Filter: ${serverName}`,
+    description: `Blocks: ${blockedToolNames.join(", ")}`,
+    icon: "ShieldCheck",
+    active: true,
+    templateId: `auto-tool-filter-${serverId}`,
+  };
+}
+
 export { loadPolicies as loadSecurityPolicies, savePolicies as saveSecurityPolicies };
 export default SecurityPoliciesCard;
