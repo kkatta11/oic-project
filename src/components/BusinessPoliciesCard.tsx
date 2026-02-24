@@ -266,6 +266,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
 
   const openEdit = (policy: BusinessPolicy) => {
     setEditPolicy(policy);
+    setSelectedTools([...(policy.selectedTools || [])]);
     setConditions([...policy.conditions]);
   };
 
