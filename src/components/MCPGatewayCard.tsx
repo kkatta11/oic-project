@@ -620,6 +620,27 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
           </div>
         ))}
       </div>
+
+      {/* Warning dialog for unchecking tool filter policy */}
+      <AlertDialog open={!!warnFilterPolicyId} onOpenChange={(open) => { if (!open) setWarnFilterPolicyId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Tool Filter Policy?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removing this tool filter policy will expose unselected tools to the gateway. Are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setWarnFilterPolicyId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (warnFilterPolicyId) {
+                setSelectedSecurityPolicies((prev) => prev.filter((p) => p !== warnFilterPolicyId));
+              }
+              setWarnFilterPolicyId(null);
+            }}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
