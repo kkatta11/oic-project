@@ -1,32 +1,60 @@
 
 
-# Edit MCP Server and Gateway Endpoint Metadata
+# Stop Adding MCP Tools to Agent Tools Card; Auto-Create Filter Policy Instead
 
 ## Overview
 
-Two features to implement:
-1. Make the "..." (MoreHorizontal) button on each MCP server row open an Edit dialog where users can modify server name, URL, transport, auth, status, and tool selection.
-2. Add a Gateway Endpoint Metadata view when clicking on a gateway row, showing MCP server specification details and a consolidated list of all tools with proper server-namespaced prefixes.
+Currently, when an MCP server is connected, its selected tools appear in the Agent tab's Tools card. The new behavior:
+
+1. **Remove** the MCP Server Tools section from the Agent Tools card entirely
+2. **Store all available tools** on the MCP server, along with which ones the user selected
+3. **Auto-create a security policy** (e.g., "Tool Filter: Filesystem MCP Server") that explicitly blocks the unselected tools
+
+This way, the gateway controls tool access through policies rather than the Agent tools list.
 
 ---
 
-## 1. Edit MCP Server
+## Changes
 
-### Current State
-The "..." button on each MCP server row renders but has no onClick handler or dialog attached.
+### 1. MCPServersCard.tsx -- Track all tools + selected subset
 
-### New Behavior
-Clicking "..." opens an **Edit MCP Server** dialog pre-populated with the server's current configuration:
-- **Server Name** (editable input)
-- **URL** (editable input -- new field to store on the MCPServer interface)
-- **Transport Type** (select)
-- **Authorization** (select)
-- **Status** toggle (Active / Configured)
-- **Tool selection** checklist (same ToolChecklist component, pre-checked with currently selected tools)
-- **Save** button to persist changes
+- Add a new field `allTools: MCPServerTool[]` to `MCPServer` interface to hold every tool discovered from the endpoint
+- `tools` continues to hold only the user-selected tools (for gateway metadata display)
+- When registering or connecting a server, store both `allTools` (full catalog) and `tools` (selected subset)
+- When editing, same behavior: `allTools` stays constant, `tools` reflects current selection
 
-### Data Model Change
-Extend `MCPServer` interface to persist connection metadata:
+### 2. SecurityPoliciesCard.tsx -- Support auto-generated policies
+
+- Add a new helper export `createToolFilterPolicy(serverName: string, blockedToolNames: string[]): SecurityPolicy` that creates a policy object
+- Auto-generated policies will have a special `templateId` prefix (e.g., `auto-tool-filter-{serverId}`) so they can be identified and updated
+- The policy name will be "Tool Filter: {ServerName}" with a description listing the blocked tools
+- These policies are active by default
+
+### 3. MCPServersCard.tsx -- Auto-create/update filter policies on server save
+
+- Accept `securityPolicies` and `onPoliciesChange` as new props
+- After registering, connecting, or editing a server:
+  - Compute unselected tools (allTools minus selected)
+  - If there are unselected tools, create or update a "Tool Filter: {ServerName}" security policy
+  - If all tools are selected, remove the auto-generated policy (no filtering needed)
+- On server delete, also remove the corresponding auto-generated policy
+
+### 4. ToolsCard.tsx -- Remove MCP tools section
+
+- Remove the `mcpServers` prop
+- Remove the "MCP Server Tools" section that renders namespaced server tools
+- Keep only the native agent tools (Risk Assessment, Invoice Extraction, etc.)
+
+### 5. Index.tsx -- Wire up new props
+
+- Stop passing `mcpServers` to `ToolsCard`
+- Pass `securityPolicies` and `onPoliciesChange` (i.e., `setSecurityPolicies`) to `MCPServersCard` so it can auto-manage filter policies
+
+---
+
+## Technical Details
+
+### Updated MCPServer Interface
 
 ```typescript
 export interface MCPServer {
@@ -34,115 +62,31 @@ export interface MCPServer {
   name: string;
   status: "Active" | "Configured";
   icon: LucideIcon;
-  tools: MCPServerTool[];
-  url?: string;          // NEW
-  transport?: string;    // NEW
-  auth?: string;         // NEW
+  tools: MCPServerTool[];       // selected tools only
+  allTools: MCPServerTool[];    // all discovered tools (NEW)
+  url?: string;
+  transport?: string;
+  auth?: string;
 }
 ```
 
-### File: `src/components/MCPServersCard.tsx`
-- Add state for edit dialog: `editOpen`, `editServer` (the server being edited), and form fields (`editName`, `editUrl`, `editTransport`, `editAuth`, `editStatus`, `editSelectedToolIds`)
-- On "..." click, populate edit state from the selected server and open the dialog
-- The edit dialog shows the same fields as the Register New form but pre-populated
-- Tool checklist shows all available tools for that server type (from `serverToolCatalog`), with currently selected ones pre-checked
-- Save button updates the server in the list via `updateServers()`
-- Also store `url`, `transport`, `auth` when registering/connecting servers so they can be edited later
+### Auto-Generated Security Policy Example
 
----
+When a user connects "Filesystem MCP Server" and selects only "List Files" and "Read File" (leaving out "Write File" and "Delete File"):
 
-## 2. Gateway Endpoint Metadata
-
-### Current State
-Each gateway row shows name, server/policy counts, and a delete button. The ChevronRight icon suggests a detail view but nothing happens on click.
-
-### New Behavior
-Clicking a gateway row (or the ChevronRight) opens a **Gateway Endpoint Metadata** dialog showing:
-
-**Gateway Specification** (mirrors MCP server spec format):
-- Gateway Name
-- Gateway Endpoint URL (mock, e.g., `https://gateway.example.com/{gateway-name}/v1/stream`)
-- Transport Type: Streamable HTTP
-- Authorization: inherited from servers or gateway-level
-
-**MCP Servers** section:
-- List of servers included in the gateway, each showing name, URL, transport, auth
-
-**Namespaced Tools** section:
-- Consolidated flat list of all tools from all servers in the gateway
-- Each tool prefixed with server name: `ServerName / ToolName`
-- Example: `Filesystem / List Files`, `PostgreSQL / Run Query`
-
-**Policies** section:
-- Applied security policies (names)
-- Applied business policies (names with condition counts)
-
-### File: `src/components/MCPGatewayCard.tsx`
-- Accept `mcpServers` (full `MCPServer[]` with tools) as a new prop so we can resolve server tools
-- Add state for detail dialog: `detailOpen`, `detailGateway`
-- On gateway row click, open the detail dialog
-- The dialog renders:
-  - Gateway spec metadata (name, mock URL, transport, auth)
-  - Server list with their individual specs
-  - Namespaced tools list built by iterating each gateway server, finding matching MCPServer from props, and prefixing tools with server name
-  - Security and business policy names (resolved from props)
-
-### File: `src/pages/Index.tsx`
-- Pass `mcpServers` to `MCPGatewayCard` as a new prop (it currently only receives `activeMCPServers` which is the same data, but we need tools)
-
----
-
-## Technical Details
+```
+Policy Name: "Tool Filter: Filesystem MCP Server"
+Description: "Blocks: Write File, Delete File"
+templateId: "auto-tool-filter-1"  (tied to server id)
+active: true
+```
 
 ### Files Modified
 
-1. **`src/components/MCPServersCard.tsx`**
-   - Extend `MCPServer` interface with `url?`, `transport?`, `auth?`
-   - Add edit dialog state and handlers
-   - Wire "..." button to open edit dialog
-   - Save `url`, `transport`, `auth` during register/catalog flows
-   - Render Edit Dialog with name, URL, transport, auth, status toggle, and tool checklist
-
-2. **`src/components/MCPGatewayCard.tsx`**
-   - Add `mcpServers` to props interface (full MCPServer[] with tools)
-   - Add gateway detail dialog state
-   - Wire gateway row click and ChevronRight to open detail
-   - Render metadata dialog with: gateway spec, server list, namespaced tools, applied policies
-   - Resolve policy names from `securityPolicies` and `businessPolicies` props
-
-3. **`src/pages/Index.tsx`**
-   - Pass `mcpServers` prop to `MCPGatewayCard`
-
-### Gateway Metadata Display Structure
-
-```text
-+---------------------------------------------+
-| Gateway: My MCP Gateway                     |
-+---------------------------------------------+
-| Endpoint Metadata                            |
-|   Name: My MCP Gateway                      |
-|   URL: https://gw.example.com/my-gw/v1/mcp  |
-|   Transport: Streamable HTTP                 |
-|   Auth: None                                 |
-+---------------------------------------------+
-| MCP Servers (2)                              |
-|   Filesystem MCP Server                      |
-|     URL: https://mcp.fs.com/v1/stream        |
-|     Transport: Streamable HTTP | Auth: None  |
-|   PostgreSQL MCP Server                      |
-|     URL: https://mcp.pg.com/v1/stream        |
-|     Transport: Streamable HTTP | Auth: API   |
-+---------------------------------------------+
-| Namespaced Tools (8)                         |
-|   Filesystem / List Files                    |
-|   Filesystem / Read File                     |
-|   Filesystem / Write File                    |
-|   PostgreSQL / Run Query                     |
-|   PostgreSQL / List Tables                   |
-|   ...                                        |
-+---------------------------------------------+
-| Security Policies: PII Detection, Rate Limit |
-| Business Policies: Invoice Validation (3)    |
-+---------------------------------------------+
-```
+| File | Change |
+|------|--------|
+| `src/components/MCPServersCard.tsx` | Add `allTools` field, accept policy props, auto-create/update/remove filter policies on register/connect/edit/delete |
+| `src/components/SecurityPoliciesCard.tsx` | Export helper to create auto-filter policy objects |
+| `src/components/ToolsCard.tsx` | Remove `mcpServers` prop and MCP tools section |
+| `src/pages/Index.tsx` | Remove `mcpServers` from ToolsCard, pass policy state to MCPServersCard |
 
