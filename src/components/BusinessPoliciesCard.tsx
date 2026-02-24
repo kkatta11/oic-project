@@ -292,7 +292,28 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                 <Label className="text-xs">Policy Name</Label>
                 <Input placeholder="e.g. Invoice Amount Check" value={policyName} onChange={(e) => setPolicyName(e.target.value)} className="h-8 text-xs" />
               </div>
-              {/* Inlined condition builder */}
+              {/* Tool selector */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Apply to Tools</Label>
+                {availableTools.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-1">No tools available. Configure MCP servers first.</p>
+                ) : (
+                  <ScrollArea className="max-h-36 rounded border border-border p-2">
+                    <div className="space-y-1.5">
+                      {availableTools.map((tool) => (
+                        <label key={tool.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted rounded px-1 py-0.5">
+                          <Checkbox checked={selectedTools.includes(tool.id)} onCheckedChange={() => toggleTool(tool.id)} className="h-3.5 w-3.5" />
+                          <span className="text-foreground">{tool.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+                {selectedTools.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground">{selectedTools.length} tool{selectedTools.length !== 1 ? "s" : ""} selected</p>
+                )}
+              </div>
+              {/* Condition builder */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Conditions (AND logic)</Label>
@@ -307,7 +328,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                   <ConditionRow key={c.id} condition={c} mcpServers={mcpServers} onUpdate={updateCondition} onRemove={removeCondition} />
                 ))}
               </div>
-              <Button className="w-full" onClick={handleCreate} disabled={!policyName.trim() || conditions.length === 0}>
+              <Button className="w-full" onClick={handleCreate} disabled={!policyName.trim() || conditions.length === 0 || selectedTools.length === 0}>
                 Create Policy
               </Button>
             </div>
