@@ -46,6 +46,11 @@ interface PolicyFieldDef {
 
 const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   t1: [
+    { key: "appliesTo", label: "Applies To", type: "select", options: [
+      { value: "request", label: "Request Only" },
+      { value: "response", label: "Response Only" },
+      { value: "both", label: "Both" },
+    ], default: "both" },
     { key: "action", label: "Action", type: "select", options: [
       { value: "block", label: "Block" },
       { value: "redact", label: "Redact" },
@@ -104,6 +109,11 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
     ], default: "block" },
   ],
   t6: [
+    { key: "appliesTo", label: "Applies To", type: "select", options: [
+      { value: "request", label: "Request Only" },
+      { value: "response", label: "Response Only" },
+      { value: "both", label: "Both" },
+    ], default: "both" },
     { key: "maxRequestSize", label: "Max Request Size (MB)", type: "number", default: 10 },
     { key: "maxResponseSize", label: "Max Response Size (MB)", type: "number", default: 50 },
     { key: "action", label: "Action", type: "select", options: [
@@ -117,6 +127,11 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   ],
   // t7 — no config fields (merged into Intrusion Detection)
   t8: [
+    { key: "appliesTo", label: "Applies To", type: "select", options: [
+      { value: "request", label: "Request Only" },
+      { value: "response", label: "Response Only" },
+      { value: "both", label: "Both" },
+    ], default: "response" },
     { key: "mode", label: "Mode", type: "select", options: [
       { value: "optional", label: "Optional" },
       { value: "required", label: "Required" },
