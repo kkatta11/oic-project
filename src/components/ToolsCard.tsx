@@ -1,5 +1,4 @@
-import { MoreHorizontal, Plus, Search, FileText, CheckSquare, FileSearch, GitMerge, ShieldCheck, Server } from "lucide-react";
-import type { MCPServer } from "@/components/MCPServersCard";
+import { MoreHorizontal, Plus, FileText, CheckSquare, FileSearch, GitMerge, ShieldCheck, Search } from "lucide-react";
 
 const nativeTools = [
   { id: "1", name: "Risk Assessment", icon: ShieldCheck },
@@ -10,20 +9,7 @@ const nativeTools = [
   { id: "6", name: "Match PO", icon: GitMerge },
 ];
 
-interface ToolsCardProps {
-  mcpServers?: MCPServer[];
-}
-
-const ToolsCard = ({ mcpServers = [] }: ToolsCardProps) => {
-  // Collect MCP tools with namespace
-  const mcpTools = mcpServers.flatMap((server) =>
-    server.tools.map((tool) => ({
-      key: `${server.id}-${tool.id}`,
-      serverName: server.name.replace(/ MCP Server$/, ""),
-      toolName: tool.name,
-    }))
-  );
-
+const ToolsCard = () => {
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
@@ -34,7 +20,6 @@ const ToolsCard = ({ mcpServers = [] }: ToolsCardProps) => {
       </div>
 
       <div className="divide-y divide-border">
-        {/* Native agent tools */}
         {nativeTools.map((tool) => {
           const Icon = tool.icon;
           return (
@@ -51,36 +36,6 @@ const ToolsCard = ({ mcpServers = [] }: ToolsCardProps) => {
             </div>
           );
         })}
-
-        {/* MCP Server Tools section */}
-        {mcpTools.length > 0 && (
-          <>
-            <div className="px-5 py-2 bg-muted/40">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                MCP Server Tools
-              </span>
-            </div>
-            {mcpTools.map((mt) => (
-              <div key={mt.key} className="flex items-center gap-3 px-5 py-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded bg-muted text-muted-foreground">
-                  <Server size={16} />
-                </div>
-                <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                  <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
-                    {mt.serverName}
-                  </span>
-                  <span className="text-xs text-muted-foreground">/</span>
-                  <span className="truncate text-sm font-medium text-foreground">
-                    {mt.toolName}
-                  </span>
-                </div>
-                <button className="text-muted-foreground hover:text-foreground">
-                  <MoreHorizontal size={16} />
-                </button>
-              </div>
-            ))}
-          </>
-        )}
       </div>
     </div>
   );
