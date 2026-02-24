@@ -1,86 +1,128 @@
 
-# Gateway Activate/Deactivate and Edit Functionality
+
+# Security Policy Configuration and Edit Capability
 
 ## Overview
 
-Add two capabilities to each gateway in the list:
-1. **Activate/Deactivate toggle** -- a status field on each gateway that controls whether its endpoint is available
-2. **Edit button** -- opens the same creation form, pre-populated with the gateway's current configuration, allowing changes to name, servers, and policies
-
-When a gateway is deactivated, its endpoint metadata dialog will show the endpoint as unavailable/offline.
-
----
+Add per-policy configurable parameters that are exposed when a security policy is added from the repository, and provide an edit button to modify those parameters after creation. Each policy template has its own unique set of configuration fields based on the specifications provided.
 
 ## Changes
 
-### 1. Data Model -- Add `active` field to `SavedGateway`
+### 1. Data Model Updates (`SecurityPoliciesCard.tsx`)
+
+Extend the `SecurityPolicy` interface to include a `config` record:
 
 ```typescript
-interface SavedGateway {
+export interface SecurityPolicy {
   id: string;
   name: string;
-  servers: GatewayServer[];
-  securityPolicies: string[];
-  businessPolicies: string[];
-  active: boolean;  // NEW -- defaults to true on creation
+  description: string;
+  icon: string;
+  active: boolean;
+  templateId: string;
+  config: Record<string, any>; // Policy-specific configuration
 }
 ```
 
-### 2. Gateway List Row -- Add status badge and action buttons
+### 2. Policy Configuration Definitions
 
-Each gateway row in the list will show:
-- A colored status badge: green "Active" or gray "Inactive"
-- A **toggle button** (or Switch) to activate/deactivate
-- A **pencil/edit button** to open the edit dialog
-- The existing delete button
+Define a configuration schema for each template that describes the fields, types, options, and defaults:
 
-When toggling active/inactive, persist to localStorage immediately.
+| Template | Configurable Parameters |
+|----------|------------------------|
+| **PII Detection** (t1) | Action: Block / Redact / Log Warning; Sensitivity: Low / Medium / High |
+| **Schema Validation** (t2) | (enabled/disabled only -- no additional params beyond the toggle) |
+| **Tool Poisoning Check** (t3) | Action: Block / Log & Alert / Redact; IP block duration: 15 min / 1 hour / 24 hours; Alert recipients (text); Whitelist exceptions (text) |
+| **Intrusion Detection** (t4) | Sensitivity: Low / Medium / High; Brute force threshold (number) in (number) seconds; Rate spike multiplier (number); Behavioral monitoring: Yes / No; Geographic checks interval (number) minutes; Response action: Alert / Throttle / Require MFA / Block; Exceptions (text) |
+| **Rate Limiting** (t5) | Threshold (number); Time window: Per Minute / Per Hour; Action on violation: Block / Throttle / Warn |
+| **Payload Size** (t6) | Max request size (number) MB; Max response size (number) MB; Action: Block / Warn & Throttle / Warn Only; Allowed file types (text); Compression: Allow gzip/brotli (toggle); Max decompressed size (number) MB |
+| **SQL Injection** (t7) | (merged into Intrusion Detection -- no separate config, or minimal: enabled only) |
+| **Encryption** (t8) | Mode: Optional / Required; Key rotation days (number); Key storage: HSM / Cloud KMS / Internal Vault; Compliance badges multi-select: PCI-DSS, HIPAA, GDPR, FIPS |
 
-### 3. Edit Gateway Dialog
+### 3. UI Flow -- Add Policy with Configuration
 
-- Add state: `editGateway` (the gateway being edited, or null)
-- When the edit button is clicked, populate the creation form fields (`gatewayName`, `registeredServers`, `selectedSecurityPolicies`, `selectedBusinessPolicies`) from the saved gateway and open the dialog
-- Change the dialog title to "Edit MCP Gateway" and the submit button to "Save Changes"
-- On save, update the gateway in the `gateways` array and persist to localStorage (instead of appending a new one)
-- Reuse the existing creation dialog by checking whether we're in "create" or "edit" mode
+When the user clicks "Add" on a policy template:
+- Instead of immediately adding, open a **configuration dialog** showing the relevant fields for that template
+- Fields are pre-populated with defaults
+- User adjusts settings and clicks "Save" to add the policy with the chosen configuration
 
-### 4. Deactivated Gateway Behavior
+### 4. UI Flow -- Edit Policy
 
-- In the **Endpoint Metadata** detail dialog, if the gateway is inactive:
-  - Show a warning banner: "This gateway is deactivated. The endpoint is not available."
-  - Display the endpoint URL with a strikethrough or dimmed style
-- In the **gateway list row**, inactive gateways appear slightly dimmed
+- Add a **Pencil icon button** next to the toggle and delete button on each policy row
+- Clicking it opens the same configuration dialog, pre-populated with current `config` values
+- User modifies settings and clicks "Save" to persist changes
 
-### 5. Observe Tab
+### 5. Policy Row Display
 
-- If the gateway is inactive, the Observe dashboard could note the gateway status (minor visual indicator)
+Each policy row will show a brief summary of key configuration values beneath the description (e.g., "Action: Block | Sensitivity: High").
 
 ---
 
 ## Technical Details
 
-### File: `src/components/MCPGatewayCard.tsx`
+### File: `src/components/SecurityPoliciesCard.tsx`
 
-| Area | Change |
-|------|--------|
-| `SavedGateway` interface | Add `active: boolean` |
-| `handleCreate` | Set `active: true` on new gateways |
-| New: `handleToggleActive` | Toggle `active` field, persist to localStorage |
-| New: `editGateway` state | Track which gateway is being edited (null = create mode) |
-| New: `handleEditClick` | Populate form state from gateway, set `editGateway`, open dialog |
-| New: `handleSaveEdit` | Update existing gateway in array, persist to localStorage |
-| Dialog title/button | Conditional: "Add MCP Gateway" / "Create Gateway" vs "Edit MCP Gateway" / "Save Changes" |
-| Gateway list row | Add Switch or toggle for active/inactive, edit (Pencil) icon button, status badge |
-| Detail dialog | Show "Gateway Deactivated" warning banner when `active === false`; dim/strikethrough endpoint URL |
-| `resetForm` | Also clear `editGateway` state |
+**New data structure** -- policy config schema definitions:
 
-### Gateway Row Layout (updated)
+```typescript
+interface PolicyFieldDef {
+  key: string;
+  label: string;
+  type: "select" | "number" | "text" | "toggle" | "multi-select";
+  options?: { value: string; label: string }[];
+  default: any;
+}
 
-```text
-[Icon] Gateway Name                    [Active/Inactive badge] [Toggle] [Edit] [Delete] [>]
-       2 servers - 1 security - 1 business
+const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
+  t1: [ // PII Detection
+    { key: "action", label: "Action", type: "select",
+      options: [
+        { value: "block", label: "Block" },
+        { value: "redact", label: "Redact" },
+        { value: "log-warning", label: "Log Warning" }
+      ], default: "block" },
+    { key: "sensitivity", label: "Sensitivity Level", type: "select",
+      options: [
+        { value: "low", label: "Low" },
+        { value: "medium", label: "Medium" },
+        { value: "high", label: "High" }
+      ], default: "medium" },
+  ],
+  // ... similar for t2-t8
+};
 ```
 
-### Migration
+**New state variables:**
 
-Existing gateways in localStorage without an `active` field will default to `true` via a fallback: `gw.active !== false` (treating undefined as active).
+| State | Type | Purpose |
+|-------|------|---------|
+| `configDialogOpen` | boolean | Controls the config dialog visibility |
+| `configTemplate` | template object or null | The template being configured (add mode) |
+| `configEditPolicy` | SecurityPolicy or null | The policy being edited (edit mode) |
+| `configValues` | Record<string, any> | Current form values in the config dialog |
+
+**Modified functions:**
+
+- `handleAddFromRepo` -- instead of immediately adding, opens config dialog with defaults
+- New `handleConfigSave` -- creates or updates the policy with config values, persists
+- New `handleEditPolicy` -- opens config dialog pre-populated from existing policy's config
+
+**Config dialog rendering:**
+
+- Dynamically renders form fields based on the schema for the given templateId
+- Uses Select for dropdowns, Input for numbers/text, Switch for toggles, Checkbox group for multi-select
+- Displays field labels and groups logically
+
+**Policy row update:**
+
+```
+[Icon] Policy Name                    [config summary]  [Toggle] [Edit] [Delete]
+       Description
+```
+
+**Auto-generated tool filter policies** (templateId starting with `auto-tool-filter-`) will NOT have a config dialog -- they remain as-is since they are system-managed.
+
+### File: `src/components/MCPGatewayCard.tsx`
+
+No changes needed -- the gateway card already references policies by ID and the new `config` field is purely additive.
+
