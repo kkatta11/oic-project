@@ -337,13 +337,35 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
       </div>
 
       {/* Edit dialog */}
-      <Dialog open={!!editPolicy} onOpenChange={(v) => { if (!v) { setEditPolicy(null); setConditions([]); } }}>
+      <Dialog open={!!editPolicy} onOpenChange={(v) => { if (!v) { setEditPolicy(null); setSelectedTools([]); setConditions([]); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit: {editPolicy?.name}</DialogTitle>
-            <DialogDescription>Modify conditions for this policy.</DialogDescription>
+            <DialogDescription>Modify tool scope and conditions for this policy.</DialogDescription>
           </DialogHeader>
           <div className="mt-2 space-y-4">
+            {/* Tool selector */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Apply to Tools</Label>
+              {availableTools.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-1">No tools available.</p>
+              ) : (
+                <ScrollArea className="max-h-36 rounded border border-border p-2">
+                  <div className="space-y-1.5">
+                    {availableTools.map((tool) => (
+                      <label key={tool.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted rounded px-1 py-0.5">
+                        <Checkbox checked={selectedTools.includes(tool.id)} onCheckedChange={() => toggleTool(tool.id)} className="h-3.5 w-3.5" />
+                        <span className="text-foreground">{tool.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+              {selectedTools.length > 0 && (
+                <p className="text-[11px] text-muted-foreground">{selectedTools.length} tool{selectedTools.length !== 1 ? "s" : ""} selected</p>
+              )}
+            </div>
+            {/* Conditions */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Conditions (AND logic)</Label>
@@ -374,7 +396,12 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
             </div>
             <div className="min-w-0 flex-1">
               <span className="text-sm font-medium text-foreground">{policy.name}</span>
-              <p className="text-xs text-muted-foreground">{policy.conditions.length} condition{policy.conditions.length !== 1 ? "s" : ""}</p>
+              <p className="text-xs text-muted-foreground">
+                {(policy.selectedTools || []).length > 0
+                  ? `${(policy.selectedTools || []).length} tool${(policy.selectedTools || []).length !== 1 ? "s" : ""} · `
+                  : ""}
+                {policy.conditions.length} condition{policy.conditions.length !== 1 ? "s" : ""}
+              </p>
             </div>
             <Popover>
               <PopoverTrigger asChild>
