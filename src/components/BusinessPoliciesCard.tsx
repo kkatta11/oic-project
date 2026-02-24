@@ -24,9 +24,16 @@ export interface BusinessPolicy {
   active: boolean;
   selectedTools: string[]; // e.g. ["ServerName.ToolName", ...]
   conditions: PolicyCondition[];
+  action: string; // "block" | "log_warning" | "flag_review" | "notify_admin"
 }
 
 const STORAGE_KEY = "business-policies";
+const actions = [
+  { value: "block", label: "Block Request" },
+  { value: "log_warning", label: "Log Warning" },
+  { value: "flag_review", label: "Flag for Review" },
+  { value: "notify_admin", label: "Notify Admin" },
+];
 const operators = [
   { value: "equals", label: "Equals" },
   { value: "not_equals", label: "Not Equals" },
@@ -193,6 +200,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   const [policyName, setPolicyName] = useState("");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [conditions, setConditions] = useState<PolicyCondition[]>([]);
+  const [selectedAction, setSelectedAction] = useState("block");
 
   // Build flat list of tool identifiers from MCP servers
   const availableTools = mcpServers.flatMap((server) =>
@@ -212,6 +220,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
     setPolicyName("");
     setSelectedTools([]);
     setConditions([]);
+    setSelectedAction("block");
   };
 
   const addCondition = () => {
@@ -234,6 +243,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
       active: true,
       selectedTools: [...selectedTools],
       conditions: conditions.filter((c) => c.attribute.trim()),
+      action: selectedAction,
     };
     const updated = [...policies, newPolicy];
     onPoliciesChange(updated);
@@ -244,7 +254,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
 
   const handleSaveEdit = () => {
     if (!editPolicy) return;
-    const updated = policies.map((p) => p.id === editPolicy.id ? { ...editPolicy, selectedTools: [...selectedTools], conditions: conditions.filter((c) => c.attribute.trim()) } : p);
+    const updated = policies.map((p) => p.id === editPolicy.id ? { ...editPolicy, selectedTools: [...selectedTools], conditions: conditions.filter((c) => c.attribute.trim()), action: selectedAction } : p);
     onPoliciesChange(updated);
     saveBusinessPolicies(updated);
     setEditPolicy(null);
@@ -268,9 +278,11 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
     setEditPolicy(policy);
     setSelectedTools([...(policy.selectedTools || [])]);
     setConditions([...policy.conditions]);
+    setSelectedAction(policy.action || "block");
   };
 
   const operatorLabel = (op: string) => operators.find((o) => o.value === op)?.label || op;
+  const actionLabel = (a: string) => actions.find((ac) => ac.value === a)?.label || a;
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
@@ -324,9 +336,21 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                 {conditions.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-2">No conditions. Click "Add Condition" to start.</p>
                 )}
-                {conditions.map((c) => (
+              {conditions.map((c) => (
                   <ConditionRow key={c.id} condition={c} mcpServers={mcpServers} onUpdate={updateCondition} onRemove={removeCondition} />
                 ))}
+              </div>
+              {/* Action selector */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Action (when conditions match)</Label>
+                <Select value={selectedAction} onValueChange={setSelectedAction}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {actions.map((a) => (
+                      <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button className="w-full" onClick={handleCreate} disabled={!policyName.trim() || conditions.length === 0 || selectedTools.length === 0}>
                 Create Policy
@@ -380,6 +404,18 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                 <ConditionRow key={c.id} condition={c} mcpServers={mcpServers} onUpdate={updateCondition} onRemove={removeCondition} />
               ))}
             </div>
+            {/* Action selector */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Action (when conditions match)</Label>
+              <Select value={selectedAction} onValueChange={setSelectedAction}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {actions.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button className="w-full" onClick={handleSaveEdit}>Save Changes</Button>
           </div>
         </DialogContent>
@@ -400,7 +436,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                 {(policy.selectedTools || []).length > 0
                   ? `${(policy.selectedTools || []).length} tool${(policy.selectedTools || []).length !== 1 ? "s" : ""} · `
                   : ""}
-                {policy.conditions.length} condition{policy.conditions.length !== 1 ? "s" : ""}
+                {policy.conditions.length} condition{policy.conditions.length !== 1 ? "s" : ""} · {actionLabel(policy.action || "block")}
               </p>
             </div>
             <Popover>
@@ -422,6 +458,10 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                       </div>
                     </div>
                   )}
+                  <div className="mt-1">
+                    <p className="text-[11px] font-medium text-muted-foreground mb-1">When matched:</p>
+                    <span className="inline-flex items-center rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground">{actionLabel(policy.action || "block")}</span>
+                  </div>
                   <p className="text-[11px] font-medium text-muted-foreground mt-1">Conditions:</p>
                   {policy.conditions.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No conditions defined.</p>
