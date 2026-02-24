@@ -8,6 +8,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,6 +95,21 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
 
   const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>([]);
   const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>([]);
+  const [warnFilterPolicyId, setWarnFilterPolicyId] = useState<string | null>(null);
+
+  // Helper: auto-select tool filter policy for a given server name
+  const autoSelectFilterPolicy = (serverName: string) => {
+    const fullServer = mcpServers.find((ms) => ms.name === serverName);
+    if (!fullServer) return;
+    const filterPolicy = activeSecurityPolicies.find(
+      (p) => p.templateId === `auto-tool-filter-${fullServer.id}`
+    );
+    if (filterPolicy) {
+      setSelectedSecurityPolicies((prev) =>
+        prev.includes(filterPolicy.id) ? prev : [...prev, filterPolicy.id]
+      );
+    }
+  };
 
   const [catalogDetailOpen, setCatalogDetailOpen] = useState(false);
   const [catalogDetailServer, setCatalogDetailServer] = useState<typeof catalogServers[0] | null>(null);
@@ -115,10 +134,12 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
 
   const handleAddRegisteredServer = () => {
     if (!newServerName.trim()) return;
+    const serverName = newServerName.trim();
     setRegisteredServers((prev) => [
       ...prev,
-      { id: `rs-${Date.now()}`, name: newServerName.trim(), url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server },
+      { id: `rs-${Date.now()}`, name: serverName, url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server },
     ]);
+    autoSelectFilterPolicy(serverName);
     setNewServerName("");
     setNewServerUrl("");
     setAuthType("none");
@@ -139,12 +160,22 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       ...prev,
       { id: `cat-${Date.now()}`, name: catalogDetailServer.name, url: catalogUrl, transport: catalogTransport, auth: catalogAuth, icon: catalogDetailServer.icon },
     ]);
+    autoSelectFilterPolicy(catalogDetailServer.name);
     setCatalogDetailOpen(false);
     setCatalogDetailServer(null);
   };
 
   const toggleSecurityPolicy = (id: string) => {
-    setSelectedSecurityPolicies((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
+    const isCurrentlySelected = selectedSecurityPolicies.includes(id);
+    if (isCurrentlySelected) {
+      // Check if this is an auto tool filter policy
+      const policy = activeSecurityPolicies.find((p) => p.id === id);
+      if (policy?.templateId?.startsWith("auto-tool-filter-")) {
+        setWarnFilterPolicyId(id);
+        return;
+      }
+    }
+    setSelectedSecurityPolicies((prev) => isCurrentlySelected ? prev.filter((p) => p !== id) : [...prev, id]);
   };
 
   const toggleBusinessPolicy = (id: string) => {
@@ -259,6 +290,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                                   auth: fullServer?.auth || "none",
                                   icon: s.icon,
                                 }]);
+                                autoSelectFilterPolicy(s.name);
                               }} className="h-7 text-xs">{added ? "Added" : "Add"}</Button>
                             </div>
                           );
@@ -588,6 +620,27 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
           </div>
         ))}
       </div>
+
+      {/* Warning dialog for unchecking tool filter policy */}
+      <AlertDialog open={!!warnFilterPolicyId} onOpenChange={(open) => { if (!open) setWarnFilterPolicyId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Tool Filter Policy?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removing this tool filter policy will expose unselected tools to the gateway. Are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setWarnFilterPolicyId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (warnFilterPolicyId) {
+                setSelectedSecurityPolicies((prev) => prev.filter((p) => p !== warnFilterPolicyId));
+              }
+              setWarnFilterPolicyId(null);
+            }}>Confirm</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
