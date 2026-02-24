@@ -95,6 +95,21 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
 
   const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>([]);
   const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>([]);
+  const [warnFilterPolicyId, setWarnFilterPolicyId] = useState<string | null>(null);
+
+  // Helper: auto-select tool filter policy for a given server name
+  const autoSelectFilterPolicy = (serverName: string) => {
+    const fullServer = mcpServers.find((ms) => ms.name === serverName);
+    if (!fullServer) return;
+    const filterPolicy = activeSecurityPolicies.find(
+      (p) => p.templateId === `auto-tool-filter-${fullServer.id}`
+    );
+    if (filterPolicy) {
+      setSelectedSecurityPolicies((prev) =>
+        prev.includes(filterPolicy.id) ? prev : [...prev, filterPolicy.id]
+      );
+    }
+  };
 
   const [catalogDetailOpen, setCatalogDetailOpen] = useState(false);
   const [catalogDetailServer, setCatalogDetailServer] = useState<typeof catalogServers[0] | null>(null);
