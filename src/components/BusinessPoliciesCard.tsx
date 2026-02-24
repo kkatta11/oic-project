@@ -191,10 +191,26 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   const [editPolicy, setEditPolicy] = useState<BusinessPolicy | null>(null);
 
   const [policyName, setPolicyName] = useState("");
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [conditions, setConditions] = useState<PolicyCondition[]>([]);
+
+  // Build flat list of tool identifiers from MCP servers
+  const availableTools = mcpServers.flatMap((server) =>
+    server.tools.map((tool) => ({
+      id: `${server.name.replace(/\s+/g, "")}.${tool.name.replace(/\s+/g, "")}`,
+      label: `${server.name} → ${tool.name}`,
+    }))
+  );
+
+  const toggleTool = (toolId: string) => {
+    setSelectedTools((prev) =>
+      prev.includes(toolId) ? prev.filter((t) => t !== toolId) : [...prev, toolId]
+    );
+  };
 
   const resetForm = () => {
     setPolicyName("");
+    setSelectedTools([]);
     setConditions([]);
   };
 
@@ -211,11 +227,12 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   };
 
   const handleCreate = () => {
-    if (!policyName.trim() || conditions.length === 0) return;
+    if (!policyName.trim() || conditions.length === 0 || selectedTools.length === 0) return;
     const newPolicy: BusinessPolicy = {
       id: `bp-${Date.now()}`,
       name: policyName.trim(),
       active: true,
+      selectedTools: [...selectedTools],
       conditions: conditions.filter((c) => c.attribute.trim()),
     };
     const updated = [...policies, newPolicy];
@@ -227,10 +244,11 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
 
   const handleSaveEdit = () => {
     if (!editPolicy) return;
-    const updated = policies.map((p) => p.id === editPolicy.id ? { ...editPolicy, conditions: conditions.filter((c) => c.attribute.trim()) } : p);
+    const updated = policies.map((p) => p.id === editPolicy.id ? { ...editPolicy, selectedTools: [...selectedTools], conditions: conditions.filter((c) => c.attribute.trim()) } : p);
     onPoliciesChange(updated);
     saveBusinessPolicies(updated);
     setEditPolicy(null);
+    setSelectedTools([]);
     setConditions([]);
   };
 
