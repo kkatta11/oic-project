@@ -134,10 +134,12 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
 
   const handleAddRegisteredServer = () => {
     if (!newServerName.trim()) return;
+    const serverName = newServerName.trim();
     setRegisteredServers((prev) => [
       ...prev,
-      { id: `rs-${Date.now()}`, name: newServerName.trim(), url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server },
+      { id: `rs-${Date.now()}`, name: serverName, url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server },
     ]);
+    autoSelectFilterPolicy(serverName);
     setNewServerName("");
     setNewServerUrl("");
     setAuthType("none");
@@ -158,12 +160,22 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       ...prev,
       { id: `cat-${Date.now()}`, name: catalogDetailServer.name, url: catalogUrl, transport: catalogTransport, auth: catalogAuth, icon: catalogDetailServer.icon },
     ]);
+    autoSelectFilterPolicy(catalogDetailServer.name);
     setCatalogDetailOpen(false);
     setCatalogDetailServer(null);
   };
 
   const toggleSecurityPolicy = (id: string) => {
-    setSelectedSecurityPolicies((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
+    const isCurrentlySelected = selectedSecurityPolicies.includes(id);
+    if (isCurrentlySelected) {
+      // Check if this is an auto tool filter policy
+      const policy = activeSecurityPolicies.find((p) => p.id === id);
+      if (policy?.templateId?.startsWith("auto-tool-filter-")) {
+        setWarnFilterPolicyId(id);
+        return;
+      }
+    }
+    setSelectedSecurityPolicies((prev) => isCurrentlySelected ? prev.filter((p) => p !== id) : [...prev, id]);
   };
 
   const toggleBusinessPolicy = (id: string) => {
@@ -278,6 +290,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                                   auth: fullServer?.auth || "none",
                                   icon: s.icon,
                                 }]);
+                                autoSelectFilterPolicy(s.name);
                               }} className="h-7 text-xs">{added ? "Added" : "Add"}</Button>
                             </div>
                           );
