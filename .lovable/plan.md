@@ -1,78 +1,42 @@
-
-
-# Add Request/Response Scope to Applicable Security Policies
+# Replace Three-Dots Button with Dropdown Menu on MCP Servers
 
 ## Overview
 
-Some security policies can logically apply to the inbound request, the outbound response, or both. This change adds an "Applies To" selector to the three policies where scope matters, letting admins control exactly where enforcement runs.
-
-## Affected Policies
-
-| Policy | Why scope matters | Default |
-|--------|-------------------|---------|
-| **PII Detection** (t1) | PII can appear in request payloads (user-submitted data) or response payloads (data returned from origin) | Both |
-| **Payload Size** (t6) | Already has separate size limits for request and response; an explicit scope toggle makes it clear which direction is enforced | Both |
-| **Encryption** (t8) | Primarily targets response data but may also apply to encrypting request payloads in transit | Response |
-
-The remaining five policies (Schema Validation, Tool Poisoning, Intrusion Detection, Rate Limiting, SQL Injection) are inherently request-scoped and do not need this selector.
+Replace the current `MoreHorizontal` button (which directly opens the edit dialog) with a proper dropdown menu containing **Edit** and **Refresh Metadata** actions.
 
 ## Changes
 
-### 1. Add "Applies To" config field to three schemas
+### File: `src/components/MCPServersCard.tsx`
 
-Add a new `select` field with key `"appliesTo"` to the `policyConfigSchemas` for t1, t6, and t8:
+**1. Import additions**
 
-Options:
-- `request` -- Request Only
-- `response` -- Response Only
-- `both` -- Both
+Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuTrigger` from the existing dropdown-menu component. Add `Pencil` and `RefreshCw` icons from lucide-react.
 
-### 2. Schema updates
+**2. Refresh Metadata handler**
 
-**t1 (PII Detection)** -- insert `appliesTo` field (default: `"both"`) as the first field in the schema, before Action.
+Add a `handleRefreshMetadata(server)` function that:
 
-**t6 (Payload Size)** -- insert `appliesTo` field (default: `"both"`) as the first field.
+- Sets a temporary "refreshing" state for that server (show a spinner or brief loading indicator)
+- Simulates re-fetching tools from the server endpoint (reuses `getToolsForServer`)
+- Updates the server's `allTools` with the fresh set
+- Preserves currently selected tools where IDs still exist; auto-selects any new tools
+- Updates the server in state and syncs the tool filter security policy
 
-**t8 (Encryption)** -- insert `appliesTo` field (default: `"response"`) as the first field.
+**3. Server row UI update (lines 578–601)**
 
-### 3. Config summary display
-
-Update `getConfigSummary` output to include the scope label when present, e.g.:
+Replace the current standalone `Trash2` and `MoreHorizontal` buttons with a single `DropdownMenu`:
 
 ```
-Applies To: Both · Action: Block · Sensitivity: High
+[Icon] Server Name    [tools count]  [StatusBadge]  [⋯ dropdown]
 ```
 
-### 4. Migration
+Dropdown items:
 
-Existing saved policies without `appliesTo` in their config will use the default value from the schema (handled automatically by `getDefaultConfig` fallback already in `loadPolicies`).
+- **Edit** (Pencil icon) — calls existing `handleEditClick(server)`
+- **Refresh Metadata** (RefreshCw icon) — calls new `handleRefreshMetadata(server)`
+- Separator
+- **Delete** (Trash2 icon, destructive style) — calls existing `handleRemove(server.id)`
 
----
+**4. Refreshing state**
 
-## Technical Details
-
-### File: `src/components/SecurityPoliciesCard.tsx`
-
-| Area | Change |
-|------|--------|
-| `policyConfigSchemas.t1` | Prepend `appliesTo` field with options request/response/both, default `"both"` |
-| `policyConfigSchemas.t6` | Prepend `appliesTo` field, default `"both"` |
-| `policyConfigSchemas.t8` | Prepend `appliesTo` field, default `"response"` |
-
-The `appliesTo` field definition (reused across three schemas):
-
-```typescript
-{
-  key: "appliesTo",
-  label: "Applies To",
-  type: "select",
-  options: [
-    { value: "request", label: "Request Only" },
-    { value: "response", label: "Response Only" },
-    { value: "both", label: "Both" },
-  ],
-  default: "both" // or "response" for t8
-}
-```
-
-No other files require changes. The existing config dialog, summary renderer, and persistence logic already handle any fields defined in the schema dynamically.
+Add `refreshingServerId` state (`string | null`). While refreshing, the dropdown trigger shows a spinner instead of the dots icon for that server. The refresh completes after the simulated delay (~800ms).
