@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { MoreHorizontal, Plus, Server, Globe, Database, MessageSquare, FileJson, Mail, Trash2, Loader2, type LucideIcon } from "lucide-react";
+import { MoreHorizontal, Plus, Server, Globe, Database, MessageSquare, FileJson, Mail, Trash2, Loader2, Pencil, RefreshCw, type LucideIcon } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { type SecurityPolicy, createToolFilterPolicy, saveSecurityPolicies } from "@/components/SecurityPoliciesCard";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
@@ -187,6 +190,8 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
   const [editAvailableTools, setEditAvailableTools] = useState<MCPServerTool[]>([]);
   const [editSelectedToolIds, setEditSelectedToolIds] = useState<Set<string>>(new Set());
 
+  const [refreshingServerId, setRefreshingServerId] = useState<string | null>(null);
+
   const servers = externalServers ?? internalServers;
 
   const updateServers = (updated: MCPServer[]) => {
@@ -316,6 +321,25 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
     setFetchedTools([]);
     setSelectedToolIds(new Set());
     setToolsFetched(false);
+  };
+
+  const handleRefreshMetadata = (server: MCPServer) => {
+    setRefreshingServerId(server.id);
+    setTimeout(() => {
+      const freshTools = getToolsForServer(server.name);
+      const existingSelectedIds = new Set(server.tools.map((t) => t.id));
+      const freshIds = new Set(freshTools.map((t) => t.id));
+      // Preserve existing selections where IDs still exist; auto-select new tools
+      const newSelectedTools = freshTools.filter(
+        (t) => existingSelectedIds.has(t.id) || !server.allTools.some((old) => old.id === t.id)
+      );
+      const updated = servers.map((s) =>
+        s.id === server.id ? { ...s, allTools: freshTools, tools: newSelectedTools } : s
+      );
+      updateServers(updated);
+      updateFilterPolicy(server.id, server.name, freshTools, newSelectedTools);
+      setRefreshingServerId(null);
+    }, 800);
   };
 
   // --- Edit handlers ---
@@ -591,12 +615,32 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
                 )}
               </div>
               <StatusBadge status={server.status} />
-              <button onClick={() => handleRemove(server.id)} className="ml-1 text-muted-foreground hover:text-destructive">
-                <Trash2 size={14} />
-              </button>
-              <button onClick={() => handleEditClick(server)} className="text-muted-foreground hover:text-foreground">
-                <MoreHorizontal size={16} />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="ml-1 text-muted-foreground hover:text-foreground">
+                    {refreshingServerId === server.id ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <MoreHorizontal size={16} />
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => handleEditClick(server)}>
+                    <Pencil size={14} className="mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleRefreshMetadata(server)} disabled={refreshingServerId === server.id}>
+                    <RefreshCw size={14} className="mr-2" />
+                    Refresh Metadata
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleRemove(server.id)} className="text-destructive focus:text-destructive">
+                    <Trash2 size={14} className="mr-2" />
+                    Remove
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           );
         })}
