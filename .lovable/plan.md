@@ -1,42 +1,45 @@
-# Replace Three-Dots Button with Dropdown Menu on MCP Servers
+
+
+# Add Search to Browse Catalog Tab
 
 ## Overview
 
-Replace the current `MoreHorizontal` button (which directly opens the edit dialog) with a proper dropdown menu containing **Edit** and **Refresh Metadata** actions.
+Add a search input to the "Browse Catalog" tab in the MCP Servers dialog, allowing users to filter catalog servers by name or description.
 
 ## Changes
 
 ### File: `src/components/MCPServersCard.tsx`
 
-**1. Import additions**
+**1. Add `Search` icon import** — add to the existing lucide-react import line.
 
-Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuTrigger` from the existing dropdown-menu component. Add `Pencil` and `RefreshCw` icons from lucide-react.
+**2. New state variable** — `catalogSearch` (`string`, default `""`) to track the search query. Reset it in `resetForm`.
 
-**2. Refresh Metadata handler**
+**3. Search input in catalog tab** — Insert a search input with a `Search` icon above the catalog list (lines 457-458), styled consistently with the existing search bar in the app.
 
-Add a `handleRefreshMetadata(server)` function that:
-
-- Sets a temporary "refreshing" state for that server (show a spinner or brief loading indicator)
-- Simulates re-fetching tools from the server endpoint (reuses `getToolsForServer`)
-- Updates the server's `allTools` with the fresh set
-- Preserves currently selected tools where IDs still exist; auto-selects any new tools
-- Updates the server in state and syncs the tool filter security policy
-
-**3. Server row UI update (lines 578–601)**
-
-Replace the current standalone `Trash2` and `MoreHorizontal` buttons with a single `DropdownMenu`:
-
-```
-[Icon] Server Name    [tools count]  [StatusBadge]  [⋯ dropdown]
+**4. Filter catalog list** — Replace `catalogServers.map(...)` with a filtered list:
+```typescript
+const filteredCatalog = catalogServers.filter(
+  (s) =>
+    s.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+    s.description.toLowerCase().includes(catalogSearch.toLowerCase())
+);
 ```
 
-Dropdown items:
+Render `filteredCatalog.map(...)` instead, and show an empty state message when no results match.
 
-- **Edit** (Pencil icon) — calls existing `handleEditClick(server)`
-- **Refresh Metadata** (RefreshCw icon) — calls new `handleRefreshMetadata(server)`
-- Separator
-- **Delete** (Trash2 icon, destructive style) — calls existing `handleRemove(server.id)`
+### UI Layout
 
-**4. Refreshing state**
+```text
+┌─────────────────────────────┐
+│ Browse Catalog              │
+│ ┌─────────────────────────┐ │
+│ │ 🔍 Search servers...    │ │
+│ └─────────────────────────┘ │
+│ ┌─────────────────────────┐ │
+│ │ Slack MCP Server    [+] │ │
+│ │ GitHub MCP Server   [+] │ │
+│ │ ...                     │ │
+│ └─────────────────────────┘ │
+└─────────────────────────────┘
+```
 
-Add `refreshingServerId` state (`string | null`). While refreshing, the dropdown trigger shows a spinner instead of the dots icon for that server. The refresh completes after the simulated delay (~800ms).
