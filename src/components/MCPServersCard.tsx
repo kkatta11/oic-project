@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Plus, Server, Globe, Database, MessageSquare, FileJson, Mail, Trash2, Loader2, Pencil, RefreshCw, type LucideIcon } from "lucide-react";
+import { MoreHorizontal, Plus, Server, Globe, Database, MessageSquare, FileJson, Mail, Trash2, Loader2, Pencil, RefreshCw, Search, type LucideIcon } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -170,6 +170,9 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
   const [isFetching, setIsFetching] = useState(false);
   const [toolsFetched, setToolsFetched] = useState(false);
 
+  // Catalog search
+  const [catalogSearch, setCatalogSearch] = useState("");
+
   // Catalog detail dialog
   const [catalogDetailOpen, setCatalogDetailOpen] = useState(false);
   const [catalogDetailServer, setCatalogDetailServer] = useState<typeof catalogServers[0] | null>(null);
@@ -321,6 +324,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
     setFetchedTools([]);
     setSelectedToolIds(new Set());
     setToolsFetched(false);
+    setCatalogSearch("");
   };
 
   const handleRefreshMetadata = (server: MCPServer) => {
@@ -454,9 +458,24 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
                   Register Server
                 </Button>
               </TabsContent>
-              <TabsContent value="catalog" className="pt-4">
+              <TabsContent value="catalog" className="space-y-3 pt-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search servers..."
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    className="h-9 pl-9 text-sm"
+                  />
+                </div>
                 <div className="divide-y divide-border rounded-md border border-border">
-                  {catalogServers.map((s) => {
+                  {catalogServers
+                    .filter(
+                      (s) =>
+                        s.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                        s.description.toLowerCase().includes(catalogSearch.toLowerCase())
+                    )
+                    .map((s) => {
                     const Icon = s.icon;
                     const alreadyAdded = servers.some((srv) => srv.name === s.name);
                     return (
@@ -479,6 +498,15 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
                       </div>
                     );
                   })}
+                  {catalogServers.filter(
+                    (s) =>
+                      s.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                      s.description.toLowerCase().includes(catalogSearch.toLowerCase())
+                  ).length === 0 && (
+                    <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                      No servers match your search.
+                    </p>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
