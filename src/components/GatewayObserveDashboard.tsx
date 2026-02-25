@@ -244,6 +244,7 @@ const GatewayObserveDashboard = () => {
                   <TableRow>
                     <TableHead>Timestamp</TableHead>
                     <TableHead>Gateway</TableHead>
+                    <TableHead>MCP Server</TableHead>
                     <TableHead>Tool Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Duration</TableHead>
@@ -255,6 +256,7 @@ const GatewayObserveDashboard = () => {
                     <TableRow key={inst.id}>
                       <TableCell className="text-muted-foreground text-xs font-mono">{inst.timestamp}</TableCell>
                       <TableCell className="font-medium">{inst.gateway}</TableCell>
+                      <TableCell className="text-sm">{inst.flow.find(s => s.type === "mcp")?.name ?? "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{inst.toolName}</TableCell>
                       <TableCell>{statusBadge(inst.status)}</TableCell>
                       <TableCell>{inst.duration}</TableCell>
