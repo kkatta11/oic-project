@@ -1,45 +1,36 @@
 
 
-# Add Search to Browse Catalog Tab
+# Add MCP Server Name to Observe → Instances Table
 
 ## Overview
 
-Add a search input to the "Browse Catalog" tab in the MCP Servers dialog, allowing users to filter catalog servers by name or description.
+Add an "MCP Server" column to the Instances table in the Observe dashboard so users can see which MCP server handled each request instance.
 
 ## Changes
 
-### File: `src/components/MCPServersCard.tsx`
+### File: `src/components/GatewayObserveDashboard.tsx`
 
-**1. Add `Search` icon import** — add to the existing lucide-react import line.
+**1. Add "MCP Server" column header** (line 247)
 
-**2. New state variable** — `catalogSearch` (`string`, default `""`) to track the search query. Reset it in `resetForm`.
+Insert a new `<TableHead>MCP Server</TableHead>` between "Gateway" and "Tool Name".
 
-**3. Search input in catalog tab** — Insert a search input with a `Search` icon above the catalog list (lines 457-458), styled consistently with the existing search bar in the app.
+**2. Add MCP Server cell** (line 258)
 
-**4. Filter catalog list** — Replace `catalogServers.map(...)` with a filtered list:
+Insert a new `<TableCell>` between Gateway and Tool Name that derives the server name from the instance's flow:
+
 ```typescript
-const filteredCatalog = catalogServers.filter(
-  (s) =>
-    s.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-    s.description.toLowerCase().includes(catalogSearch.toLowerCase())
-);
+<TableCell className="text-sm">
+  {inst.flow.find(s => s.type === "mcp")?.name ?? "—"}
+</TableCell>
 ```
 
-Render `filteredCatalog.map(...)` instead, and show an empty state message when no results match.
+This extracts the MCP server name from the flow step with `type: "mcp"` — no data model changes needed since all instances already have this information in their flow arrays (e.g. "Slack MCP Server", "GitHub MCP Server", etc.).
 
-### UI Layout
+### Result
 
-```text
-┌─────────────────────────────┐
-│ Browse Catalog              │
-│ ┌─────────────────────────┐ │
-│ │ 🔍 Search servers...    │ │
-│ └─────────────────────────┘ │
-│ ┌─────────────────────────┐ │
-│ │ Slack MCP Server    [+] │ │
-│ │ GitHub MCP Server   [+] │ │
-│ │ ...                     │ │
-│ └─────────────────────────┘ │
-└─────────────────────────────┘
+The Instances table columns become:
+
+```
+Timestamp | Gateway | MCP Server | Tool Name | Status | Duration | View
 ```
 
