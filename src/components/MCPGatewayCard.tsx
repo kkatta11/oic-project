@@ -3,6 +3,7 @@ import {
   Plus, Server, Database, Globe, MessageSquare, FileJson, Mail,
   ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Lock, Filter,
   ChevronRight, ListChecks, Wrench, AlertTriangle, MoreHorizontal,
+  ArrowUp, ArrowDown,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -61,6 +62,7 @@ interface SavedGateway {
   servers: GatewayServer[];
   securityPolicies: string[];
   businessPolicies: string[];
+  policyOrder: string[];
   active: boolean;
 }
 
@@ -79,6 +81,14 @@ const authLabel = (auth: string) => {
   return auth;
 };
 
+const getPolicyScope = (policy: SecurityPolicy): string => {
+  const appliesTo = policy.config?.appliesTo;
+  if (appliesTo === "request") return "Request";
+  if (appliesTo === "response") return "Response";
+  if (appliesTo === "both") return "Both";
+  return "Both";
+};
+
 const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [] }: MCPGatewayCardProps) => {
   const [open, setOpen] = useState(false);
   const [gateways, setGateways] = useState<SavedGateway[]>(() => {
@@ -86,7 +96,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       const stored = localStorage.getItem("mcp-gateways");
       if (!stored) return [];
       const parsed = JSON.parse(stored) as SavedGateway[];
-      return parsed.map((gw) => ({ ...gw, active: gw.active !== false }));
+      return parsed.map((gw) => ({ ...gw, active: gw.active !== false, policyOrder: gw.policyOrder || [] }));
     } catch { return []; }
   });
 
@@ -102,8 +112,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
 
   const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>([]);
   const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>([]);
+  const [policyOrder, setPolicyOrder] = useState<string[]>([]);
 
-  // Edit mode state
   const [editGateway, setEditGateway] = useState<SavedGateway | null>(null);
   const isEditing = !!editGateway;
 
@@ -113,7 +123,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   const [catalogTransport, setCatalogTransport] = useState("streamable-http");
   const [catalogAuth, setCatalogAuth] = useState("none");
 
-  // Gateway detail/metadata dialog
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailGateway, setDetailGateway] = useState<SavedGateway | null>(null);
 
@@ -126,7 +135,62 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setAuthType("none");
     setSelectedSecurityPolicies([]);
     setSelectedBusinessPolicies([]);
+    setPolicyOrder([]);
     setEditGateway(null);
+  };
+
+  // Categorize security policies
+  const requestSecurityPolicies = activeSecurityPolicies.filter((p) => {
+    const scope = getPolicyScope(p);
+    return scope === "Request" || scope === "Both";
+  });
+  const responseSecurityPolicies = activeSecurityPolicies.filter((p) => {
+    const scope = getPolicyScope(p);
+    return scope === "Response" || scope === "Both";
+  });
+
+  const toggleSecurityPolicy = (id: string) => {
+    setSelectedSecurityPolicies((prev) => {
+      const removing = prev.includes(id);
+      const next = removing ? prev.filter((p) => p !== id) : [...prev, id];
+      if (removing) {
+        setPolicyOrder((ord) => ord.filter((p) => p !== id));
+      } else {
+        setPolicyOrder((ord) => [...ord, id]);
+      }
+      return next;
+    });
+  };
+
+  const toggleBusinessPolicy = (id: string) => {
+    setSelectedBusinessPolicies((prev) => {
+      const removing = prev.includes(id);
+      const next = removing ? prev.filter((p) => p !== id) : [...prev, id];
+      if (removing) {
+        setPolicyOrder((ord) => ord.filter((p) => p !== id));
+      } else {
+        setPolicyOrder((ord) => [...ord, id]);
+      }
+      return next;
+    });
+  };
+
+  const movePolicyUp = (idx: number) => {
+    if (idx <= 0) return;
+    setPolicyOrder((prev) => {
+      const next = [...prev];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      return next;
+    });
+  };
+
+  const movePolicyDown = (idx: number) => {
+    setPolicyOrder((prev) => {
+      if (idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      return next;
+    });
   };
 
   const handleAddRegisteredServer = () => {
@@ -160,14 +224,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setCatalogDetailServer(null);
   };
 
-  const toggleSecurityPolicy = (id: string) => {
-    setSelectedSecurityPolicies((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
-  };
-
-  const toggleBusinessPolicy = (id: string) => {
-    setSelectedBusinessPolicies((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
-  };
-
   const persistGateways = (updated: SavedGateway[]) => {
     localStorage.setItem("mcp-gateways", JSON.stringify(updated));
   };
@@ -178,7 +234,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       setGateways((prev) => {
         const updated = prev.map((gw) =>
           gw.id === editGateway.id
-            ? { ...gw, name: gatewayName.trim(), servers: [...registeredServers], securityPolicies: [...selectedSecurityPolicies], businessPolicies: [...selectedBusinessPolicies] }
+            ? { ...gw, name: gatewayName.trim(), servers: [...registeredServers], securityPolicies: [...selectedSecurityPolicies], businessPolicies: [...selectedBusinessPolicies], policyOrder: [...policyOrder] }
             : gw
         );
         persistGateways(updated);
@@ -191,6 +247,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
         servers: [...registeredServers],
         securityPolicies: [...selectedSecurityPolicies],
         businessPolicies: [...selectedBusinessPolicies],
+        policyOrder: [...policyOrder],
         active: true,
       };
       setGateways((prev) => {
@@ -229,6 +286,14 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setRegisteredServers(restoredServers);
     setSelectedSecurityPolicies([...gw.securityPolicies]);
     setSelectedBusinessPolicies([...gw.businessPolicies]);
+    // Restore policy order, appending any newly selected policies not in the saved order
+    const savedOrder = gw.policyOrder || [];
+    const allSelected = [...gw.securityPolicies, ...gw.businessPolicies];
+    const restoredOrder = [
+      ...savedOrder.filter((id) => allSelected.includes(id)),
+      ...allSelected.filter((id) => !savedOrder.includes(id)),
+    ];
+    setPolicyOrder(restoredOrder);
     setOpen(true);
   };
 
@@ -237,9 +302,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setDetailOpen(true);
   };
 
-  // Build namespaced tools for gateway detail, respecting t9 Tools Filter exclusions
   const getNamespacedTools = (gw: SavedGateway) => {
-    // Collect excluded tool IDs from t9 policies selected in this gateway
     const excludedToolIds = new Set<string>();
     for (const pId of gw.securityPolicies) {
       const pol = securityPolicies.find((p) => p.id === pId);
@@ -247,7 +310,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
         pol.config.excludedTools.forEach((tid: string) => excludedToolIds.add(tid));
       }
     }
-
     const tools: { serverName: string; toolName: string; description: string }[] = [];
     for (const gwServer of gw.servers) {
       const fullServer = mcpServers.find((s) => s.name === gwServer.name);
@@ -266,6 +328,37 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     const slug = name.toLowerCase().replace(/\s+/g, "-");
     return `https://gateway.example.com/${slug}/v1/mcp`;
   };
+
+  // Helper to look up policy info for display
+  const lookupPolicy = (id: string) => {
+    const sec = securityPolicies.find((p) => p.id === id);
+    if (sec) return { name: sec.name, type: "Security" as const, scope: getPolicyScope(sec), icon: iconMap[sec.icon] || ShieldCheck };
+    const biz = businessPolicies.find((p) => p.id === id);
+    if (biz) return { name: biz.name, type: "Business" as const, scope: "Both", icon: ListChecks };
+    return null;
+  };
+
+  // Render a security policy checkbox row
+  const renderSecPolicyCheckbox = (p: SecurityPolicy) => {
+    const Icon = iconMap[p.icon] || ShieldCheck;
+    const checked = selectedSecurityPolicies.includes(p.id);
+    return (
+      <label key={p.id} className="flex items-center gap-2.5 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50">
+        <Checkbox checked={checked} onCheckedChange={() => toggleSecurityPolicy(p.id)} />
+        <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground"><Icon size={12} /></div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-foreground">{p.name}</p>
+          <p className="text-[10px] text-muted-foreground">{p.description}</p>
+        </div>
+      </label>
+    );
+  };
+
+  // De-duplicate policies that appear in both request and response
+  const uniqueRequestPolicies = requestSecurityPolicies;
+  const uniqueResponseOnly = responseSecurityPolicies.filter(
+    (p) => !requestSecurityPolicies.some((rp) => rp.id === p.id)
+  );
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
@@ -407,27 +500,40 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 )}
               </div>
 
-              {/* Security Policies */}
+              {/* Security Policies - Categorized */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-foreground">Security Policies</h4>
                 {activeSecurityPolicies.length === 0 ? (
                   <p className="text-xs text-muted-foreground py-2 text-center">No active security policies available. Add and activate them in the Security Policies card.</p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {activeSecurityPolicies.map((p) => {
-                      const Icon = iconMap[p.icon] || ShieldCheck;
-                      const checked = selectedSecurityPolicies.includes(p.id);
-                      return (
-                        <label key={p.id} className="flex items-center gap-2.5 rounded-md border border-border p-2.5 cursor-pointer hover:bg-muted/50">
-                          <Checkbox checked={checked} onCheckedChange={() => toggleSecurityPolicy(p.id)} />
-                          <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground"><Icon size={12} /></div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-foreground">{p.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{p.description}</p>
-                          </div>
-                        </label>
-                      );
-                    })}
+                  <div className="space-y-4">
+                    {/* Request Policies */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">Request</Badge>
+                        Policies applied on incoming requests
+                      </p>
+                      {uniqueRequestPolicies.length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground pl-2">No request-scoped policies.</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {uniqueRequestPolicies.map((p) => renderSecPolicyCheckbox(p))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Response Policies (only those not already shown in Request) */}
+                    {uniqueResponseOnly.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">Response</Badge>
+                          Policies applied on outgoing responses
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {uniqueResponseOnly.map((p) => renderSecPolicyCheckbox(p))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -455,6 +561,52 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                   </div>
                 )}
               </div>
+
+              {/* Execution Priority */}
+              {policyOrder.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-foreground">Execution Priority</h4>
+                  <p className="text-[11px] text-muted-foreground">Policies execute in this order. Use arrows to reorder.</p>
+                  <div className="rounded-md border border-border divide-y divide-border">
+                    {policyOrder.map((pId, idx) => {
+                      const info = lookupPolicy(pId);
+                      if (!info) return null;
+                      const Icon = info.icon;
+                      return (
+                        <div key={pId} className="flex items-center gap-2 px-3 py-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">
+                            {idx + 1}
+                          </span>
+                          <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground shrink-0"><Icon size={12} /></div>
+                          <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                            {info.type}
+                          </Badge>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+                            {info.scope}
+                          </Badge>
+                          <div className="flex gap-0.5 shrink-0">
+                            <button
+                              onClick={() => movePolicyUp(idx)}
+                              disabled={idx === 0}
+                              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <ArrowUp size={12} />
+                            </button>
+                            <button
+                              onClick={() => movePolicyDown(idx)}
+                              disabled={idx === policyOrder.length - 1}
+                              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <ArrowDown size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <Button className="w-full" onClick={handleCreate} disabled={!gatewayName.trim()}>
                 {isEditing ? "Save Changes" : "Create Gateway"}
@@ -606,47 +758,46 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 );
               })()}
 
-              {/* Policies */}
+              {/* Applied Policies - Ordered by Priority */}
               <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-foreground">Applied Policies</h4>
-                <div className="rounded-md border border-border p-4 space-y-3">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Security Policies</p>
-                    {detailGateway.securityPolicies.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">None</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {detailGateway.securityPolicies.map((pId) => {
-                          const pol = securityPolicies.find((p) => p.id === pId);
-                          return (
-                            <span key={pId} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
-                              <ShieldCheck size={10} className="text-muted-foreground" />
-                              {pol?.name || pId}
+                <h4 className="text-sm font-semibold text-foreground">Applied Policies — Execution Order</h4>
+                {(() => {
+                  const order = detailGateway.policyOrder || [];
+                  const allIds = [...detailGateway.securityPolicies, ...detailGateway.businessPolicies];
+                  const orderedIds = [
+                    ...order.filter((id) => allIds.includes(id)),
+                    ...allIds.filter((id) => !order.includes(id)),
+                  ];
+
+                  if (orderedIds.length === 0) {
+                    return <p className="text-xs text-muted-foreground">No policies applied.</p>;
+                  }
+
+                  return (
+                    <div className="rounded-md border border-border divide-y divide-border">
+                      {orderedIds.map((pId, idx) => {
+                        const info = lookupPolicy(pId);
+                        if (!info) return null;
+                        const Icon = info.icon;
+                        return (
+                          <div key={pId} className="flex items-center gap-2 px-4 py-2.5">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">
+                              {idx + 1}
                             </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Business Policies</p>
-                    {detailGateway.businessPolicies.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">None</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {detailGateway.businessPolicies.map((pId) => {
-                          const pol = businessPolicies.find((p) => p.id === pId);
-                          return (
-                            <span key={pId} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
-                              <ListChecks size={10} className="text-muted-foreground" />
-                              {pol?.name || pId}{pol ? ` (${pol.conditions.length})` : ""}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                            <Icon size={12} className="text-muted-foreground shrink-0" />
+                            <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {info.type}
+                            </Badge>
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                              {info.scope}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
