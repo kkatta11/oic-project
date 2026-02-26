@@ -1,126 +1,83 @@
 
 
-# Standardize Status Badges and Dropdown Action Menus Across All Cards
+# Remove Tool Selection from MCP Server Registration & Add Explicit Tools Filter Security Policy
 
 ## Overview
 
-Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
+Three major changes: (1) MCP server registration shows fetched tools as read-only list, no selection; all tools are included. (2) Add a new "Tools Filter" security policy template where users explicitly pick an active MCP server and exclude tools. (3) Remove all auto-generated tool filter logic.
 
 ## Changes
 
 ### 1. `src/components/MCPServersCard.tsx`
 
-**Add Activate/Deactivate to dropdown menu:**
+**Remove tool selection during registration and catalog connect:**
 
-The MCP Servers card already has the dropdown menu pattern. Changes needed:
-- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
-- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
-- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
+- Change `ToolChecklist` to a read-only `ToolList` component (no checkboxes, just displays tools)
+- Remove `selectedToolIds`, `toggleToolId`, `catalogSelectedToolIds`, `toggleCatalogToolId`, `editSelectedToolIds`, `toggleEditToolId` state and handlers
+- In `handleRegister`: set `tools` and `allTools` to all `fetchedTools` (no filtering)
+- In `handleCatalogConfirm`: set `tools` and `allTools` to all `catalogTools` (no filtering)
+- In `handleEditSave`: set `tools` and `allTools` to all `editAvailableTools` (no filtering)
+- Remove "Register Server" button's `selectedToolIds.size === 0` disabled condition; only require `serverName` and `toolsFetched`
+- Same for catalog "Connect Server" and edit "Save Changes" buttons
 
-Updated dropdown items:
-- Edit
-- Refresh Metadata
-- Separator
-- Activate / Deactivate (dynamic label based on current status)
-- Separator
-- Remove (destructive)
+**Remove auto tool filter logic:**
 
-**Add toggle handler:**
-```typescript
-const handleToggleStatus = (serverId: string) => {
-  const updated = servers.map((s) =>
-    s.id === serverId
-      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
-      : s
-  );
-  updateServers(updated);
-};
-```
+- Remove `updateFilterPolicy` function entirely
+- Remove all calls to `updateFilterPolicy` (in `handleRegister`, `handleCatalogConfirm`, `handleRefreshMetadata`, `handleEditSave`)
+- Remove auto-filter cleanup from `handleRemove`
+- Remove `securityPolicies` and `onPoliciesChange` from props interface and imports
+- Remove import of `createToolFilterPolicy`, `saveSecurityPolicies` from SecurityPoliciesCard
 
-### 2. `src/components/MCPGatewayCard.tsx`
+**Edit dialog tool display:**
 
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
+- Show tools as read-only list in edit dialog (same `ToolList` component)
+- The edit dialog still shows connection config (name, URL, transport, auth)
 
-**Replace gateway row controls (lines 700-712):**
+### 2. `src/components/SecurityPoliciesCard.tsx`
 
-Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
-- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
-- A three-dots `DropdownMenu` with:
-  - Edit
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
-
-**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
-
-### 3. `src/components/SecurityPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 474-482):**
-
-Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (only if `hasEditableConfig`)
-  - Separator (only if edit shown)
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Add StatusBadge component** (same green/olive pattern).
-
-### 4. `src/components/BusinessPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 484-488):**
-
-Remove the `Switch` and `Trash2` button. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (calls existing `openEdit(policy)`)
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-Keep the existing `Eye` popover for viewing details -- it stays as-is.
-
-**Add StatusBadge component** (same pattern).
-
-## Consistent StatusBadge Pattern
-
-All four components will use the same styling:
+**Add "Tools Filter" template (t9) to the repository:**
 
 ```typescript
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === "Active";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-      isActive
-        ? "bg-redwood-green-light text-redwood-green"
-        : "bg-redwood-olive-light text-redwood-olive"
-    }`}>
-      {status}
-    </span>
-  );
-};
+{ templateId: "t9", name: "Tools Filter", description: "Exclude specific tools from MCP servers", icon: "ShieldCheck" }
 ```
 
-## Consistent Row Layout
+**Add `Filter` icon** to iconMap (reuse `ShieldCheck` or add a suitable icon).
 
-All card item rows follow:
-```text
-[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
-```
+**New props:** Accept `mcpServers` prop (array of `MCPServer`) to know which active servers and their tools are available.
 
-## Summary of Removals
-- All `Switch` toggle components from item rows (and import cleanup where no longer used)
-- All standalone `Trash2` icon buttons from item rows
-- All standalone `Pencil` icon buttons from item rows
-- Status toggle section from MCP Servers edit dialog
+**Config schema for t9** — custom handling (not the standard `policyConfigSchemas`):
+- When adding/editing a Tools Filter policy, show a custom dialog:
+  1. Select an active MCP server (dropdown of servers with status "Active")
+  2. Show that server's `allTools` as a checklist where checked = excluded
+  3. Store in config: `{ serverId: string, serverName: string, excludedTools: string[] }` (array of tool IDs)
+
+**Display in list:**
+- Summary shows: "Server: {name} · Excludes: {count} tools"
+- Edit opens the same custom dialog pre-populated
+
+**Remove auto-filter references:**
+- Remove `createToolFilterPolicy` export
+- Remove `auto-tool-filter` template ID checks from `handleEditPolicy` and rendering
+- Remove `isAutoFilter` logic from the policy list rendering
+
+### 3. `src/components/MCPGatewayCard.tsx`
+
+**Remove auto-filter logic:**
+- Remove `autoSelectFilterPolicy` helper function
+- Remove calls to `autoSelectFilterPolicy` when selecting servers
+- Remove auto-filter pre-selection in gateway creation dialog (lines 295-298)
+- Remove the special `auto-tool-filter-` warning logic in `toggleSecurityPolicy` (lines 183-187)
+- Keep the `warnFilterPolicyId` state but repurpose for Tools Filter policies (templateId `t9`) or remove if no longer needed
+- Update tool namespace resolution: instead of deriving excluded tools from auto-filter policies, derive from `t9` Tools Filter policies in config
+
+### 4. `src/pages/Index.tsx`
+
+- Remove `securityPolicies` and `onPoliciesChange` props from `MCPServersCard`
+- Add `mcpServers` prop to `SecurityPoliciesCard`
+
+### Result
+
+- MCP Server registration/catalog/edit: shows tools as read-only list, all tools included
+- Tools Filter: explicit security policy where user picks active server + excludes specific tools
+- No auto-generated policies
 
