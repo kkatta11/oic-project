@@ -73,6 +73,13 @@ const toolPayloadAttributes: Record<string, string[]> = {
   "Execute": ["action", "parameters"],
   "Query": ["query", "format"],
   "List Resources": ["type", "limit"],
+  // Native tools
+  "Risk Assessment": ["vendor_id", "amount", "risk_level", "category", "country"],
+  "Get Invoice Details": ["invoice_id", "vendor_id", "date_range", "status"],
+  "Contract Search": ["query", "vendor_id", "contract_type", "status"],
+  "Validate and Create Invoice": ["invoice_data", "vendor_id", "amount", "currency", "line_items"],
+  "Extract Invoice Data": ["document_url", "format", "language"],
+  "Match PO": ["invoice_id", "po_number", "vendor_id", "tolerance"],
 };
 
 export function loadBusinessPolicies(): BusinessPolicy[] {
