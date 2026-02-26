@@ -86,7 +86,7 @@ const getPolicyScope = (policy: SecurityPolicy): string => {
   if (appliesTo === "request") return "Request";
   if (appliesTo === "response") return "Response";
   if (appliesTo === "both") return "Both";
-  return "Both";
+  return "Request";
 };
 
 const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [] }: MCPGatewayCardProps) => {
@@ -334,7 +334,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     const sec = securityPolicies.find((p) => p.id === id);
     if (sec) return { name: sec.name, type: "Security" as const, scope: getPolicyScope(sec), icon: iconMap[sec.icon] || ShieldCheck };
     const biz = businessPolicies.find((p) => p.id === id);
-    if (biz) return { name: biz.name, type: "Business" as const, scope: "Both", icon: ListChecks };
+    if (biz) return { name: biz.name, type: "Business" as const, scope: "Request", icon: ListChecks };
     return null;
   };
 
