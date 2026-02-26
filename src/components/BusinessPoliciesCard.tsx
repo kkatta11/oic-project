@@ -196,58 +196,95 @@ const ConditionRow = ({ condition, mcpServers, onUpdate, onRemove }: ConditionRo
   </div>
 );
 
-// --- Server/Tool Selector ---
+// --- Server/Tool Selector with Native Tools toggle ---
+type ToolSource = "mcp" | "native";
+
 interface ServerToolSelectorProps {
   mcpServers: MCPServer[];
+  toolSource: ToolSource;
+  onToolSourceChange: (source: ToolSource) => void;
   selectedServerId: string;
   selectedToolId: string;
   onServerChange: (serverId: string) => void;
   onToolChange: (toolId: string) => void;
 }
 
-const ServerToolSelector = ({ mcpServers, selectedServerId, selectedToolId, onServerChange, onToolChange }: ServerToolSelectorProps) => {
+const ServerToolSelector = ({ mcpServers, toolSource, onToolSourceChange, selectedServerId, selectedToolId, onServerChange, onToolChange }: ServerToolSelectorProps) => {
   const activeServers = mcpServers.filter((s) => s.status === "Active");
   const selectedServer = activeServers.find((s) => s.id === selectedServerId);
   const tools = selectedServer?.tools || [];
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium flex items-center gap-1.5"><Server size={12} /> MCP Server</Label>
-        {activeServers.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-1">No active MCP servers available.</p>
-        ) : (
-          <Select value={selectedServerId} onValueChange={(v) => { onServerChange(v); onToolChange(""); }}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select an active server…" /></SelectTrigger>
+      {/* Toggle */}
+      <div className="flex gap-1 rounded-md border border-border p-0.5 bg-muted/50">
+        <button
+          type="button"
+          className={`flex-1 flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${toolSource === "native" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          onClick={() => { onToolSourceChange("native"); onServerChange(""); onToolChange(""); }}
+        >
+          <Cpu size={12} /> Native Tools
+        </button>
+        <button
+          type="button"
+          className={`flex-1 flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${toolSource === "mcp" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          onClick={() => { onToolSourceChange("mcp"); onToolChange(""); }}
+        >
+          <Server size={12} /> MCP Server
+        </button>
+      </div>
+
+      {toolSource === "native" ? (
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium flex items-center gap-1.5"><Cpu size={12} /> Native Tool</Label>
+          <Select value={selectedToolId} onValueChange={onToolChange}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a native tool…" /></SelectTrigger>
             <SelectContent>
-              {activeServers.map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              {nativeTools.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-        )}
-      </div>
-      {selectedServerId && (
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Tool</Label>
-          {tools.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-1">No tools on this server.</p>
-          ) : (
-            <Select value={selectedToolId} onValueChange={onToolChange}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a tool…" /></SelectTrigger>
-              <SelectContent>
-                {tools.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
+      ) : (
+        <>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium flex items-center gap-1.5"><Server size={12} /> MCP Server</Label>
+            {activeServers.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-1">No active MCP servers available.</p>
+            ) : (
+              <Select value={selectedServerId} onValueChange={(v) => { onServerChange(v); onToolChange(""); }}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select an active server…" /></SelectTrigger>
+                <SelectContent>
+                  {activeServers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          {selectedServerId && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Tool</Label>
+              {tools.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-1">No tools on this server.</p>
+              ) : (
+                <Select value={selectedToolId} onValueChange={onToolChange}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a tool…" /></SelectTrigger>
+                  <SelectContent>
+                    {tools.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 };
-
 // --- Helper: derive selectedTools string from server + tool ---
 function buildSelectedToolKey(server: MCPServer, toolId: string): string {
   const tool = server.tools.find((t) => t.id === toolId);
