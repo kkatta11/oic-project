@@ -367,10 +367,10 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
     setConditions((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // Scoped servers for attribute picker
-  const scopedServers = toolSource === "native"
-    ? [{ id: "native-tools", name: "Native Tools", status: "Active" as const, icon: "cpu", tools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), url: "", transport: "", authType: "" }]
-    : mcpServers.filter((s) => s.id === selectedServerId);
+  const nativeServerProxy: MCPServer[] = toolSource === "native"
+    ? [{ id: "native-tools", name: "Native Tools", status: "Active" as const, icon: Cpu, tools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), allTools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), url: "", transport: "", authType: "" } as MCPServer]
+    : [];
+  const scopedServers = toolSource === "native" ? nativeServerProxy : mcpServers.filter((s) => s.id === selectedServerId);
 
   const selectedServer = mcpServers.find((s) => s.id === selectedServerId);
   const canSave = policyName.trim() && selectedToolId && conditions.length > 0 && (toolSource === "native" || selectedServerId);
