@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { Plus, ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Database, Lock, Trash2, Pencil, type LucideIcon } from "lucide-react";
+import { Plus, ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Database, Lock, MoreHorizontal, Pencil, type LucideIcon } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -471,15 +475,34 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCa
                   <p className="text-[10px] text-muted-foreground/70 mt-0.5">{summary}</p>
                 )}
               </div>
-              <Switch checked={policy.active} onCheckedChange={() => toggleActive(policy.id)} className="scale-75" />
-              {hasEditableConfig && (
-                <button onClick={() => handleEditPolicy(policy)} className="text-muted-foreground hover:text-foreground">
-                  <Pencil size={13} />
-                </button>
-              )}
-              <button onClick={() => handleDelete(policy.id)} className="text-muted-foreground hover:text-destructive">
-                <Trash2 size={14} />
-              </button>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${policy.active ? "bg-redwood-green-light text-redwood-green" : "bg-redwood-olive-light text-redwood-olive"}`}>
+                {policy.active ? "Active" : "Configured"}
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="ml-1 text-muted-foreground hover:text-foreground">
+                    <MoreHorizontal size={16} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {hasEditableConfig && (
+                    <>
+                      <DropdownMenuItem onClick={() => handleEditPolicy(policy)}>
+                        <Pencil size={14} className="mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={() => toggleActive(policy.id)}>
+                    {policy.active ? "Deactivate" : "Activate"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleDelete(policy.id)} className="text-destructive focus:text-destructive">
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           );
         })}
