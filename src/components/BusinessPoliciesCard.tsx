@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, ListChecks, Eye, FolderSearch, Wrench, MoreHorizontal, Pencil } from "lucide-react";
+import { Plus, X, ListChecks, Eye, FolderSearch, Wrench, MoreHorizontal, Pencil, Server } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
 import type { MCPServer } from "@/components/MCPServersCard";
 
 export interface PolicyCondition {
@@ -25,9 +24,9 @@ export interface BusinessPolicy {
   id: string;
   name: string;
   active: boolean;
-  selectedTools: string[]; // e.g. ["ServerName.ToolName", ...]
+  selectedTools: string[]; // e.g. ["ServerName.ToolName"]
   conditions: PolicyCondition[];
-  action: string; // "block" | "log_warning" | "flag_review" | "notify_admin"
+  action: string;
 }
 
 const STORAGE_KEY = "business-policies";
@@ -87,7 +86,7 @@ export function saveBusinessPolicies(policies: BusinessPolicy[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(policies));
 }
 
-// --- Attribute Picker Popover (standalone) ---
+// --- Attribute Picker scoped to a single server ---
 interface AttributePickerProps {
   mcpServers: MCPServer[];
   onSelect: (attribute: string) => void;
@@ -150,7 +149,7 @@ const AttributePicker = ({ mcpServers, onSelect }: AttributePickerProps) => {
   );
 };
 
-// --- Condition Row (standalone to preserve focus) ---
+// --- Condition Row ---
 interface ConditionRowProps {
   condition: PolicyCondition;
   mcpServers: MCPServer[];
@@ -189,6 +188,90 @@ const ConditionRow = ({ condition, mcpServers, onUpdate, onRemove }: ConditionRo
   </div>
 );
 
+// --- Server/Tool Selector ---
+interface ServerToolSelectorProps {
+  mcpServers: MCPServer[];
+  selectedServerId: string;
+  selectedToolId: string;
+  onServerChange: (serverId: string) => void;
+  onToolChange: (toolId: string) => void;
+}
+
+const ServerToolSelector = ({ mcpServers, selectedServerId, selectedToolId, onServerChange, onToolChange }: ServerToolSelectorProps) => {
+  const activeServers = mcpServers.filter((s) => s.status === "Active");
+  const selectedServer = activeServers.find((s) => s.id === selectedServerId);
+  const tools = selectedServer?.tools || [];
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium flex items-center gap-1.5"><Server size={12} /> MCP Server</Label>
+        {activeServers.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-1">No active MCP servers available.</p>
+        ) : (
+          <Select value={selectedServerId} onValueChange={(v) => { onServerChange(v); onToolChange(""); }}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select an active server…" /></SelectTrigger>
+            <SelectContent>
+              {activeServers.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+      {selectedServerId && (
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Tool</Label>
+          {tools.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-1">No tools on this server.</p>
+          ) : (
+            <Select value={selectedToolId} onValueChange={onToolChange}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a tool…" /></SelectTrigger>
+              <SelectContent>
+                {tools.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Helper: derive selectedTools string from server + tool ---
+function buildSelectedToolKey(server: MCPServer, toolId: string): string {
+  const tool = server.tools.find((t) => t.id === toolId);
+  if (!tool) return "";
+  return `${server.name.replace(/\s+/g, "")}.${tool.name.replace(/\s+/g, "")}`;
+}
+
+function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[]): { serverId: string; toolId: string } {
+  if (!selectedTools.length) return { serverId: "", toolId: "" };
+  const key = selectedTools[0]; // e.g. "Slack.SendMessage"
+  const dotIdx = key.indexOf(".");
+  if (dotIdx < 0) return { serverId: "", toolId: "" };
+  const serverPart = key.substring(0, dotIdx);
+  const toolPart = key.substring(dotIdx + 1);
+  for (const s of mcpServers) {
+    if (s.name.replace(/\s+/g, "") === serverPart) {
+      const tool = s.tools.find((t) => t.name.replace(/\s+/g, "") === toolPart);
+      if (tool) return { serverId: s.id, toolId: tool.id };
+    }
+  }
+  return { serverId: "", toolId: "" };
+}
+
+function formatToolLabel(mcpServers: MCPServer[], selectedTools: string[]): string {
+  if (!selectedTools.length) return "";
+  const { serverId, toolId } = deriveServerAndTool(mcpServers, selectedTools);
+  const server = mcpServers.find((s) => s.id === serverId);
+  const tool = server?.tools.find((t) => t.id === toolId);
+  if (server && tool) return `${server.name} → ${tool.name}`;
+  return selectedTools[0];
+}
+
 // --- Main Component ---
 interface BusinessPoliciesCardProps {
   policies: BusinessPolicy[];
@@ -201,27 +284,15 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   const [editPolicy, setEditPolicy] = useState<BusinessPolicy | null>(null);
 
   const [policyName, setPolicyName] = useState("");
-  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [selectedServerId, setSelectedServerId] = useState("");
+  const [selectedToolId, setSelectedToolId] = useState("");
   const [conditions, setConditions] = useState<PolicyCondition[]>([]);
   const [selectedAction, setSelectedAction] = useState("block");
 
-  // Build flat list of tool identifiers from MCP servers
-  const availableTools = mcpServers.flatMap((server) =>
-    server.tools.map((tool) => ({
-      id: `${server.name.replace(/\s+/g, "")}.${tool.name.replace(/\s+/g, "")}`,
-      label: `${server.name} → ${tool.name}`,
-    }))
-  );
-
-  const toggleTool = (toolId: string) => {
-    setSelectedTools((prev) =>
-      prev.includes(toolId) ? prev.filter((t) => t !== toolId) : [...prev, toolId]
-    );
-  };
-
   const resetForm = () => {
     setPolicyName("");
-    setSelectedTools([]);
+    setSelectedServerId("");
+    setSelectedToolId("");
     setConditions([]);
     setSelectedAction("block");
   };
@@ -238,13 +309,21 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
     setConditions((prev) => prev.filter((c) => c.id !== id));
   };
 
+  // Scoped servers for attribute picker (only the selected server)
+  const scopedServers = mcpServers.filter((s) => s.id === selectedServerId);
+
+  const selectedServer = mcpServers.find((s) => s.id === selectedServerId);
+  const canSave = policyName.trim() && selectedServerId && selectedToolId && conditions.length > 0;
+
   const handleCreate = () => {
-    if (!policyName.trim() || conditions.length === 0 || selectedTools.length === 0) return;
+    if (!canSave || !selectedServer) return;
+    const toolKey = buildSelectedToolKey(selectedServer, selectedToolId);
+    if (!toolKey) return;
     const newPolicy: BusinessPolicy = {
       id: `bp-${Date.now()}`,
       name: policyName.trim(),
       active: true,
-      selectedTools: [...selectedTools],
+      selectedTools: [toolKey],
       conditions: conditions.filter((c) => c.attribute.trim()),
       action: selectedAction,
     };
@@ -256,13 +335,18 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   };
 
   const handleSaveEdit = () => {
-    if (!editPolicy) return;
-    const updated = policies.map((p) => p.id === editPolicy.id ? { ...editPolicy, selectedTools: [...selectedTools], conditions: conditions.filter((c) => c.attribute.trim()), action: selectedAction } : p);
+    if (!editPolicy || !selectedServer) return;
+    const toolKey = buildSelectedToolKey(selectedServer, selectedToolId);
+    if (!toolKey) return;
+    const updated = policies.map((p) =>
+      p.id === editPolicy.id
+        ? { ...editPolicy, selectedTools: [toolKey], conditions: conditions.filter((c) => c.attribute.trim()), action: selectedAction }
+        : p
+    );
     onPoliciesChange(updated);
     saveBusinessPolicies(updated);
     setEditPolicy(null);
-    setSelectedTools([]);
-    setConditions([]);
+    resetForm();
   };
 
   const toggleActive = (id: string) => {
@@ -279,13 +363,69 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
 
   const openEdit = (policy: BusinessPolicy) => {
     setEditPolicy(policy);
-    setSelectedTools([...(policy.selectedTools || [])]);
+    const { serverId, toolId } = deriveServerAndTool(mcpServers, policy.selectedTools || []);
+    setSelectedServerId(serverId);
+    setSelectedToolId(toolId);
     setConditions([...policy.conditions]);
     setSelectedAction(policy.action || "block");
   };
 
   const operatorLabel = (op: string) => operators.find((o) => o.value === op)?.label || op;
   const actionLabel = (a: string) => actions.find((ac) => ac.value === a)?.label || a;
+
+  // Shared form content for create/edit dialogs
+  const renderForm = (isEdit: boolean) => (
+    <div className="mt-2 space-y-4">
+      {!isEdit && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">Policy Name</Label>
+          <Input placeholder="e.g. Invoice Amount Check" value={policyName} onChange={(e) => setPolicyName(e.target.value)} className="h-8 text-xs" />
+        </div>
+      )}
+      {/* Server & Tool selector */}
+      <ServerToolSelector
+        mcpServers={mcpServers}
+        selectedServerId={selectedServerId}
+        selectedToolId={selectedToolId}
+        onServerChange={setSelectedServerId}
+        onToolChange={setSelectedToolId}
+      />
+      {/* Condition builder */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-medium">Conditions (AND logic)</Label>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={addCondition}>
+            <Plus size={12} className="mr-1" /> Add Condition
+          </Button>
+        </div>
+        {conditions.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-2">No conditions. Click "Add Condition" to start.</p>
+        )}
+        {conditions.map((c) => (
+          <ConditionRow key={c.id} condition={c} mcpServers={scopedServers} onUpdate={updateCondition} onRemove={removeCondition} />
+        ))}
+      </div>
+      {/* Action selector */}
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium">Action (when conditions match)</Label>
+        <Select value={selectedAction} onValueChange={setSelectedAction}>
+          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {actions.map((a) => (
+              <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <Button
+        className="w-full"
+        onClick={isEdit ? handleSaveEdit : handleCreate}
+        disabled={isEdit ? (!selectedServerId || !selectedToolId || conditions.length === 0) : !canSave}
+      >
+        {isEdit ? "Save Changes" : "Create Policy"}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
@@ -300,127 +440,21 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Business Policy</DialogTitle>
-              <DialogDescription>Define conditional expressions on tool payload attributes.</DialogDescription>
+              <DialogDescription>Select an active MCP server and tool, then define conditions.</DialogDescription>
             </DialogHeader>
-            <div className="mt-2 space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Policy Name</Label>
-                <Input placeholder="e.g. Invoice Amount Check" value={policyName} onChange={(e) => setPolicyName(e.target.value)} className="h-8 text-xs" />
-              </div>
-              {/* Tool selector */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Apply to Tools</Label>
-                {availableTools.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-1">No tools available. Configure MCP servers first.</p>
-                ) : (
-                  <ScrollArea className="max-h-36 rounded border border-border p-2">
-                    <div className="space-y-1.5">
-                      {availableTools.map((tool) => (
-                        <label key={tool.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted rounded px-1 py-0.5">
-                          <Checkbox checked={selectedTools.includes(tool.id)} onCheckedChange={() => toggleTool(tool.id)} className="h-3.5 w-3.5" />
-                          <span className="text-foreground">{tool.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-                {selectedTools.length > 0 && (
-                  <p className="text-[11px] text-muted-foreground">{selectedTools.length} tool{selectedTools.length !== 1 ? "s" : ""} selected</p>
-                )}
-              </div>
-              {/* Condition builder */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Conditions (AND logic)</Label>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={addCondition}>
-                    <Plus size={12} className="mr-1" /> Add Condition
-                  </Button>
-                </div>
-                {conditions.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-2">No conditions. Click "Add Condition" to start.</p>
-                )}
-              {conditions.map((c) => (
-                  <ConditionRow key={c.id} condition={c} mcpServers={mcpServers} onUpdate={updateCondition} onRemove={removeCondition} />
-                ))}
-              </div>
-              {/* Action selector */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Action (when conditions match)</Label>
-                <Select value={selectedAction} onValueChange={setSelectedAction}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {actions.map((a) => (
-                      <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full" onClick={handleCreate} disabled={!policyName.trim() || conditions.length === 0 || selectedTools.length === 0}>
-                Create Policy
-              </Button>
-            </div>
+            {renderForm(false)}
           </DialogContent>
         </Dialog>
       </div>
 
       {/* Edit dialog */}
-      <Dialog open={!!editPolicy} onOpenChange={(v) => { if (!v) { setEditPolicy(null); setSelectedTools([]); setConditions([]); } }}>
+      <Dialog open={!!editPolicy} onOpenChange={(v) => { if (!v) { setEditPolicy(null); resetForm(); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit: {editPolicy?.name}</DialogTitle>
-            <DialogDescription>Modify tool scope and conditions for this policy.</DialogDescription>
+            <DialogDescription>Modify server, tool, and conditions for this policy.</DialogDescription>
           </DialogHeader>
-          <div className="mt-2 space-y-4">
-            {/* Tool selector */}
-            <div className="space-y-2">
-              <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Apply to Tools</Label>
-              {availableTools.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-1">No tools available.</p>
-              ) : (
-                <ScrollArea className="max-h-36 rounded border border-border p-2">
-                  <div className="space-y-1.5">
-                    {availableTools.map((tool) => (
-                      <label key={tool.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted rounded px-1 py-0.5">
-                        <Checkbox checked={selectedTools.includes(tool.id)} onCheckedChange={() => toggleTool(tool.id)} className="h-3.5 w-3.5" />
-                        <span className="text-foreground">{tool.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
-              {selectedTools.length > 0 && (
-                <p className="text-[11px] text-muted-foreground">{selectedTools.length} tool{selectedTools.length !== 1 ? "s" : ""} selected</p>
-              )}
-            </div>
-            {/* Conditions */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Conditions (AND logic)</Label>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={addCondition}>
-                  <Plus size={12} className="mr-1" /> Add Condition
-                </Button>
-              </div>
-              {conditions.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">No conditions. Click "Add Condition" to start.</p>
-              )}
-              {conditions.map((c) => (
-                <ConditionRow key={c.id} condition={c} mcpServers={mcpServers} onUpdate={updateCondition} onRemove={removeCondition} />
-              ))}
-            </div>
-            {/* Action selector */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Action (when conditions match)</Label>
-              <Select value={selectedAction} onValueChange={setSelectedAction}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {actions.map((a) => (
-                    <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button className="w-full" onClick={handleSaveEdit}>Save Changes</Button>
-          </div>
+          {renderForm(true)}
         </DialogContent>
       </Dialog>
 
@@ -436,9 +470,8 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
             <div className="min-w-0 flex-1">
               <span className="text-sm font-medium text-foreground">{policy.name}</span>
               <p className="text-xs text-muted-foreground">
-                {(policy.selectedTools || []).length > 0
-                  ? `${(policy.selectedTools || []).length} tool${(policy.selectedTools || []).length !== 1 ? "s" : ""} · `
-                  : ""}
+                {formatToolLabel(mcpServers, policy.selectedTools || [])}
+                {(policy.selectedTools || []).length > 0 ? " · " : ""}
                 {policy.conditions.length} condition{policy.conditions.length !== 1 ? "s" : ""} · {actionLabel(policy.action || "block")}
               </p>
             </div>
@@ -454,11 +487,9 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
                   {(policy.selectedTools || []).length > 0 && (
                     <div>
                       <p className="text-[11px] font-medium text-muted-foreground mb-1">Applied to:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {(policy.selectedTools || []).map((t) => (
-                          <span key={t} className="inline-flex items-center rounded bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">{t}</span>
-                        ))}
-                      </div>
+                      <span className="inline-flex items-center rounded bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
+                        {formatToolLabel(mcpServers, policy.selectedTools || [])}
+                      </span>
                     </div>
                   )}
                   <div className="mt-1">
