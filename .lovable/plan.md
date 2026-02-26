@@ -1,41 +1,126 @@
 
 
-# Add Native Tools to Tools Filter Security Policy
+# Standardize Status Badges and Dropdown Action Menus Across All Cards
 
 ## Overview
 
-Add "Native Tools" as a selectable option in the Tools Filter policy dialog alongside MCP servers, allowing users to exclude native tools (from the Agent tab's Tools card).
+Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
 
 ## Changes
 
-### 1. `src/components/ToolsCard.tsx`
+### 1. `src/components/MCPServersCard.tsx`
 
-- Export the `nativeTools` array so it can be imported by SecurityPoliciesCard.
+**Add Activate/Deactivate to dropdown menu:**
 
-### 2. `src/components/SecurityPoliciesCard.tsx`
+The MCP Servers card already has the dropdown menu pattern. Changes needed:
+- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
+- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
+- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
 
-**Server dropdown — add "Native Tools" entry:**
+Updated dropdown items:
+- Edit
+- Refresh Metadata
+- Separator
+- Activate / Deactivate (dynamic label based on current status)
+- Separator
+- Remove (destructive)
 
-- Add a synthetic "native-tools" option to the server `<Select>` dropdown, labeled "Native Tools", appearing before the active MCP servers.
+**Add toggle handler:**
+```typescript
+const handleToggleStatus = (serverId: string) => {
+  const updated = servers.map((s) =>
+    s.id === serverId
+      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
+      : s
+  );
+  updateServers(updated);
+};
+```
 
-**Tool list resolution — handle native tools:**
+### 2. `src/components/MCPGatewayCard.tsx`
 
-- When `toolsFilterServerId === "native-tools"`, populate `serverTools` from the exported `nativeTools` array (map to `MCPServerTool` shape: `{ id, name, description: "" }`).
+**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
 
-**Save handler — handle native tools:**
+**Replace gateway row controls (lines 700-712):**
 
-- When saving with `serverId: "native-tools"`, set `serverName: "Native Tools"` in the config.
-- The `excludedTools` array will contain native tool IDs (e.g., "1", "2", etc.).
+Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
+- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
+- A three-dots `DropdownMenu` with:
+  - Edit
+  - Separator
+  - Activate / Deactivate (dynamic)
+  - Separator
+  - Delete (destructive)
 
-**Edit handler — handle native tools:**
+**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
 
-- When editing a Tools Filter policy with `config.serverId === "native-tools"`, pre-populate correctly from the native tools list.
+**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
 
-### Result
+### 3. `src/components/SecurityPoliciesCard.tsx`
 
-The Tools Filter dialog dropdown shows:
-- **Native Tools** (always available, no "Active" status requirement)
-- Active MCP Servers (existing behavior)
+**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
 
-Users can exclude native tools the same way they exclude MCP server tools.
+**Replace policy row controls (lines 474-482):**
+
+Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
+- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
+- A three-dots `DropdownMenu` with:
+  - Edit (only if `hasEditableConfig`)
+  - Separator (only if edit shown)
+  - Activate / Deactivate (dynamic)
+  - Separator
+  - Delete (destructive)
+
+**Add StatusBadge component** (same green/olive pattern).
+
+### 4. `src/components/BusinessPoliciesCard.tsx`
+
+**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
+
+**Replace policy row controls (lines 484-488):**
+
+Remove the `Switch` and `Trash2` button. Replace with:
+- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
+- A three-dots `DropdownMenu` with:
+  - Edit (calls existing `openEdit(policy)`)
+  - Separator
+  - Activate / Deactivate (dynamic)
+  - Separator
+  - Delete (destructive)
+
+Keep the existing `Eye` popover for viewing details -- it stays as-is.
+
+**Add StatusBadge component** (same pattern).
+
+## Consistent StatusBadge Pattern
+
+All four components will use the same styling:
+
+```typescript
+const StatusBadge = ({ status }: { status: string }) => {
+  const isActive = status === "Active";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+      isActive
+        ? "bg-redwood-green-light text-redwood-green"
+        : "bg-redwood-olive-light text-redwood-olive"
+    }`}>
+      {status}
+    </span>
+  );
+};
+```
+
+## Consistent Row Layout
+
+All card item rows follow:
+```text
+[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
+```
+
+## Summary of Removals
+- All `Switch` toggle components from item rows (and import cleanup where no longer used)
+- All standalone `Trash2` icon buttons from item rows
+- All standalone `Pencil` icon buttons from item rows
+- Status toggle section from MCP Servers edit dialog
 
