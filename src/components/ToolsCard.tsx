@@ -1,6 +1,6 @@
 import { MoreHorizontal, Plus, FileText, CheckSquare, FileSearch, GitMerge, ShieldCheck, Search } from "lucide-react";
 
-const nativeTools = [
+export const nativeTools = [
   { id: "1", name: "Risk Assessment", icon: ShieldCheck },
   { id: "2", name: "Get Invoice Details", icon: FileText },
   { id: "3", name: "Contract Search", icon: Search },

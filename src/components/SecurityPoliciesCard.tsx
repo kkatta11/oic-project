@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { MCPServer, MCPServerTool } from "@/components/MCPServersCard";
+import { nativeTools } from "@/components/ToolsCard";
 
 const iconMap: Record<string, LucideIcon> = {
   ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock, Filter,
@@ -248,8 +249,10 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
 
   const activeServers = mcpServers.filter((s) => s.status === "Active");
 
-  const selectedServer = mcpServers.find((s) => s.id === toolsFilterServerId);
-  const serverTools: MCPServerTool[] = selectedServer?.allTools ?? [];
+  const selectedServer = toolsFilterServerId === "native-tools" ? null : mcpServers.find((s) => s.id === toolsFilterServerId);
+  const serverTools: MCPServerTool[] = toolsFilterServerId === "native-tools"
+    ? nativeTools.map((t) => ({ id: t.id, name: t.name, description: "" }))
+    : selectedServer?.allTools ?? [];
 
   // Add flow
   const handleAddFromRepo = (template: typeof securityPolicyRepository[0]) => {
@@ -333,16 +336,19 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
 
   // Save Tools Filter
   const handleToolsFilterSave = () => {
-    if (!toolsFilterServerId || !selectedServer) return;
+    if (!toolsFilterServerId) return;
+    const isNative = toolsFilterServerId === "native-tools";
+    if (!isNative && !selectedServer) return;
+    const displayName = isNative ? "Native Tools" : selectedServer!.name;
     const config = {
-      serverId: selectedServer.id,
-      serverName: selectedServer.name,
+      serverId: toolsFilterServerId,
+      serverName: displayName,
       excludedTools: Array.from(toolsFilterExcluded),
     };
     if (toolsFilterEditPolicy) {
       const updated = policies.map((p) =>
         p.id === toolsFilterEditPolicy.id
-          ? { ...p, name: `Tools Filter: ${selectedServer.name}`, description: `Excludes ${toolsFilterExcluded.size} tool${toolsFilterExcluded.size !== 1 ? "s" : ""} from ${selectedServer.name}`, config }
+          ? { ...p, name: `Tools Filter: ${displayName}`, description: `Excludes ${toolsFilterExcluded.size} tool${toolsFilterExcluded.size !== 1 ? "s" : ""} from ${displayName}`, config }
           : p
       );
       onPoliciesChange(updated);
@@ -350,8 +356,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     } else {
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
-        name: `Tools Filter: ${selectedServer.name}`,
-        description: `Excludes ${toolsFilterExcluded.size} tool${toolsFilterExcluded.size !== 1 ? "s" : ""} from ${selectedServer.name}`,
+        name: `Tools Filter: ${displayName}`,
+        description: `Excludes ${toolsFilterExcluded.size} tool${toolsFilterExcluded.size !== 1 ? "s" : ""} from ${displayName}`,
         icon: "Filter",
         active: true,
         templateId: "t9",
@@ -546,24 +552,21 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">MCP Server</Label>
-              {activeServers.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">No active MCP servers available. Activate a server first.</p>
-              ) : (
-                <Select value={toolsFilterServerId} onValueChange={(v) => { setToolsFilterServerId(v); setToolsFilterExcluded(new Set()); }}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select a server" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeServers.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <Label className="text-xs font-medium">Tool Source</Label>
+              <Select value={toolsFilterServerId} onValueChange={(v) => { setToolsFilterServerId(v); setToolsFilterExcluded(new Set()); }}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select a source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="native-tools">Native Tools</SelectItem>
+                  {activeServers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {selectedServer && serverTools.length > 0 && (
+            {toolsFilterServerId && serverTools.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Exclude Tools ({toolsFilterExcluded.size} of {serverTools.length} excluded)</Label>
                 <div className="space-y-1 rounded-md border border-border p-3 max-h-48 overflow-y-auto">
@@ -586,7 +589,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setToolsFilterOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterExcluded.size === 0}>
+            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterExcluded.size === 0 || (toolsFilterServerId !== "native-tools" && !selectedServer)}>
               {toolsFilterEditPolicy ? "Save Changes" : "Add Policy"}
             </Button>
           </DialogFooter>
