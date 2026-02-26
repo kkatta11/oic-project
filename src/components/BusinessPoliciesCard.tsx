@@ -292,24 +292,35 @@ function buildSelectedToolKey(server: MCPServer, toolId: string): string {
   return `${server.name.replace(/\s+/g, "")}.${tool.name.replace(/\s+/g, "")}`;
 }
 
-function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[]): { serverId: string; toolId: string } {
-  if (!selectedTools.length) return { serverId: "", toolId: "" };
-  const key = selectedTools[0]; // e.g. "Slack.SendMessage"
+function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[]): { serverId: string; toolId: string; toolSource: ToolSource } {
+  if (!selectedTools.length) return { serverId: "", toolId: "", toolSource: "mcp" };
+  const key = selectedTools[0];
+  if (key.startsWith("NativeTools.")) {
+    const toolName = key.substring("NativeTools.".length);
+    const nt = nativeTools.find((t) => t.name.replace(/\s+/g, "") === toolName);
+    return { serverId: "", toolId: nt?.id || "", toolSource: "native" };
+  }
   const dotIdx = key.indexOf(".");
-  if (dotIdx < 0) return { serverId: "", toolId: "" };
+  if (dotIdx < 0) return { serverId: "", toolId: "", toolSource: "mcp" };
   const serverPart = key.substring(0, dotIdx);
   const toolPart = key.substring(dotIdx + 1);
   for (const s of mcpServers) {
     if (s.name.replace(/\s+/g, "") === serverPart) {
       const tool = s.tools.find((t) => t.name.replace(/\s+/g, "") === toolPart);
-      if (tool) return { serverId: s.id, toolId: tool.id };
+      if (tool) return { serverId: s.id, toolId: tool.id, toolSource: "mcp" };
     }
   }
-  return { serverId: "", toolId: "" };
+  return { serverId: "", toolId: "", toolSource: "mcp" };
 }
 
 function formatToolLabel(mcpServers: MCPServer[], selectedTools: string[]): string {
   if (!selectedTools.length) return "";
+  const key = selectedTools[0];
+  if (key.startsWith("NativeTools.")) {
+    const toolName = key.substring("NativeTools.".length);
+    const nt = nativeTools.find((t) => t.name.replace(/\s+/g, "") === toolName);
+    return `Native Tools → ${nt?.name || toolName}`;
+  }
   const { serverId, toolId } = deriveServerAndTool(mcpServers, selectedTools);
   const server = mcpServers.find((s) => s.id === serverId);
   const tool = server?.tools.find((t) => t.id === toolId);
