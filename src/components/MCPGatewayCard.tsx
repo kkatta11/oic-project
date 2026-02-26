@@ -2,9 +2,12 @@ import { useState } from "react";
 import {
   Plus, Server, Database, Globe, MessageSquare, FileJson, Mail,
   ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Lock,
-  Trash2, ChevronRight, ListChecks, Wrench, Pencil, AlertTriangle,
+  ChevronRight, ListChecks, Wrench, AlertTriangle, MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -17,7 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -229,8 +231,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setOpen(false);
   };
 
-  const handleDeleteGateway = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteGateway = (id: string) => {
     setGateways((prev) => {
       const updated = prev.filter((g) => g.id !== id);
       persistGateways(updated);
@@ -238,8 +239,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     });
   };
 
-  const handleToggleActive = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleToggleActive = (id: string) => {
     setGateways((prev) => {
       const updated = prev.map((gw) => gw.id === id ? { ...gw, active: !gw.active } : gw);
       persistGateways(updated);
@@ -247,8 +247,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     });
   };
 
-  const handleEditClick = (gw: SavedGateway, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEditClick = (gw: SavedGateway) => {
     setEditGateway(gw);
     setGatewayName(gw.name);
     // Restore icon references that are lost during JSON serialization
@@ -689,26 +688,34 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-foreground">{gw.name}</p>
-                <Badge variant={gw.active ? "default" : "secondary"} className="text-[10px]">
-                  {gw.active ? "Active" : "Inactive"}
-                </Badge>
               </div>
               <p className="text-xs text-muted-foreground">
                 {gw.servers.length} server{gw.servers.length !== 1 ? "s" : ""} · {gw.securityPolicies.length} security · {gw.businessPolicies.length} business
               </p>
             </div>
-            <Switch
-              checked={gw.active}
-              onCheckedChange={() => {}}
-              onClick={(e) => handleToggleActive(gw.id, e)}
-              className="shrink-0"
-            />
-            <button onClick={(e) => handleEditClick(gw, e)} className="text-muted-foreground hover:text-foreground" title="Edit gateway">
-              <Pencil size={14} />
-            </button>
-            <button onClick={(e) => handleDeleteGateway(gw.id, e)} className="text-muted-foreground hover:text-destructive" title="Delete gateway">
-              <Trash2 size={14} />
-            </button>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${gw.active ? "bg-redwood-green-light text-redwood-green" : "bg-redwood-olive-light text-redwood-olive"}`}>
+              {gw.active ? "Active" : "Inactive"}
+            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button onClick={(e) => e.stopPropagation()} className="ml-1 text-muted-foreground hover:text-foreground">
+                  <MoreHorizontal size={16} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditClick(gw); }}>
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleActive(gw.id); }}>
+                  {gw.active ? "Deactivate" : "Activate"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteGateway(gw.id); }} className="text-destructive focus:text-destructive">
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <ChevronRight size={14} className="text-muted-foreground" />
           </div>
         ))}

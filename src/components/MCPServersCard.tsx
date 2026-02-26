@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
+
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -194,6 +194,15 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
   const [editSelectedToolIds, setEditSelectedToolIds] = useState<Set<string>>(new Set());
 
   const [refreshingServerId, setRefreshingServerId] = useState<string | null>(null);
+
+  const handleToggleStatus = (serverId: string) => {
+    const updated = servers.map((s) =>
+      s.id === serverId
+        ? { ...s, status: (s.status === "Active" ? "Configured" : "Active") as "Active" | "Configured" }
+        : s
+    );
+    updateServers(updated);
+  };
 
   const servers = externalServers ?? internalServers;
 
@@ -602,19 +611,6 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
                 </Select>
               </div>
             </div>
-            <div className="flex items-center justify-between rounded-md border border-border p-3">
-              <div>
-                <Label className="text-sm">Status</Label>
-                <p className="text-xs text-muted-foreground">{editStatus === "Active" ? "Server is active and available" : "Server is configured but inactive"}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{editStatus}</span>
-                <Switch
-                  checked={editStatus === "Active"}
-                  onCheckedChange={(checked) => setEditStatus(checked ? "Active" : "Configured")}
-                />
-              </div>
-            </div>
             <ToolChecklist tools={editAvailableTools} selectedIds={editSelectedToolIds} onToggle={toggleEditToolId} />
             <Button className="w-full" onClick={handleEditSave} disabled={!editName.trim() || editSelectedToolIds.size === 0}>
               Save Changes
@@ -661,6 +657,10 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
                   <DropdownMenuItem onClick={() => handleRefreshMetadata(server)} disabled={refreshingServerId === server.id}>
                     <RefreshCw size={14} className="mr-2" />
                     Refresh Metadata
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleToggleStatus(server.id)}>
+                    {server.status === "Active" ? "Deactivate" : "Activate"}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => handleRemove(server.id)} className="text-destructive focus:text-destructive">
