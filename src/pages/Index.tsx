@@ -47,8 +47,8 @@ const Index = () => {
       return (
         <>
           <MCPGatewayCard activeMCPServers={mcpServers} mcpServers={mcpServers} securityPolicies={securityPolicies} businessPolicies={businessPolicies} />
-          <MCPServersCard servers={mcpServers} onServersChange={setMcpServers} securityPolicies={securityPolicies} onPoliciesChange={setSecurityPolicies} />
-          <SecurityPoliciesCard policies={securityPolicies} onPoliciesChange={setSecurityPolicies} />
+          <MCPServersCard servers={mcpServers} onServersChange={setMcpServers} />
+          <SecurityPoliciesCard policies={securityPolicies} onPoliciesChange={setSecurityPolicies} mcpServers={mcpServers} />
           <BusinessPoliciesCard policies={businessPolicies} onPoliciesChange={setBusinessPolicies} mcpServers={mcpServers} />
         </>
       );

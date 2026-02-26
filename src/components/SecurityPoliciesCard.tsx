@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Database, Lock, MoreHorizontal, Pencil, type LucideIcon } from "lucide-react";
+import { Plus, ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Database, Lock, Filter, MoreHorizontal, Pencil, type LucideIcon } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { MCPServer, MCPServerTool } from "@/components/MCPServersCard";
 
 const iconMap: Record<string, LucideIcon> = {
-  ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock,
+  ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock, Filter,
 };
 
 export const securityPolicyRepository = [
@@ -25,6 +26,7 @@ export const securityPolicyRepository = [
   { templateId: "t6", name: "Payload Size", description: "Validate request size", icon: "Package" },
   { templateId: "t7", name: "SQL Injection", description: "Detect injection attempts", icon: "Database" },
   { templateId: "t8", name: "Encryption", description: "Prepare encrypted transmission", icon: "Lock" },
+  { templateId: "t9", name: "Tools Filter", description: "Exclude specific tools from MCP servers", icon: "Filter" },
 ];
 
 export interface SecurityPolicy {
@@ -153,6 +155,7 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
       { value: "fips", label: "FIPS" },
     ], default: [] },
   ],
+  // t9 — Tools Filter: custom handling, not standard schema
 };
 
 function getDefaultConfig(templateId: string): Record<string, any> {
@@ -164,6 +167,11 @@ function getDefaultConfig(templateId: string): Record<string, any> {
 }
 
 function getConfigSummary(templateId: string, config: Record<string, any>): string {
+  if (templateId === "t9") {
+    const serverName = config?.serverName || "Unknown";
+    const excluded = Array.isArray(config?.excludedTools) ? config.excludedTools.length : 0;
+    return `Server: ${serverName} · Excludes: ${excluded} tool${excluded !== 1 ? "s" : ""}`;
+  }
   const schema = policyConfigSchemas[templateId];
   if (!schema || schema.length === 0) return "";
   const parts: string[] = [];
@@ -184,7 +192,7 @@ function getConfigSummary(templateId: string, config: Record<string, any>): stri
     } else {
       parts.push(`${field.label}: ${val}${field.suffix ?? ""}`);
     }
-    if (parts.length >= 3) break; // keep summary short
+    if (parts.length >= 3) break;
   }
   return parts.join(" · ");
 }
@@ -198,7 +206,6 @@ function loadPolicies(): SecurityPolicy[] {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored) as SecurityPolicy[];
-      // migrate: ensure config exists
       return parsed.map((p) => ({ ...p, config: p.config ?? {} }));
     }
   } catch {}
@@ -214,28 +221,49 @@ function savePolicies(policies: SecurityPolicy[]) {
 interface SecurityPoliciesCardProps {
   policies: SecurityPolicy[];
   onPoliciesChange: (policies: SecurityPolicy[]) => void;
+  mcpServers?: MCPServer[];
 }
 
-const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCardProps) => {
+const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: SecurityPoliciesCardProps) => {
   const [addOpen, setAddOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [configTemplate, setConfigTemplate] = useState<typeof securityPolicyRepository[0] | null>(null);
   const [configEditPolicy, setConfigEditPolicy] = useState<SecurityPolicy | null>(null);
   const [configValues, setConfigValues] = useState<Record<string, any>>({});
 
+  // Tools Filter state
+  const [toolsFilterOpen, setToolsFilterOpen] = useState(false);
+  const [toolsFilterServerId, setToolsFilterServerId] = useState("");
+  const [toolsFilterExcluded, setToolsFilterExcluded] = useState<Set<string>>(new Set());
+  const [toolsFilterEditPolicy, setToolsFilterEditPolicy] = useState<SecurityPolicy | null>(null);
+
   const usedTemplateIds = new Set(policies.map((p) => p.templateId));
-  const availableTemplates = securityPolicyRepository.filter((t) => !usedTemplateIds.has(t.templateId));
+  // Tools Filter (t9) can be added multiple times (one per server), so don't exclude it
+  const availableTemplates = securityPolicyRepository.filter((t) => t.templateId === "t9" || !usedTemplateIds.has(t.templateId));
 
   const currentTemplateId = configEditPolicy?.templateId ?? configTemplate?.templateId ?? "";
   const schema = policyConfigSchemas[currentTemplateId] ?? [];
   const hasConfig = schema.length > 0;
   const dialogTitle = configEditPolicy ? `Edit: ${configEditPolicy.name}` : `Configure: ${configTemplate?.name ?? ""}`;
 
-  // Add flow: open config dialog (or add immediately if no config fields)
+  const activeServers = mcpServers.filter((s) => s.status === "Active");
+
+  const selectedServer = mcpServers.find((s) => s.id === toolsFilterServerId);
+  const serverTools: MCPServerTool[] = selectedServer?.allTools ?? [];
+
+  // Add flow
   const handleAddFromRepo = (template: typeof securityPolicyRepository[0]) => {
+    if (template.templateId === "t9") {
+      // Open Tools Filter dialog
+      setToolsFilterEditPolicy(null);
+      setToolsFilterServerId("");
+      setToolsFilterExcluded(new Set());
+      setAddOpen(false);
+      setToolsFilterOpen(true);
+      return;
+    }
     const templateSchema = policyConfigSchemas[template.templateId];
     if (!templateSchema || templateSchema.length === 0) {
-      // No config — add immediately
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
         name: template.name,
@@ -251,7 +279,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCa
       if (availableTemplates.length <= 1) setAddOpen(false);
       return;
     }
-    // Has config — open config dialog
     setConfigTemplate(template);
     setConfigEditPolicy(null);
     setConfigValues(getDefaultConfig(template.templateId));
@@ -261,7 +288,13 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCa
 
   // Edit flow
   const handleEditPolicy = (policy: SecurityPolicy) => {
-    if (policy.templateId.startsWith("auto-tool-filter-")) return;
+    if (policy.templateId === "t9") {
+      setToolsFilterEditPolicy(policy);
+      setToolsFilterServerId(policy.config?.serverId || "");
+      setToolsFilterExcluded(new Set(policy.config?.excludedTools || []));
+      setToolsFilterOpen(true);
+      return;
+    }
     const templateSchema = policyConfigSchemas[policy.templateId];
     if (!templateSchema || templateSchema.length === 0) return;
     setConfigEditPolicy(policy);
@@ -270,7 +303,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCa
     setConfigDialogOpen(true);
   };
 
-  // Save config (add or edit)
+  // Save config (add or edit) for standard policies
   const handleConfigSave = () => {
     if (configEditPolicy) {
       const updated = policies.map((p) =>
@@ -296,6 +329,49 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCa
     setConfigTemplate(null);
     setConfigEditPolicy(null);
     setConfigValues({});
+  };
+
+  // Save Tools Filter
+  const handleToolsFilterSave = () => {
+    if (!toolsFilterServerId || !selectedServer) return;
+    const config = {
+      serverId: selectedServer.id,
+      serverName: selectedServer.name,
+      excludedTools: Array.from(toolsFilterExcluded),
+    };
+    if (toolsFilterEditPolicy) {
+      const updated = policies.map((p) =>
+        p.id === toolsFilterEditPolicy.id
+          ? { ...p, name: `Tools Filter: ${selectedServer.name}`, description: `Excludes ${toolsFilterExcluded.size} tool${toolsFilterExcluded.size !== 1 ? "s" : ""} from ${selectedServer.name}`, config }
+          : p
+      );
+      onPoliciesChange(updated);
+      savePolicies(updated);
+    } else {
+      const newPolicy: SecurityPolicy = {
+        id: `sp-${Date.now()}`,
+        name: `Tools Filter: ${selectedServer.name}`,
+        description: `Excludes ${toolsFilterExcluded.size} tool${toolsFilterExcluded.size !== 1 ? "s" : ""} from ${selectedServer.name}`,
+        icon: "Filter",
+        active: true,
+        templateId: "t9",
+        config,
+      };
+      const updated = [...policies, newPolicy];
+      onPoliciesChange(updated);
+      savePolicies(updated);
+    }
+    setToolsFilterOpen(false);
+    setToolsFilterEditPolicy(null);
+  };
+
+  const toggleExcludedTool = (toolId: string) => {
+    setToolsFilterExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(toolId)) next.delete(toolId);
+      else next.add(toolId);
+      return next;
+    });
   };
 
   const updateConfigValue = (key: string, value: any) => {
@@ -366,7 +442,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCa
         </Dialog>
       </div>
 
-      {/* Config dialog (add / edit) */}
+      {/* Config dialog (add / edit) for standard policies */}
       <Dialog open={configDialogOpen} onOpenChange={(open) => {
         if (!open) {
           setConfigDialogOpen(false);
@@ -454,15 +530,77 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCa
         </DialogContent>
       </Dialog>
 
+      {/* Tools Filter dialog */}
+      <Dialog open={toolsFilterOpen} onOpenChange={(open) => {
+        if (!open) {
+          setToolsFilterOpen(false);
+          setToolsFilterEditPolicy(null);
+          setToolsFilterServerId("");
+          setToolsFilterExcluded(new Set());
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{toolsFilterEditPolicy ? "Edit Tools Filter" : "Add Tools Filter"}</DialogTitle>
+            <DialogDescription>Select an active MCP server and choose tools to exclude.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">MCP Server</Label>
+              {activeServers.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">No active MCP servers available. Activate a server first.</p>
+              ) : (
+                <Select value={toolsFilterServerId} onValueChange={(v) => { setToolsFilterServerId(v); setToolsFilterExcluded(new Set()); }}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select a server" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeServers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {selectedServer && serverTools.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Exclude Tools ({toolsFilterExcluded.size} of {serverTools.length} excluded)</Label>
+                <div className="space-y-1 rounded-md border border-border p-3 max-h-48 overflow-y-auto">
+                  {serverTools.map((tool) => (
+                    <label key={tool.id} className="flex items-start gap-2 py-1.5 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1">
+                      <Checkbox
+                        checked={toolsFilterExcluded.has(tool.id)}
+                        onCheckedChange={() => toggleExcludedTool(tool.id)}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground leading-tight">{tool.name}</p>
+                        <p className="text-xs text-muted-foreground">{tool.description}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setToolsFilterOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterExcluded.size === 0}>
+              {toolsFilterEditPolicy ? "Save Changes" : "Add Policy"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="divide-y divide-border">
         {policies.length === 0 && (
           <p className="px-5 py-4 text-sm text-muted-foreground">No security policies configured. Click + to add from the repository.</p>
         )}
         {policies.map((policy) => {
           const Icon = iconMap[policy.icon] || ShieldCheck;
-          const isAutoFilter = policy.templateId.startsWith("auto-tool-filter-");
-          const summary = !isAutoFilter ? getConfigSummary(policy.templateId, policy.config) : "";
-          const hasEditableConfig = !isAutoFilter && (policyConfigSchemas[policy.templateId]?.length ?? 0) > 0;
+          const summary = getConfigSummary(policy.templateId, policy.config);
+          const hasEditableConfig = policy.templateId === "t9" || (policyConfigSchemas[policy.templateId]?.length ?? 0) > 0;
           return (
             <div key={policy.id} className="flex items-center gap-3 px-5 py-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground">
@@ -510,18 +648,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange }: SecurityPoliciesCa
     </div>
   );
 };
-
-export function createToolFilterPolicy(serverId: string, serverName: string, blockedToolNames: string[]): SecurityPolicy {
-  return {
-    id: `sp-auto-${serverId}`,
-    name: `Tool Filter: ${serverName}`,
-    description: `Blocks: ${blockedToolNames.join(", ")}`,
-    icon: "ShieldCheck",
-    active: true,
-    templateId: `auto-tool-filter-${serverId}`,
-    config: {},
-  };
-}
 
 export { loadPolicies as loadSecurityPolicies, savePolicies as saveSecurityPolicies };
 export default SecurityPoliciesCard;

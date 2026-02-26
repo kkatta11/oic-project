@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Plus, Server, Database, Globe, MessageSquare, FileJson, Mail,
-  ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Lock,
+  ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Lock, Filter,
   ChevronRight, ListChecks, Wrench, AlertTriangle, MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -29,7 +29,7 @@ import type { BusinessPolicy } from "@/components/BusinessPoliciesCard";
 import type { MCPServer } from "@/components/MCPServersCard";
 
 const iconMap: Record<string, LucideIcon> = {
-  ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock,
+  ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock, Filter,
 };
 
 const catalogServers = [
@@ -86,7 +86,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       const stored = localStorage.getItem("mcp-gateways");
       if (!stored) return [];
       const parsed = JSON.parse(stored) as SavedGateway[];
-      // Migration: default active to true for old gateways
       return parsed.map((gw) => ({ ...gw, active: gw.active !== false }));
     } catch { return []; }
   });
@@ -103,25 +102,10 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
 
   const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>([]);
   const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>([]);
-  const [warnFilterPolicyId, setWarnFilterPolicyId] = useState<string | null>(null);
 
   // Edit mode state
   const [editGateway, setEditGateway] = useState<SavedGateway | null>(null);
   const isEditing = !!editGateway;
-
-  // Helper: auto-select tool filter policy for a given server name
-  const autoSelectFilterPolicy = (serverName: string) => {
-    const fullServer = mcpServers.find((ms) => ms.name === serverName);
-    if (!fullServer) return;
-    const filterPolicy = activeSecurityPolicies.find(
-      (p) => p.templateId === `auto-tool-filter-${fullServer.id}`
-    );
-    if (filterPolicy) {
-      setSelectedSecurityPolicies((prev) =>
-        prev.includes(filterPolicy.id) ? prev : [...prev, filterPolicy.id]
-      );
-    }
-  };
 
   const [catalogDetailOpen, setCatalogDetailOpen] = useState(false);
   const [catalogDetailServer, setCatalogDetailServer] = useState<typeof catalogServers[0] | null>(null);
@@ -152,7 +136,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       ...prev,
       { id: `rs-${Date.now()}`, name: serverName, url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server },
     ]);
-    autoSelectFilterPolicy(serverName);
     setNewServerName("");
     setNewServerUrl("");
     setAuthType("none");
@@ -173,21 +156,12 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       ...prev,
       { id: `cat-${Date.now()}`, name: catalogDetailServer.name, url: catalogUrl, transport: catalogTransport, auth: catalogAuth, icon: catalogDetailServer.icon },
     ]);
-    autoSelectFilterPolicy(catalogDetailServer.name);
     setCatalogDetailOpen(false);
     setCatalogDetailServer(null);
   };
 
   const toggleSecurityPolicy = (id: string) => {
-    const isCurrentlySelected = selectedSecurityPolicies.includes(id);
-    if (isCurrentlySelected) {
-      const policy = activeSecurityPolicies.find((p) => p.id === id);
-      if (policy?.templateId?.startsWith("auto-tool-filter-")) {
-        setWarnFilterPolicyId(id);
-        return;
-      }
-    }
-    setSelectedSecurityPolicies((prev) => isCurrentlySelected ? prev.filter((p) => p !== id) : [...prev, id]);
+    setSelectedSecurityPolicies((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
   };
 
   const toggleBusinessPolicy = (id: string) => {
@@ -201,7 +175,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   const handleCreate = () => {
     if (!gatewayName.trim()) return;
     if (isEditing) {
-      // Edit mode: update existing gateway
       setGateways((prev) => {
         const updated = prev.map((gw) =>
           gw.id === editGateway.id
@@ -212,7 +185,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
         return updated;
       });
     } else {
-      // Create mode
       const newGateway: SavedGateway = {
         id: `gw-${Date.now()}`,
         name: gatewayName.trim(),
@@ -250,7 +222,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   const handleEditClick = (gw: SavedGateway) => {
     setEditGateway(gw);
     setGatewayName(gw.name);
-    // Restore icon references that are lost during JSON serialization
     const restoredServers = gw.servers.map((srv) => {
       const catalogMatch = catalogServers.find((c) => c.name === srv.name);
       return { ...srv, icon: catalogMatch?.icon || Server };
@@ -266,14 +237,25 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setDetailOpen(true);
   };
 
-  // Build namespaced tools for gateway detail
+  // Build namespaced tools for gateway detail, respecting t9 Tools Filter exclusions
   const getNamespacedTools = (gw: SavedGateway) => {
+    // Collect excluded tool IDs from t9 policies selected in this gateway
+    const excludedToolIds = new Set<string>();
+    for (const pId of gw.securityPolicies) {
+      const pol = securityPolicies.find((p) => p.id === pId);
+      if (pol?.templateId === "t9" && Array.isArray(pol.config?.excludedTools)) {
+        pol.config.excludedTools.forEach((tid: string) => excludedToolIds.add(tid));
+      }
+    }
+
     const tools: { serverName: string; toolName: string; description: string }[] = [];
     for (const gwServer of gw.servers) {
       const fullServer = mcpServers.find((s) => s.name === gwServer.name);
       if (fullServer) {
         for (const tool of fullServer.tools) {
-          tools.push({ serverName: fullServer.name.replace(/ MCP Server$/, ""), toolName: tool.name, description: tool.description });
+          if (!excludedToolIds.has(tool.id)) {
+            tools.push({ serverName: fullServer.name.replace(/ MCP Server$/, ""), toolName: tool.name, description: tool.description });
+          }
         }
       }
     }
@@ -292,11 +274,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
           <DialogTrigger asChild>
             <button onClick={() => {
-              // Pre-select all active tool filter policies when opening the dialog
-              const autoFilterIds = activeSecurityPolicies
-                .filter((p) => p.templateId?.startsWith("auto-tool-filter-"))
-                .map((p) => p.id);
-              setSelectedSecurityPolicies(autoFilterIds);
+              setSelectedSecurityPolicies([]);
             }} className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
               <Plus size={16} />
             </button>
@@ -348,7 +326,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                                   auth: fullServer?.auth || "none",
                                   icon: s.icon,
                                 }]);
-                                autoSelectFilterPolicy(s.name);
                               }} className="h-7 text-xs">{added ? "Added" : "Add"}</Button>
                             </div>
                           );
@@ -540,7 +517,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
           </DialogHeader>
           {detailGateway && (
             <div className="mt-3 space-y-5">
-              {/* Deactivated warning */}
               {!detailGateway.active && (
                 <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3">
                   <AlertTriangle size={16} className="text-destructive shrink-0" />
@@ -716,31 +692,9 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <ChevronRight size={14} className="text-muted-foreground" />
           </div>
         ))}
       </div>
-
-      {/* Warning dialog for unchecking tool filter policy */}
-      <AlertDialog open={!!warnFilterPolicyId} onOpenChange={(open) => { if (!open) setWarnFilterPolicyId(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove Tool Filter Policy?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Removing this tool filter policy will expose unselected tools to the gateway. Are you sure you want to proceed?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setWarnFilterPolicyId(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              if (warnFilterPolicyId) {
-                setSelectedSecurityPolicies((prev) => prev.filter((p) => p !== warnFilterPolicyId));
-              }
-              setWarnFilterPolicyId(null);
-            }}>Confirm</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

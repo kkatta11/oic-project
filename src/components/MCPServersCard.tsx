@@ -3,7 +3,6 @@ import { MoreHorizontal, Plus, Server, Globe, Database, MessageSquare, FileJson,
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { type SecurityPolicy, createToolFilterPolicy, saveSecurityPolicies } from "@/components/SecurityPoliciesCard";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -11,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -121,30 +119,17 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// --- Tool Checklist Sub-component ---
-const ToolChecklist = ({
-  tools,
-  selectedIds,
-  onToggle,
-}: {
-  tools: MCPServerTool[];
-  selectedIds: Set<string>;
-  onToggle: (id: string) => void;
-}) => (
+// --- Read-only Tool List Sub-component ---
+const ToolList = ({ tools }: { tools: MCPServerTool[] }) => (
   <div className="space-y-1 rounded-md border border-border p-3 max-h-48 overflow-y-auto">
-    <p className="text-xs font-medium text-muted-foreground mb-2">Select tools to include</p>
+    <p className="text-xs font-medium text-muted-foreground mb-2">Discovered Tools ({tools.length})</p>
     {tools.map((tool) => (
-      <label key={tool.id} className="flex items-start gap-2 py-1.5 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1">
-        <Checkbox
-          checked={selectedIds.has(tool.id)}
-          onCheckedChange={() => onToggle(tool.id)}
-          className="mt-0.5"
-        />
+      <div key={tool.id} className="flex items-start gap-2 py-1.5 px-1 -mx-1">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground leading-tight">{tool.name}</p>
           <p className="text-xs text-muted-foreground">{tool.description}</p>
         </div>
-      </label>
+      </div>
     ))}
   </div>
 );
@@ -152,11 +137,9 @@ const ToolChecklist = ({
 interface MCPServersCardProps {
   servers?: MCPServer[];
   onServersChange?: (servers: MCPServer[]) => void;
-  securityPolicies?: SecurityPolicy[];
-  onPoliciesChange?: (policies: SecurityPolicy[]) => void;
 }
 
-const MCPServersCard = ({ servers: externalServers, onServersChange, securityPolicies = [], onPoliciesChange }: MCPServersCardProps) => {
+const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServersCardProps) => {
   const [internalServers, setInternalServers] = useState<MCPServer[]>(defaultServers);
   const [open, setOpen] = useState(false);
   const [serverName, setServerName] = useState("");
@@ -166,7 +149,6 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
 
   // Tool discovery state for Register New
   const [fetchedTools, setFetchedTools] = useState<MCPServerTool[]>([]);
-  const [selectedToolIds, setSelectedToolIds] = useState<Set<string>>(new Set());
   const [isFetching, setIsFetching] = useState(false);
   const [toolsFetched, setToolsFetched] = useState(false);
 
@@ -180,7 +162,6 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
   const [catalogTransport, setCatalogTransport] = useState("streamable-http");
   const [catalogAuth, setCatalogAuth] = useState("none");
   const [catalogTools, setCatalogTools] = useState<MCPServerTool[]>([]);
-  const [catalogSelectedToolIds, setCatalogSelectedToolIds] = useState<Set<string>>(new Set());
 
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
@@ -189,9 +170,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
   const [editUrl, setEditUrl] = useState("");
   const [editTransport, setEditTransport] = useState("streamable-http");
   const [editAuth, setEditAuth] = useState("none");
-  const [editStatus, setEditStatus] = useState<"Active" | "Configured">("Active");
   const [editAvailableTools, setEditAvailableTools] = useState<MCPServerTool[]>([]);
-  const [editSelectedToolIds, setEditSelectedToolIds] = useState<Set<string>>(new Set());
 
   const [refreshingServerId, setRefreshingServerId] = useState<string | null>(null);
 
@@ -214,61 +193,35 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
     }
   };
 
-  const updateFilterPolicy = (serverId: string, serverName: string, allTools: MCPServerTool[], selectedTools: MCPServerTool[]) => {
-    if (!onPoliciesChange) return;
-    const selectedIds = new Set(selectedTools.map((t) => t.id));
-    const blockedTools = allTools.filter((t) => !selectedIds.has(t.id));
-    const autoTemplateId = `auto-tool-filter-${serverId}`;
-    let updatedPolicies = securityPolicies.filter((p) => p.templateId !== autoTemplateId);
-    if (blockedTools.length > 0) {
-      updatedPolicies = [...updatedPolicies, createToolFilterPolicy(serverId, serverName, blockedTools.map((t) => t.name))];
-    }
-    onPoliciesChange(updatedPolicies);
-    saveSecurityPolicies(updatedPolicies);
-  };
-
   const handleFetchTools = () => {
     setIsFetching(true);
     setTimeout(() => {
       const tools = getToolsForServer(serverName.trim());
       setFetchedTools(tools);
-      setSelectedToolIds(new Set(tools.map((t) => t.id)));
       setToolsFetched(true);
       setIsFetching(false);
     }, 800);
   };
 
-  const toggleToolId = (id: string) => {
-    setSelectedToolIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const handleRegister = () => {
-    if (!serverName.trim()) return;
-    const selectedTools = fetchedTools.filter((t) => selectedToolIds.has(t.id));
+    if (!serverName.trim() || !toolsFetched) return;
     const serverId = `reg-${Date.now()}`;
     const newServer: MCPServer = {
       id: serverId,
       name: serverName.trim(),
       status: "Configured",
       icon: Server,
-      tools: selectedTools,
+      tools: fetchedTools,
       allTools: fetchedTools,
       url: serverUrl.trim(),
       transport: transportType,
       auth: authType,
     };
     updateServers([...servers, newServer]);
-    updateFilterPolicy(serverId, serverName.trim(), fetchedTools, selectedTools);
     setServerName("");
     setServerUrl("");
     setAuthType("none");
     setFetchedTools([]);
-    setSelectedToolIds(new Set());
     setToolsFetched(false);
     setOpen(false);
   };
@@ -281,49 +234,30 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
     setCatalogAuth("none");
     const tools = getToolsForServer(catalogServer.name);
     setCatalogTools(tools);
-    setCatalogSelectedToolIds(new Set(tools.map((t) => t.id)));
     setCatalogDetailOpen(true);
-  };
-
-  const toggleCatalogToolId = (id: string) => {
-    setCatalogSelectedToolIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   const handleCatalogConfirm = () => {
     if (!catalogDetailServer) return;
-    const selectedTools = catalogTools.filter((t) => catalogSelectedToolIds.has(t.id));
     const serverId = `cat-${Date.now()}`;
     const newServer: MCPServer = {
       id: serverId,
       name: catalogDetailServer.name,
       status: "Active",
       icon: catalogDetailServer.icon,
-      tools: selectedTools,
+      tools: catalogTools,
       allTools: catalogTools,
       url: catalogUrl,
       transport: catalogTransport,
       auth: catalogAuth,
     };
     updateServers([...servers, newServer]);
-    updateFilterPolicy(serverId, catalogDetailServer.name, catalogTools, selectedTools);
     setCatalogDetailOpen(false);
     setCatalogDetailServer(null);
   };
 
   const handleRemove = (id: string) => {
     updateServers(servers.filter((s) => s.id !== id));
-    // Remove auto-generated filter policy for this server
-    if (onPoliciesChange) {
-      const autoTemplateId = `auto-tool-filter-${id}`;
-      const updatedPolicies = securityPolicies.filter((p) => p.templateId !== autoTemplateId);
-      onPoliciesChange(updatedPolicies);
-      saveSecurityPolicies(updatedPolicies);
-    }
   };
 
   const resetRegisterForm = () => {
@@ -331,7 +265,6 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
     setServerUrl("");
     setAuthType("none");
     setFetchedTools([]);
-    setSelectedToolIds(new Set());
     setToolsFetched(false);
     setCatalogSearch("");
   };
@@ -340,17 +273,10 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
     setRefreshingServerId(server.id);
     setTimeout(() => {
       const freshTools = getToolsForServer(server.name);
-      const existingSelectedIds = new Set(server.tools.map((t) => t.id));
-      const freshIds = new Set(freshTools.map((t) => t.id));
-      // Preserve existing selections where IDs still exist; auto-select new tools
-      const newSelectedTools = freshTools.filter(
-        (t) => existingSelectedIds.has(t.id) || !server.allTools.some((old) => old.id === t.id)
-      );
       const updated = servers.map((s) =>
-        s.id === server.id ? { ...s, allTools: freshTools, tools: newSelectedTools } : s
+        s.id === server.id ? { ...s, allTools: freshTools, tools: freshTools } : s
       );
       updateServers(updated);
-      updateFilterPolicy(server.id, server.name, freshTools, newSelectedTools);
       setRefreshingServerId(null);
     }, 800);
   };
@@ -362,32 +288,19 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
     setEditUrl(server.url || "");
     setEditTransport(server.transport || "streamable-http");
     setEditAuth(server.auth || "none");
-    setEditStatus(server.status);
     const allTools = server.allTools.length > 0 ? server.allTools : getToolsForServer(server.name);
     setEditAvailableTools(allTools);
-    setEditSelectedToolIds(new Set(server.tools.map((t) => t.id)));
     setEditOpen(true);
-  };
-
-  const toggleEditToolId = (id: string) => {
-    setEditSelectedToolIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   const handleEditSave = () => {
     if (!editServerId || !editName.trim()) return;
-    const selectedTools = editAvailableTools.filter((t) => editSelectedToolIds.has(t.id));
     const updated = servers.map((s) =>
       s.id === editServerId
-        ? { ...s, name: editName.trim(), url: editUrl.trim(), transport: editTransport, auth: editAuth, status: editStatus, tools: selectedTools, allTools: editAvailableTools }
+        ? { ...s, name: editName.trim(), url: editUrl.trim(), transport: editTransport, auth: editAuth, tools: editAvailableTools, allTools: editAvailableTools }
         : s
     );
     updateServers(updated);
-    updateFilterPolicy(editServerId, editName.trim(), editAvailableTools, selectedTools);
     setEditOpen(false);
     setEditServerId(null);
   };
@@ -460,10 +373,10 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
                     )}
                   </Button>
                 ) : (
-                  <ToolChecklist tools={fetchedTools} selectedIds={selectedToolIds} onToggle={toggleToolId} />
+                  <ToolList tools={fetchedTools} />
                 )}
 
-                <Button className="w-full" onClick={handleRegister} disabled={!serverName.trim() || !toolsFetched || selectedToolIds.size === 0}>
+                <Button className="w-full" onClick={handleRegister} disabled={!serverName.trim() || !toolsFetched}>
                   Register Server
                 </Button>
               </TabsContent>
@@ -528,7 +441,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Connect {catalogDetailServer?.name}</DialogTitle>
-            <DialogDescription>Review details, select tools, and configure authorization.</DialogDescription>
+            <DialogDescription>Review details and configure authorization.</DialogDescription>
           </DialogHeader>
           {catalogDetailServer && (
             <div className="mt-3 space-y-4">
@@ -563,8 +476,8 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
                   </Select>
                 </div>
               </div>
-              <ToolChecklist tools={catalogTools} selectedIds={catalogSelectedToolIds} onToggle={toggleCatalogToolId} />
-              <Button className="w-full" onClick={handleCatalogConfirm} disabled={catalogSelectedToolIds.size === 0}>
+              <ToolList tools={catalogTools} />
+              <Button className="w-full" onClick={handleCatalogConfirm}>
                 Connect Server
               </Button>
             </div>
@@ -577,7 +490,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit MCP Server</DialogTitle>
-            <DialogDescription>Modify server configuration, status, and tool selection.</DialogDescription>
+            <DialogDescription>Modify server configuration.</DialogDescription>
           </DialogHeader>
           <div className="mt-3 space-y-4">
             <div className="space-y-2">
@@ -611,8 +524,8 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, securityPol
                 </Select>
               </div>
             </div>
-            <ToolChecklist tools={editAvailableTools} selectedIds={editSelectedToolIds} onToggle={toggleEditToolId} />
-            <Button className="w-full" onClick={handleEditSave} disabled={!editName.trim() || editSelectedToolIds.size === 0}>
+            <ToolList tools={editAvailableTools} />
+            <Button className="w-full" onClick={handleEditSave} disabled={!editName.trim()}>
               Save Changes
             </Button>
           </div>
