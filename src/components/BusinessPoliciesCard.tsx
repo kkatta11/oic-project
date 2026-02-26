@@ -367,15 +367,26 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
     setConditions((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // Scoped servers for attribute picker (only the selected server)
-  const scopedServers = mcpServers.filter((s) => s.id === selectedServerId);
+  // Scoped servers for attribute picker
+  const scopedServers = toolSource === "native"
+    ? [{ id: "native-tools", name: "Native Tools", status: "Active" as const, icon: "cpu", tools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), url: "", transport: "", authType: "" }]
+    : mcpServers.filter((s) => s.id === selectedServerId);
 
   const selectedServer = mcpServers.find((s) => s.id === selectedServerId);
-  const canSave = policyName.trim() && selectedServerId && selectedToolId && conditions.length > 0;
+  const canSave = policyName.trim() && selectedToolId && conditions.length > 0 && (toolSource === "native" || selectedServerId);
+
+  const buildToolKey = (): string => {
+    if (toolSource === "native") {
+      const nt = nativeTools.find((t) => t.id === selectedToolId);
+      return nt ? `NativeTools.${nt.name.replace(/\s+/g, "")}` : "";
+    }
+    if (!selectedServer) return "";
+    return buildSelectedToolKey(selectedServer, selectedToolId);
+  };
 
   const handleCreate = () => {
-    if (!canSave || !selectedServer) return;
-    const toolKey = buildSelectedToolKey(selectedServer, selectedToolId);
+    if (!canSave) return;
+    const toolKey = buildToolKey();
     if (!toolKey) return;
     const newPolicy: BusinessPolicy = {
       id: `bp-${Date.now()}`,
@@ -393,8 +404,8 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   };
 
   const handleSaveEdit = () => {
-    if (!editPolicy || !selectedServer) return;
-    const toolKey = buildSelectedToolKey(selectedServer, selectedToolId);
+    if (!editPolicy) return;
+    const toolKey = buildToolKey();
     if (!toolKey) return;
     const updated = policies.map((p) =>
       p.id === editPolicy.id
@@ -421,7 +432,8 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
 
   const openEdit = (policy: BusinessPolicy) => {
     setEditPolicy(policy);
-    const { serverId, toolId } = deriveServerAndTool(mcpServers, policy.selectedTools || []);
+    const { serverId, toolId, toolSource: ts } = deriveServerAndTool(mcpServers, policy.selectedTools || []);
+    setToolSource(ts);
     setSelectedServerId(serverId);
     setSelectedToolId(toolId);
     setConditions([...policy.conditions]);
@@ -443,6 +455,8 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
       {/* Server & Tool selector */}
       <ServerToolSelector
         mcpServers={mcpServers}
+        toolSource={toolSource}
+        onToolSourceChange={setToolSource}
         selectedServerId={selectedServerId}
         selectedToolId={selectedToolId}
         onServerChange={setSelectedServerId}
