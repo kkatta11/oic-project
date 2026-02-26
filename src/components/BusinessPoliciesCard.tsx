@@ -492,7 +492,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
       <Button
         className="w-full"
         onClick={isEdit ? handleSaveEdit : handleCreate}
-        disabled={isEdit ? (!selectedServerId || !selectedToolId || conditions.length === 0) : !canSave}
+        disabled={isEdit ? (!selectedToolId || conditions.length === 0 || (toolSource === "mcp" && !selectedServerId)) : !canSave}
       >
         {isEdit ? "Save Changes" : "Create Policy"}
       </Button>
