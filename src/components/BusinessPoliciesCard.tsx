@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, ListChecks, Eye, FolderSearch, Wrench, MoreHorizontal, Pencil, Server } from "lucide-react";
+import { Plus, X, ListChecks, Eye, FolderSearch, Wrench, MoreHorizontal, Pencil, Server, Cpu } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MCPServer } from "@/components/MCPServersCard";
+import { nativeTools } from "@/components/ToolsCard";
 
 export interface PolicyCondition {
   id: string;
@@ -72,6 +73,13 @@ const toolPayloadAttributes: Record<string, string[]> = {
   "Execute": ["action", "parameters"],
   "Query": ["query", "format"],
   "List Resources": ["type", "limit"],
+  // Native tools
+  "Risk Assessment": ["vendor_id", "amount", "risk_level", "category", "country"],
+  "Get Invoice Details": ["invoice_id", "vendor_id", "date_range", "status"],
+  "Contract Search": ["query", "vendor_id", "contract_type", "status"],
+  "Validate and Create Invoice": ["invoice_data", "vendor_id", "amount", "currency", "line_items"],
+  "Extract Invoice Data": ["document_url", "format", "language"],
+  "Match PO": ["invoice_id", "po_number", "vendor_id", "tolerance"],
 };
 
 export function loadBusinessPolicies(): BusinessPolicy[] {
@@ -188,58 +196,95 @@ const ConditionRow = ({ condition, mcpServers, onUpdate, onRemove }: ConditionRo
   </div>
 );
 
-// --- Server/Tool Selector ---
+// --- Server/Tool Selector with Native Tools toggle ---
+type ToolSource = "mcp" | "native";
+
 interface ServerToolSelectorProps {
   mcpServers: MCPServer[];
+  toolSource: ToolSource;
+  onToolSourceChange: (source: ToolSource) => void;
   selectedServerId: string;
   selectedToolId: string;
   onServerChange: (serverId: string) => void;
   onToolChange: (toolId: string) => void;
 }
 
-const ServerToolSelector = ({ mcpServers, selectedServerId, selectedToolId, onServerChange, onToolChange }: ServerToolSelectorProps) => {
+const ServerToolSelector = ({ mcpServers, toolSource, onToolSourceChange, selectedServerId, selectedToolId, onServerChange, onToolChange }: ServerToolSelectorProps) => {
   const activeServers = mcpServers.filter((s) => s.status === "Active");
   const selectedServer = activeServers.find((s) => s.id === selectedServerId);
   const tools = selectedServer?.tools || [];
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium flex items-center gap-1.5"><Server size={12} /> MCP Server</Label>
-        {activeServers.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-1">No active MCP servers available.</p>
-        ) : (
-          <Select value={selectedServerId} onValueChange={(v) => { onServerChange(v); onToolChange(""); }}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select an active server…" /></SelectTrigger>
+      {/* Toggle */}
+      <div className="flex gap-1 rounded-md border border-border p-0.5 bg-muted/50">
+        <button
+          type="button"
+          className={`flex-1 flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${toolSource === "native" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          onClick={() => { onToolSourceChange("native"); onServerChange(""); onToolChange(""); }}
+        >
+          <Cpu size={12} /> Native Tools
+        </button>
+        <button
+          type="button"
+          className={`flex-1 flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${toolSource === "mcp" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          onClick={() => { onToolSourceChange("mcp"); onToolChange(""); }}
+        >
+          <Server size={12} /> MCP Server
+        </button>
+      </div>
+
+      {toolSource === "native" ? (
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium flex items-center gap-1.5"><Cpu size={12} /> Native Tool</Label>
+          <Select value={selectedToolId} onValueChange={onToolChange}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a native tool…" /></SelectTrigger>
             <SelectContent>
-              {activeServers.map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              {nativeTools.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-        )}
-      </div>
-      {selectedServerId && (
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Tool</Label>
-          {tools.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-1">No tools on this server.</p>
-          ) : (
-            <Select value={selectedToolId} onValueChange={onToolChange}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a tool…" /></SelectTrigger>
-              <SelectContent>
-                {tools.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
+      ) : (
+        <>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium flex items-center gap-1.5"><Server size={12} /> MCP Server</Label>
+            {activeServers.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-1">No active MCP servers available.</p>
+            ) : (
+              <Select value={selectedServerId} onValueChange={(v) => { onServerChange(v); onToolChange(""); }}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select an active server…" /></SelectTrigger>
+                <SelectContent>
+                  {activeServers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          {selectedServerId && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Tool</Label>
+              {tools.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-1">No tools on this server.</p>
+              ) : (
+                <Select value={selectedToolId} onValueChange={onToolChange}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a tool…" /></SelectTrigger>
+                  <SelectContent>
+                    {tools.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 };
-
 // --- Helper: derive selectedTools string from server + tool ---
 function buildSelectedToolKey(server: MCPServer, toolId: string): string {
   const tool = server.tools.find((t) => t.id === toolId);
@@ -247,24 +292,35 @@ function buildSelectedToolKey(server: MCPServer, toolId: string): string {
   return `${server.name.replace(/\s+/g, "")}.${tool.name.replace(/\s+/g, "")}`;
 }
 
-function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[]): { serverId: string; toolId: string } {
-  if (!selectedTools.length) return { serverId: "", toolId: "" };
-  const key = selectedTools[0]; // e.g. "Slack.SendMessage"
+function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[]): { serverId: string; toolId: string; toolSource: ToolSource } {
+  if (!selectedTools.length) return { serverId: "", toolId: "", toolSource: "mcp" };
+  const key = selectedTools[0];
+  if (key.startsWith("NativeTools.")) {
+    const toolName = key.substring("NativeTools.".length);
+    const nt = nativeTools.find((t) => t.name.replace(/\s+/g, "") === toolName);
+    return { serverId: "", toolId: nt?.id || "", toolSource: "native" };
+  }
   const dotIdx = key.indexOf(".");
-  if (dotIdx < 0) return { serverId: "", toolId: "" };
+  if (dotIdx < 0) return { serverId: "", toolId: "", toolSource: "mcp" };
   const serverPart = key.substring(0, dotIdx);
   const toolPart = key.substring(dotIdx + 1);
   for (const s of mcpServers) {
     if (s.name.replace(/\s+/g, "") === serverPart) {
       const tool = s.tools.find((t) => t.name.replace(/\s+/g, "") === toolPart);
-      if (tool) return { serverId: s.id, toolId: tool.id };
+      if (tool) return { serverId: s.id, toolId: tool.id, toolSource: "mcp" };
     }
   }
-  return { serverId: "", toolId: "" };
+  return { serverId: "", toolId: "", toolSource: "mcp" };
 }
 
 function formatToolLabel(mcpServers: MCPServer[], selectedTools: string[]): string {
   if (!selectedTools.length) return "";
+  const key = selectedTools[0];
+  if (key.startsWith("NativeTools.")) {
+    const toolName = key.substring("NativeTools.".length);
+    const nt = nativeTools.find((t) => t.name.replace(/\s+/g, "") === toolName);
+    return `Native Tools → ${nt?.name || toolName}`;
+  }
   const { serverId, toolId } = deriveServerAndTool(mcpServers, selectedTools);
   const server = mcpServers.find((s) => s.id === serverId);
   const tool = server?.tools.find((t) => t.id === toolId);
@@ -284,6 +340,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   const [editPolicy, setEditPolicy] = useState<BusinessPolicy | null>(null);
 
   const [policyName, setPolicyName] = useState("");
+  const [toolSource, setToolSource] = useState<ToolSource>("mcp");
   const [selectedServerId, setSelectedServerId] = useState("");
   const [selectedToolId, setSelectedToolId] = useState("");
   const [conditions, setConditions] = useState<PolicyCondition[]>([]);
@@ -291,6 +348,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
 
   const resetForm = () => {
     setPolicyName("");
+    setToolSource("mcp");
     setSelectedServerId("");
     setSelectedToolId("");
     setConditions([]);
@@ -309,15 +367,26 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
     setConditions((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // Scoped servers for attribute picker (only the selected server)
-  const scopedServers = mcpServers.filter((s) => s.id === selectedServerId);
+  const nativeServerProxy: MCPServer[] = toolSource === "native"
+    ? [{ id: "native-tools", name: "Native Tools", status: "Active" as const, icon: Cpu, tools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), allTools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), url: "", transport: "", authType: "" } as MCPServer]
+    : [];
+  const scopedServers = toolSource === "native" ? nativeServerProxy : mcpServers.filter((s) => s.id === selectedServerId);
 
   const selectedServer = mcpServers.find((s) => s.id === selectedServerId);
-  const canSave = policyName.trim() && selectedServerId && selectedToolId && conditions.length > 0;
+  const canSave = policyName.trim() && selectedToolId && conditions.length > 0 && (toolSource === "native" || selectedServerId);
+
+  const buildToolKey = (): string => {
+    if (toolSource === "native") {
+      const nt = nativeTools.find((t) => t.id === selectedToolId);
+      return nt ? `NativeTools.${nt.name.replace(/\s+/g, "")}` : "";
+    }
+    if (!selectedServer) return "";
+    return buildSelectedToolKey(selectedServer, selectedToolId);
+  };
 
   const handleCreate = () => {
-    if (!canSave || !selectedServer) return;
-    const toolKey = buildSelectedToolKey(selectedServer, selectedToolId);
+    if (!canSave) return;
+    const toolKey = buildToolKey();
     if (!toolKey) return;
     const newPolicy: BusinessPolicy = {
       id: `bp-${Date.now()}`,
@@ -335,8 +404,8 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   };
 
   const handleSaveEdit = () => {
-    if (!editPolicy || !selectedServer) return;
-    const toolKey = buildSelectedToolKey(selectedServer, selectedToolId);
+    if (!editPolicy) return;
+    const toolKey = buildToolKey();
     if (!toolKey) return;
     const updated = policies.map((p) =>
       p.id === editPolicy.id
@@ -363,7 +432,8 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
 
   const openEdit = (policy: BusinessPolicy) => {
     setEditPolicy(policy);
-    const { serverId, toolId } = deriveServerAndTool(mcpServers, policy.selectedTools || []);
+    const { serverId, toolId, toolSource: ts } = deriveServerAndTool(mcpServers, policy.selectedTools || []);
+    setToolSource(ts);
     setSelectedServerId(serverId);
     setSelectedToolId(toolId);
     setConditions([...policy.conditions]);
@@ -385,6 +455,8 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
       {/* Server & Tool selector */}
       <ServerToolSelector
         mcpServers={mcpServers}
+        toolSource={toolSource}
+        onToolSourceChange={setToolSource}
         selectedServerId={selectedServerId}
         selectedToolId={selectedToolId}
         onServerChange={setSelectedServerId}
@@ -420,7 +492,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
       <Button
         className="w-full"
         onClick={isEdit ? handleSaveEdit : handleCreate}
-        disabled={isEdit ? (!selectedServerId || !selectedToolId || conditions.length === 0) : !canSave}
+        disabled={isEdit ? (!selectedToolId || conditions.length === 0 || (toolSource === "mcp" && !selectedServerId)) : !canSave}
       >
         {isEdit ? "Save Changes" : "Create Policy"}
       </Button>
