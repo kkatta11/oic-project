@@ -548,7 +548,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{toolsFilterEditPolicy ? "Edit Tools Filter" : "Add Tools Filter"}</DialogTitle>
-            <DialogDescription>Select an active MCP server and choose tools to exclude.</DialogDescription>
+            <DialogDescription>Select a tool source and choose tools to exclude.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
