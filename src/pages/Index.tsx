@@ -52,6 +52,24 @@ const Index = () => {
         </>
       );
     }
+    if (activeSidebarItem === "rpa") {
+      return <SimpleCard title="RPA" description="Robotic Process Automation — automate repetitive tasks across your enterprise applications." />;
+    }
+    if (activeSidebarItem === "hitl") {
+      return <SimpleCard title="HITL" description="Human-in-the-Loop — manage human review and approval steps within automated workflows." />;
+    }
+    if (activeSidebarItem === "decision") {
+      return <SimpleCard title="Decision" description="Decision engine — define and manage business rules and decision logic." />;
+    }
+    if (activeSidebarItem === "healthcare") {
+      return <SimpleCard title="Healthcare" description="Healthcare integrations — HL7, FHIR, and clinical data exchange workflows." />;
+    }
+    if (activeSidebarItem === "b2b") {
+      return <SimpleCard title="B2B" description="B2B commerce — manage EDI, partner onboarding, and trading partner integrations." />;
+    }
+    if (activeSidebarItem === "knowledge") {
+      return <SimpleCard title="Knowledge Base" description="Knowledge Base — curate and manage knowledge sources for AI-powered workflows." />;
+    }
     return (
       <IntegrationsCard integrations={integrations} />
     );

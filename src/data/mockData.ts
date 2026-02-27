@@ -48,4 +48,10 @@ export const sidebarItems = [
   { id: "integrations", label: "Integrations", icon: "GitBranch" as const },
   { id: "agent", label: "Agent", icon: "Bot" as const },
   { id: "gateway", label: "Gateway", icon: "ShieldCheck" as const },
+  { id: "rpa", label: "RPA", icon: "Cog" as const },
+  { id: "hitl", label: "HITL", icon: "Users" as const },
+  { id: "decision", label: "Decision", icon: "Scale" as const },
+  { id: "healthcare", label: "Healthcare", icon: "Heart" as const },
+  { id: "b2b", label: "B2B", icon: "Building2" as const },
+  { id: "knowledge", label: "Knowledge Base", icon: "BookOpen" as const },
 ];

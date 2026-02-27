@@ -1,4 +1,4 @@
-import { GitBranch, Plug, Search, Library, Clock, Package, Bot, Wrench, Workflow, FileText, Network, Server, ShieldCheck, BookOpen } from "lucide-react";
+import { GitBranch, Plug, Search, Library, Clock, Package, Bot, Wrench, Workflow, FileText, Network, Server, ShieldCheck, BookOpen, Cog, Users, Scale, Heart, Building2 } from "lucide-react";
 
 const iconMap = {
   GitBranch,
@@ -15,6 +15,11 @@ const iconMap = {
   Server,
   ShieldCheck,
   BookOpen,
+  Cog,
+  Users,
+  Scale,
+  Heart,
+  Building2,
 };
 
 interface SidebarNavProps {
