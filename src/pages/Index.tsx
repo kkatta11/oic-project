@@ -10,7 +10,8 @@ import SecurityPoliciesCard, { type SecurityPolicy, loadSecurityPolicies, saveSe
 import BusinessPoliciesCard, { type BusinessPolicy, loadBusinessPolicies, saveBusinessPolicies } from "@/components/BusinessPoliciesCard";
 import MCPGatewayCard from "@/components/MCPGatewayCard";
 import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
-import { integrations, sidebarItems } from "@/data/mockData";
+import { integrations, connections, sidebarItems } from "@/data/mockData";
+import ConnectionsCard from "@/components/ConnectionsCard";
 
 
 const tabs = ["Design", "Deploy", "Observe"];
@@ -89,7 +90,7 @@ const Index = () => {
     return (
       <>
         <IntegrationsCard integrations={integrations} />
-        <SimpleCard title="Connections" description="Manage connections to external systems and services." />
+        <ConnectionsCard connections={connections} />
         <SimpleCard title="Lookups" description="Configure lookup tables for data mapping and transformation." />
         <SimpleCard title="Libraries" description="Manage reusable libraries and shared resources." />
       </>
