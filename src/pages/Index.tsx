@@ -3,7 +3,6 @@ import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal } from "lucide-r
 import OracleHeader from "@/components/OracleHeader";
 import SidebarNav from "@/components/SidebarNav";
 import IntegrationsCard from "@/components/IntegrationsCard";
-import ConnectionsCard from "@/components/ConnectionsCard";
 import SimpleCard from "@/components/SimpleCard";
 import ToolsCard from "@/components/ToolsCard";
 import MCPServersCard, { type MCPServer, defaultServers as defaultMCPServers } from "@/components/MCPServersCard";
@@ -11,7 +10,7 @@ import SecurityPoliciesCard, { type SecurityPolicy, loadSecurityPolicies, saveSe
 import BusinessPoliciesCard, { type BusinessPolicy, loadBusinessPolicies, saveBusinessPolicies } from "@/components/BusinessPoliciesCard";
 import MCPGatewayCard from "@/components/MCPGatewayCard";
 import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
-import { integrations, connections, sidebarItems } from "@/data/mockData";
+import { integrations, sidebarItems } from "@/data/mockData";
 
 
 const tabs = ["Design", "Deploy", "Observe"];
@@ -54,12 +53,7 @@ const Index = () => {
       );
     }
     return (
-      <>
-        <IntegrationsCard integrations={integrations} />
-        <ConnectionsCard connections={connections} />
-        <SimpleCard title="Lookups" description="Map values between applications." />
-        <SimpleCard title="Libraries" description="Use JavaScript functions and libraries in your integrations." />
-      </>
+      <IntegrationsCard integrations={integrations} />
     );
   };
 

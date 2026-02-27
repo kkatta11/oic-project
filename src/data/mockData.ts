@@ -46,11 +46,6 @@ export const connections: Connection[] = [
 
 export const sidebarItems = [
   { id: "integrations", label: "Integrations", icon: "GitBranch" as const },
-  { id: "connections", label: "Connections", icon: "Plug" as const },
-  { id: "lookups", label: "Lookups", icon: "Search" as const },
-  { id: "libraries", label: "Libraries", icon: "Library" as const },
   { id: "agent", label: "Agent", icon: "Bot" as const },
   { id: "gateway", label: "Gateway", icon: "ShieldCheck" as const },
-  { id: "schedules", label: "Schedules", icon: "Clock" as const },
-  { id: "packages", label: "Packages", icon: "Package" as const },
 ];
