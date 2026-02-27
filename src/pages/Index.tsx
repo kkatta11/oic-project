@@ -53,13 +53,27 @@ const Index = () => {
       );
     }
     if (activeSidebarItem === "rpa") {
-      return <SimpleCard title="RPA" description="Robotic Process Automation — automate repetitive tasks across your enterprise applications." />;
+      return (
+        <>
+          <SimpleCard title="Robots" description="Configure and manage RPA robots for task automation." />
+          <SimpleCard title="Environment Pools" description="Define pools of environments where robots execute." />
+          <SimpleCard title="Robot Connection Types" description="Manage connection type definitions for robots." />
+          <SimpleCard title="Robot Connections" description="Configure active connections used by robots." />
+        </>
+      );
     }
     if (activeSidebarItem === "hitl") {
-      return <SimpleCard title="HITL" description="Human-in-the-Loop — manage human review and approval steps within automated workflows." />;
+      return (
+        <>
+          <SimpleCard title="Workflows" description="Design and manage human approval and review workflows." />
+          <SimpleCard title="Forms" description="Create forms for human input within automated processes." />
+        </>
+      );
     }
     if (activeSidebarItem === "decision") {
-      return <SimpleCard title="Decision" description="Decision engine — define and manage business rules and decision logic." />;
+      return (
+        <SimpleCard title="Decisions" description="Define and manage business rules and decision logic." />
+      );
     }
     if (activeSidebarItem === "healthcare") {
       return <SimpleCard title="Healthcare" description="Healthcare integrations — HL7, FHIR, and clinical data exchange workflows." />;
@@ -68,10 +82,17 @@ const Index = () => {
       return <SimpleCard title="B2B" description="B2B commerce — manage EDI, partner onboarding, and trading partner integrations." />;
     }
     if (activeSidebarItem === "knowledge") {
-      return <SimpleCard title="Knowledge Base" description="Knowledge Base — curate and manage knowledge sources for AI-powered workflows." />;
+      return (
+        <SimpleCard title="Knowledge Base" description="Curate and manage knowledge sources for AI-powered workflows." />
+      );
     }
     return (
-      <IntegrationsCard integrations={integrations} />
+      <>
+        <IntegrationsCard integrations={integrations} />
+        <SimpleCard title="Connections" description="Manage connections to external systems and services." />
+        <SimpleCard title="Lookups" description="Configure lookup tables for data mapping and transformation." />
+        <SimpleCard title="Libraries" description="Manage reusable libraries and shared resources." />
+      </>
     );
   };
 
