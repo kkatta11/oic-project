@@ -542,7 +542,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
           setToolsFilterOpen(false);
           setToolsFilterEditPolicy(null);
           setToolsFilterServerId("");
-          setToolsFilterExcluded(new Set());
+          setToolsFilterIncluded(new Set());
         }
       }}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
