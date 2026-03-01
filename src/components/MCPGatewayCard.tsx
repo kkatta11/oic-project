@@ -303,11 +303,11 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   };
 
   const getNamespacedTools = (gw: SavedGateway) => {
-    const excludedToolIds = new Set<string>();
+    const includedToolIds = new Set<string>();
     for (const pId of gw.securityPolicies) {
       const pol = securityPolicies.find((p) => p.id === pId);
-      if (pol?.templateId === "t9" && Array.isArray(pol.config?.excludedTools)) {
-        pol.config.excludedTools.forEach((tid: string) => excludedToolIds.add(tid));
+      if (pol?.templateId === "t9" && Array.isArray(pol.config?.includedTools)) {
+        pol.config.includedTools.forEach((tid: string) => includedToolIds.add(tid));
       }
     }
     const tools: { serverName: string; toolName: string; description: string }[] = [];
@@ -315,7 +315,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       const fullServer = mcpServers.find((s) => s.name === gwServer.name);
       if (fullServer) {
         for (const tool of fullServer.tools) {
-          if (!excludedToolIds.has(tool.id)) {
+          if (includedToolIds.has(tool.id)) {
             tools.push({ serverName: fullServer.name.replace(/ MCP Server$/, ""), toolName: tool.name, description: tool.description });
           }
         }

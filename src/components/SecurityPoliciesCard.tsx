@@ -27,7 +27,7 @@ export const securityPolicyRepository = [
   { templateId: "t6", name: "Payload Size", description: "Validate request size", icon: "Package" },
   { templateId: "t7", name: "SQL Injection", description: "Detect injection attempts", icon: "Database" },
   { templateId: "t8", name: "Encryption", description: "Prepare encrypted transmission", icon: "Lock" },
-  { templateId: "t9", name: "Tools Filter", description: "Exclude specific tools from MCP servers", icon: "Filter" },
+  { templateId: "t9", name: "Tools Filter", description: "Allow specific tools from MCP servers", icon: "Filter" },
 ];
 
 export interface SecurityPolicy {
@@ -170,8 +170,8 @@ function getDefaultConfig(templateId: string): Record<string, any> {
 function getConfigSummary(templateId: string, config: Record<string, any>): string {
   if (templateId === "t9") {
     const serverName = config?.serverName || "Unknown";
-    const excluded = Array.isArray(config?.excludedTools) ? config.excludedTools.length : 0;
-    return `Server: ${serverName} · Excludes: ${excluded} tool${excluded !== 1 ? "s" : ""}`;
+    const included = Array.isArray(config?.includedTools) ? config.includedTools.length : 0;
+    return `Server: ${serverName} · Includes: ${included} tool${included !== 1 ? "s" : ""}`;
   }
   const schema = policyConfigSchemas[templateId];
   if (!schema || schema.length === 0) return "";
@@ -235,7 +235,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   // Tools Filter state
   const [toolsFilterOpen, setToolsFilterOpen] = useState(false);
   const [toolsFilterServerId, setToolsFilterServerId] = useState("");
-  const [toolsFilterExcluded, setToolsFilterExcluded] = useState<Set<string>>(new Set());
+  const [toolsFilterIncluded, setToolsFilterIncluded] = useState<Set<string>>(new Set());
   const [toolsFilterEditPolicy, setToolsFilterEditPolicy] = useState<SecurityPolicy | null>(null);
 
   const usedTemplateIds = new Set(policies.map((p) => p.templateId));
@@ -260,7 +260,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       // Open Tools Filter dialog
       setToolsFilterEditPolicy(null);
       setToolsFilterServerId("");
-      setToolsFilterExcluded(new Set());
+      setToolsFilterIncluded(new Set());
       setAddOpen(false);
       setToolsFilterOpen(true);
       return;
@@ -294,7 +294,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     if (policy.templateId === "t9") {
       setToolsFilterEditPolicy(policy);
       setToolsFilterServerId(policy.config?.serverId || "");
-      setToolsFilterExcluded(new Set(policy.config?.excludedTools || []));
+      setToolsFilterIncluded(new Set(policy.config?.includedTools || []));
       setToolsFilterOpen(true);
       return;
     }
@@ -343,12 +343,12 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     const config = {
       serverId: toolsFilterServerId,
       serverName: displayName,
-      excludedTools: Array.from(toolsFilterExcluded),
+      includedTools: Array.from(toolsFilterIncluded),
     };
     if (toolsFilterEditPolicy) {
       const updated = policies.map((p) =>
         p.id === toolsFilterEditPolicy.id
-          ? { ...p, name: `Tools Filter: ${displayName}`, description: `Excludes ${toolsFilterExcluded.size} tool${toolsFilterExcluded.size !== 1 ? "s" : ""} from ${displayName}`, config }
+          ? { ...p, name: `Tools Filter: ${displayName}`, description: `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`, config }
           : p
       );
       onPoliciesChange(updated);
@@ -357,7 +357,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
         name: `Tools Filter: ${displayName}`,
-        description: `Excludes ${toolsFilterExcluded.size} tool${toolsFilterExcluded.size !== 1 ? "s" : ""} from ${displayName}`,
+        description: `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`,
         icon: "Filter",
         active: true,
         templateId: "t9",
@@ -371,8 +371,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     setToolsFilterEditPolicy(null);
   };
 
-  const toggleExcludedTool = (toolId: string) => {
-    setToolsFilterExcluded((prev) => {
+  const toggleIncludedTool = (toolId: string) => {
+    setToolsFilterIncluded((prev) => {
       const next = new Set(prev);
       if (next.has(toolId)) next.delete(toolId);
       else next.add(toolId);
@@ -542,18 +542,18 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
           setToolsFilterOpen(false);
           setToolsFilterEditPolicy(null);
           setToolsFilterServerId("");
-          setToolsFilterExcluded(new Set());
+          setToolsFilterIncluded(new Set());
         }
       }}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{toolsFilterEditPolicy ? "Edit Tools Filter" : "Add Tools Filter"}</DialogTitle>
-            <DialogDescription>Select a tool source and choose tools to exclude.</DialogDescription>
+            <DialogDescription>Select a tool source and choose tools to include.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Tool Source</Label>
-              <Select value={toolsFilterServerId} onValueChange={(v) => { setToolsFilterServerId(v); setToolsFilterExcluded(new Set()); }}>
+              <Select value={toolsFilterServerId} onValueChange={(v) => { setToolsFilterServerId(v); setToolsFilterIncluded(new Set()); }}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Select a source" />
                 </SelectTrigger>
@@ -568,13 +568,13 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
 
             {toolsFilterServerId && serverTools.length > 0 && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Exclude Tools ({toolsFilterExcluded.size} of {serverTools.length} excluded)</Label>
+                <Label className="text-xs font-medium">Include Tools ({toolsFilterIncluded.size} of {serverTools.length} included)</Label>
                 <div className="space-y-1 rounded-md border border-border p-3 max-h-48 overflow-y-auto">
                   {serverTools.map((tool) => (
                     <label key={tool.id} className="flex items-start gap-2 py-1.5 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1">
                       <Checkbox
-                        checked={toolsFilterExcluded.has(tool.id)}
-                        onCheckedChange={() => toggleExcludedTool(tool.id)}
+                        checked={toolsFilterIncluded.has(tool.id)}
+                        onCheckedChange={() => toggleIncludedTool(tool.id)}
                         className="mt-0.5"
                       />
                       <div className="min-w-0 flex-1">
@@ -589,7 +589,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setToolsFilterOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterExcluded.size === 0 || (toolsFilterServerId !== "native-tools" && !selectedServer)}>
+            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterIncluded.size === 0 || (toolsFilterServerId !== "native-tools" && !selectedServer)}>
               {toolsFilterEditPolicy ? "Save Changes" : "Add Policy"}
             </Button>
           </DialogFooter>
