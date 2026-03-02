@@ -371,6 +371,29 @@ const GatewayObserveDashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Current Status Summary */}
+              <div className="rounded-md border border-border">
+                <div className="px-4 py-2 border-b border-border bg-muted/30">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current Status</span>
+                </div>
+                <div className="divide-y divide-border">
+                  {gatewayHealth.map((gw) => (
+                    <div key={gw.name} className="flex items-center justify-between px-4 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium">{gw.name}</span>
+                        {healthBadge(gw.status)}
+                      </div>
+                      <div className="flex items-center gap-5 text-xs text-muted-foreground">
+                        <span>P50: <span className="font-mono font-medium text-foreground">{gw.latencyP50}</span></span>
+                        <span>P99: <span className="font-mono font-medium text-foreground">{gw.latencyP99}</span></span>
+                        <span>Connections: <span className="font-mono font-medium text-foreground">{gw.activeConnections}</span></span>
+                        <span className="font-mono">{gw.lastCheck}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <TooltipProvider delayDuration={100}>
                 {gatewayTimelines.map((gw) => {
                   const segments = gw.segments[healthTimeRange];
