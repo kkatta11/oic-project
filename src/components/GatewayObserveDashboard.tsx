@@ -666,6 +666,48 @@ const GatewayObserveDashboard = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Incident Detail Dialog */}
+      <Dialog open={!!selectedIncident} onOpenChange={(open) => !open && setSelectedIncident(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <AlertTriangle size={18} className={selectedIncident?.segment.status === "down" ? "text-destructive" : "text-[hsl(var(--redwood-gold))]"} />
+              Incident Details
+            </DialogTitle>
+            <DialogDescription>{selectedIncident?.gateway}</DialogDescription>
+          </DialogHeader>
+
+          {selectedIncident && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Time Range</p>
+                  <p className="text-sm font-mono font-medium">{selectedIncident.segment.startTime} – {selectedIncident.segment.endTime}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Badge className={
+                    selectedIncident.segment.status === "down"
+                      ? "bg-destructive text-destructive-foreground border-transparent"
+                      : "bg-[hsl(var(--redwood-gold))] text-[hsl(var(--accent-foreground))] border-transparent"
+                  }>
+                    {selectedIncident.segment.status === "down" ? "Outage" : "Degraded"}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Root Cause</p>
+                  <p className="text-sm font-medium">{selectedIncident.segment.description || "Unknown"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Requests Affected</p>
+                  <p className="text-sm font-mono font-semibold">{selectedIncident.segment.requestsAffected?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
