@@ -351,39 +351,106 @@ const GatewayObserveDashboard = () => {
           </Card>
         </TabsContent>
 
-        {/* Gateway Health */}
+        {/* Gateway Health — Timeline View */}
         <TabsContent value="gateway-health">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Gateway Health & Status</CardTitle>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-semibold">Gateway Uptime Timeline</CardTitle>
+              <div className="flex gap-1">
+                {(["24h", "7d", "30d"] as const).map((range) => (
+                  <Button
+                    key={range}
+                    variant={healthTimeRange === range ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs px-3"
+                    onClick={() => setHealthTimeRange(range)}
+                  >
+                    {range === "24h" ? "Last 24h" : range === "7d" ? "7 Days" : "30 Days"}
+                  </Button>
+                ))}
+              </div>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Gateway Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Uptime</TableHead>
-                    <TableHead>Latency (P50)</TableHead>
-                    <TableHead>Latency (P99)</TableHead>
-                    <TableHead className="text-center">Active Conn.</TableHead>
-                    <TableHead>Last Check</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gatewayHealth.map((g) => (
-                    <TableRow key={g.name}>
-                      <TableCell className="font-medium">{g.name}</TableCell>
-                      <TableCell>{healthBadge(g.status)}</TableCell>
-                      <TableCell className="font-mono text-sm">{g.uptime}</TableCell>
-                      <TableCell className="font-mono text-sm">{g.latencyP50}</TableCell>
-                      <TableCell className="font-mono text-sm">{g.latencyP99}</TableCell>
-                      <TableCell className="text-center font-semibold">{g.activeConnections}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs font-mono">{g.lastCheck}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardContent className="space-y-6">
+              <TooltipProvider delayDuration={100}>
+                {gatewayTimelines.map((gw) => {
+                  const segments = gw.segments[healthTimeRange];
+                  const healthyCount = segments.filter(s => s.status === "healthy").length;
+                  const computedUptime = ((healthyCount / segments.length) * 100).toFixed(1);
+
+                  return (
+                    <div key={gw.name} className="space-y-2">
+                      {/* Gateway header row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium">{gw.name}</span>
+                          <span className={`text-sm font-bold font-mono ${
+                            parseFloat(computedUptime) >= 99.5 ? "text-[hsl(var(--redwood-green))]" :
+                            parseFloat(computedUptime) >= 95 ? "text-[hsl(var(--redwood-gold))]" :
+                            "text-destructive"
+                          }`}>
+                            {computedUptime}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>P50: <span className="font-mono font-medium text-foreground">{gw.latencyP50}</span></span>
+                          <span>P99: <span className="font-mono font-medium text-foreground">{gw.latencyP99}</span></span>
+                          <span>Conn: <span className="font-mono font-medium text-foreground">{gw.activeConnections}</span></span>
+                        </div>
+                      </div>
+
+                      {/* Timeline bar */}
+                      <div className="flex gap-[1px] h-8 rounded-md overflow-hidden">
+                        {segments.map((seg, idx) => (
+                          <Tooltip key={idx}>
+                            <TooltipTrigger asChild>
+                              <button
+                                className={`flex-1 transition-all hover:opacity-80 ${
+                                  seg.status === "healthy" ? "bg-[hsl(var(--redwood-green))]" :
+                                  seg.status === "degraded" ? "bg-[hsl(var(--redwood-gold))]" :
+                                  "bg-destructive"
+                                } ${seg.status !== "healthy" ? "cursor-pointer hover:scale-y-110" : "cursor-default"}`}
+                                onClick={() => {
+                                  if (seg.status !== "healthy") {
+                                    setSelectedIncident({ gateway: gw.name, segment: seg });
+                                  }
+                                }}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              <div className="font-medium">{seg.startTime} – {seg.endTime}</div>
+                              <div className="capitalize">{seg.status}</div>
+                              {seg.description && <div className="text-muted-foreground">{seg.description}</div>}
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+
+                      {/* Time axis labels */}
+                      <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                        <span>{segments[0]?.startTime}</span>
+                        <span>{segments[Math.floor(segments.length / 2)]?.startTime}</span>
+                        <span>{segments[segments.length - 1]?.endTime}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </TooltipProvider>
+
+              {/* Legend */}
+              <div className="flex gap-4 pt-2 border-t border-border">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 rounded-sm bg-[hsl(var(--redwood-green))]" />
+                  Healthy
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 rounded-sm bg-[hsl(var(--redwood-gold))]" />
+                  Degraded
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 rounded-sm bg-destructive" />
+                  Down
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
