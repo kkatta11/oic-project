@@ -52,6 +52,79 @@ const gatewayHealth = [
   { name: "ERP Sync Gateway", status: "Healthy", uptime: "99.99%", lastCheck: "2026-02-23 10:16:01", latencyP50: "80ms", latencyP99: "450ms", activeConnections: 22 },
 ];
 
+// ── Timeline Data ──────────────────────────────────────────
+
+interface TimelineSegment {
+  startTime: string;
+  endTime: string;
+  status: "healthy" | "degraded" | "down";
+  description?: string;
+  requestsAffected?: number;
+}
+
+interface GatewayTimeline {
+  name: string;
+  uptimePercent: number;
+  latencyP50: string;
+  latencyP99: string;
+  activeConnections: number;
+  segments: Record<string, TimelineSegment[]>; // keyed by timeRange
+}
+
+const generateTimelineSegments = (gatewayName: string, range: "24h" | "7d" | "30d"): TimelineSegment[] => {
+  const seed = gatewayName.length;
+  const segmentCount = range === "24h" ? 24 : range === "7d" ? 7 : 30;
+  const now = new Date("2026-02-23T10:00:00");
+  const segments: TimelineSegment[] = [];
+
+  for (let i = segmentCount - 1; i >= 0; i--) {
+    const start = new Date(now);
+    const end = new Date(now);
+    if (range === "24h") {
+      start.setHours(now.getHours() - i - 1);
+      end.setHours(now.getHours() - i);
+    } else {
+      start.setDate(now.getDate() - i - 1);
+      end.setDate(now.getDate() - i);
+    }
+
+    const val = Math.sin(i * 1.3 + seed) + Math.cos(i * 0.7 + seed * 0.5);
+    let status: TimelineSegment["status"] = "healthy";
+    let description: string | undefined;
+    let requestsAffected: number | undefined;
+
+    if (val > 1.3) {
+      status = "down";
+      description = ["MCP Server timeout", "Connection pool exhausted", "Certificate expired", "DNS resolution failure"][i % 4];
+      requestsAffected = Math.round(Math.abs(val) * 120);
+    } else if (val > 0.8) {
+      status = "degraded";
+      description = ["High latency detected", "Partial MCP Server failures", "Memory pressure", "Rate limit approaching"][i % 4];
+      requestsAffected = Math.round(Math.abs(val) * 45);
+    }
+
+    const fmt = (d: Date) => range === "24h"
+      ? d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+      : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+    segments.push({ startTime: fmt(start), endTime: fmt(end), status, description, requestsAffected });
+  }
+  return segments;
+};
+
+const gatewayTimelines: GatewayTimeline[] = gatewayHealth.map((g) => ({
+  name: g.name,
+  uptimePercent: parseFloat(g.uptime),
+  latencyP50: g.latencyP50,
+  latencyP99: g.latencyP99,
+  activeConnections: g.activeConnections,
+  segments: {
+    "24h": generateTimelineSegments(g.name, "24h"),
+    "7d": generateTimelineSegments(g.name, "7d"),
+    "30d": generateTimelineSegments(g.name, "30d"),
+  },
+}));
+
 const mcpServerHealth = [
   { name: "Slack MCP Server", status: "Online", uptime: "99.99%", lastPing: "2026-02-23 10:16:02", responseTime: "45ms", requestsServed: 3420 },
   { name: "GitHub MCP Server", status: "Online", uptime: "99.95%", lastPing: "2026-02-23 10:16:01", responseTime: "82ms", requestsServed: 1870 },
