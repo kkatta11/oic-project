@@ -373,25 +373,30 @@ const GatewayObserveDashboard = () => {
             <CardContent className="space-y-6">
               {healthTimeRange === "current" ? (
                 <div className="rounded-md border border-border">
-                  <div className="px-4 py-2 border-b border-border bg-muted/30">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current Status</span>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {gatewayHealth.map((gw) => (
-                      <div key={gw.name} className="flex items-center justify-between px-4 py-2.5">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium">{gw.name}</span>
-                          {healthBadge(gw.status)}
-                        </div>
-                        <div className="flex items-center gap-5 text-xs text-muted-foreground">
-                          <span>P50: <span className="font-mono font-medium text-foreground">{gw.latencyP50}</span></span>
-                          <span>P99: <span className="font-mono font-medium text-foreground">{gw.latencyP99}</span></span>
-                          <span>Connections: <span className="font-mono font-medium text-foreground">{gw.activeConnections}</span></span>
-                          <span className="font-mono">{gw.lastCheck}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Gateway</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>P50 Latency</TableHead>
+                        <TableHead>P99 Latency</TableHead>
+                        <TableHead>Connections</TableHead>
+                        <TableHead className="text-right">Last Check</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {gatewayHealth.map((gw) => (
+                        <TableRow key={gw.name}>
+                          <TableCell className="font-medium">{gw.name}</TableCell>
+                          <TableCell>{healthBadge(gw.status)}</TableCell>
+                          <TableCell className="font-mono">{gw.latencyP50}</TableCell>
+                          <TableCell className="font-mono">{gw.latencyP99}</TableCell>
+                          <TableCell className="font-mono">{gw.activeConnections}</TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">{gw.lastCheck}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               ) : (
                 <>
