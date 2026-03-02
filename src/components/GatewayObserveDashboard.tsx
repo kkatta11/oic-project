@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, CheckCircle2, XCircle, Shield, Briefcase, Server, Send, Inbox, Activity, Wifi, WifiOff, BarChart3 } from "lucide-react";
+import { Eye, CheckCircle2, XCircle, Shield, Briefcase, Server, Send, Inbox, Activity, Wifi, WifiOff, BarChart3, Clock, AlertTriangle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
@@ -48,6 +51,79 @@ const gatewayHealth = [
   { name: "HCM Data Gateway", status: "Degraded", uptime: "98.40%", lastCheck: "2026-02-23 10:15:45", latencyP50: "340ms", latencyP99: "2100ms", activeConnections: 3 },
   { name: "ERP Sync Gateway", status: "Healthy", uptime: "99.99%", lastCheck: "2026-02-23 10:16:01", latencyP50: "80ms", latencyP99: "450ms", activeConnections: 22 },
 ];
+
+// ── Timeline Data ──────────────────────────────────────────
+
+interface TimelineSegment {
+  startTime: string;
+  endTime: string;
+  status: "healthy" | "degraded" | "down";
+  description?: string;
+  requestsAffected?: number;
+}
+
+interface GatewayTimeline {
+  name: string;
+  uptimePercent: number;
+  latencyP50: string;
+  latencyP99: string;
+  activeConnections: number;
+  segments: Record<string, TimelineSegment[]>; // keyed by timeRange
+}
+
+const generateTimelineSegments = (gatewayName: string, range: "24h" | "7d" | "30d"): TimelineSegment[] => {
+  const seed = gatewayName.length;
+  const segmentCount = range === "24h" ? 24 : range === "7d" ? 7 : 30;
+  const now = new Date("2026-02-23T10:00:00");
+  const segments: TimelineSegment[] = [];
+
+  for (let i = segmentCount - 1; i >= 0; i--) {
+    const start = new Date(now);
+    const end = new Date(now);
+    if (range === "24h") {
+      start.setHours(now.getHours() - i - 1);
+      end.setHours(now.getHours() - i);
+    } else {
+      start.setDate(now.getDate() - i - 1);
+      end.setDate(now.getDate() - i);
+    }
+
+    const val = Math.sin(i * 1.3 + seed) + Math.cos(i * 0.7 + seed * 0.5);
+    let status: TimelineSegment["status"] = "healthy";
+    let description: string | undefined;
+    let requestsAffected: number | undefined;
+
+    if (val > 1.3) {
+      status = "down";
+      description = ["MCP Server timeout", "Connection pool exhausted", "Certificate expired", "DNS resolution failure"][i % 4];
+      requestsAffected = Math.round(Math.abs(val) * 120);
+    } else if (val > 0.8) {
+      status = "degraded";
+      description = ["High latency detected", "Partial MCP Server failures", "Memory pressure", "Rate limit approaching"][i % 4];
+      requestsAffected = Math.round(Math.abs(val) * 45);
+    }
+
+    const fmt = (d: Date) => range === "24h"
+      ? d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+      : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+    segments.push({ startTime: fmt(start), endTime: fmt(end), status, description, requestsAffected });
+  }
+  return segments;
+};
+
+const gatewayTimelines: GatewayTimeline[] = gatewayHealth.map((g) => ({
+  name: g.name,
+  uptimePercent: parseFloat(g.uptime),
+  latencyP50: g.latencyP50,
+  latencyP99: g.latencyP99,
+  activeConnections: g.activeConnections,
+  segments: {
+    "24h": generateTimelineSegments(g.name, "24h"),
+    "7d": generateTimelineSegments(g.name, "7d"),
+    "30d": generateTimelineSegments(g.name, "30d"),
+  },
+}));
 
 const mcpServerHealth = [
   { name: "Slack MCP Server", status: "Online", uptime: "99.99%", lastPing: "2026-02-23 10:16:02", responseTime: "45ms", requestsServed: 3420 },
@@ -181,6 +257,8 @@ const stepIcon = (type: FlowStep["type"]) => {
 const GatewayObserveDashboard = () => {
   const [selectedInstance, setSelectedInstance] = useState<GatewayInstance | null>(null);
   const [selectedMetricsGateway, setSelectedMetricsGateway] = useState<string | null>(null);
+  const [healthTimeRange, setHealthTimeRange] = useState<"24h" | "7d" | "30d">("7d");
+  const [selectedIncident, setSelectedIncident] = useState<{ gateway: string; segment: TimelineSegment } | null>(null);
 
   return (
     <div className="space-y-4">
@@ -273,39 +351,106 @@ const GatewayObserveDashboard = () => {
           </Card>
         </TabsContent>
 
-        {/* Gateway Health */}
+        {/* Gateway Health — Timeline View */}
         <TabsContent value="gateway-health">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Gateway Health & Status</CardTitle>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-semibold">Gateway Uptime Timeline</CardTitle>
+              <div className="flex gap-1">
+                {(["24h", "7d", "30d"] as const).map((range) => (
+                  <Button
+                    key={range}
+                    variant={healthTimeRange === range ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs px-3"
+                    onClick={() => setHealthTimeRange(range)}
+                  >
+                    {range === "24h" ? "Last 24h" : range === "7d" ? "7 Days" : "30 Days"}
+                  </Button>
+                ))}
+              </div>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Gateway Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Uptime</TableHead>
-                    <TableHead>Latency (P50)</TableHead>
-                    <TableHead>Latency (P99)</TableHead>
-                    <TableHead className="text-center">Active Conn.</TableHead>
-                    <TableHead>Last Check</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gatewayHealth.map((g) => (
-                    <TableRow key={g.name}>
-                      <TableCell className="font-medium">{g.name}</TableCell>
-                      <TableCell>{healthBadge(g.status)}</TableCell>
-                      <TableCell className="font-mono text-sm">{g.uptime}</TableCell>
-                      <TableCell className="font-mono text-sm">{g.latencyP50}</TableCell>
-                      <TableCell className="font-mono text-sm">{g.latencyP99}</TableCell>
-                      <TableCell className="text-center font-semibold">{g.activeConnections}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs font-mono">{g.lastCheck}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardContent className="space-y-6">
+              <TooltipProvider delayDuration={100}>
+                {gatewayTimelines.map((gw) => {
+                  const segments = gw.segments[healthTimeRange];
+                  const healthyCount = segments.filter(s => s.status === "healthy").length;
+                  const computedUptime = ((healthyCount / segments.length) * 100).toFixed(1);
+
+                  return (
+                    <div key={gw.name} className="space-y-2">
+                      {/* Gateway header row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium">{gw.name}</span>
+                          <span className={`text-sm font-bold font-mono ${
+                            parseFloat(computedUptime) >= 99.5 ? "text-[hsl(var(--redwood-green))]" :
+                            parseFloat(computedUptime) >= 95 ? "text-[hsl(var(--redwood-gold))]" :
+                            "text-destructive"
+                          }`}>
+                            {computedUptime}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>P50: <span className="font-mono font-medium text-foreground">{gw.latencyP50}</span></span>
+                          <span>P99: <span className="font-mono font-medium text-foreground">{gw.latencyP99}</span></span>
+                          <span>Conn: <span className="font-mono font-medium text-foreground">{gw.activeConnections}</span></span>
+                        </div>
+                      </div>
+
+                      {/* Timeline bar */}
+                      <div className="flex gap-[1px] h-8 rounded-md overflow-hidden">
+                        {segments.map((seg, idx) => (
+                          <Tooltip key={idx}>
+                            <TooltipTrigger asChild>
+                              <button
+                                className={`flex-1 transition-all hover:opacity-80 ${
+                                  seg.status === "healthy" ? "bg-[hsl(var(--redwood-green))]" :
+                                  seg.status === "degraded" ? "bg-[hsl(var(--redwood-gold))]" :
+                                  "bg-destructive"
+                                } ${seg.status !== "healthy" ? "cursor-pointer hover:scale-y-110" : "cursor-default"}`}
+                                onClick={() => {
+                                  if (seg.status !== "healthy") {
+                                    setSelectedIncident({ gateway: gw.name, segment: seg });
+                                  }
+                                }}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              <div className="font-medium">{seg.startTime} – {seg.endTime}</div>
+                              <div className="capitalize">{seg.status}</div>
+                              {seg.description && <div className="text-muted-foreground">{seg.description}</div>}
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+
+                      {/* Time axis labels */}
+                      <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                        <span>{segments[0]?.startTime}</span>
+                        <span>{segments[Math.floor(segments.length / 2)]?.startTime}</span>
+                        <span>{segments[segments.length - 1]?.endTime}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </TooltipProvider>
+
+              {/* Legend */}
+              <div className="flex gap-4 pt-2 border-t border-border">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 rounded-sm bg-[hsl(var(--redwood-green))]" />
+                  Healthy
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 rounded-sm bg-[hsl(var(--redwood-gold))]" />
+                  Degraded
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-3 h-3 rounded-sm bg-destructive" />
+                  Down
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -519,6 +664,48 @@ const GatewayObserveDashboard = () => {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Incident Detail Dialog */}
+      <Dialog open={!!selectedIncident} onOpenChange={(open) => !open && setSelectedIncident(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <AlertTriangle size={18} className={selectedIncident?.segment.status === "down" ? "text-destructive" : "text-[hsl(var(--redwood-gold))]"} />
+              Incident Details
+            </DialogTitle>
+            <DialogDescription>{selectedIncident?.gateway}</DialogDescription>
+          </DialogHeader>
+
+          {selectedIncident && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Time Range</p>
+                  <p className="text-sm font-mono font-medium">{selectedIncident.segment.startTime} – {selectedIncident.segment.endTime}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Badge className={
+                    selectedIncident.segment.status === "down"
+                      ? "bg-destructive text-destructive-foreground border-transparent"
+                      : "bg-[hsl(var(--redwood-gold))] text-[hsl(var(--accent-foreground))] border-transparent"
+                  }>
+                    {selectedIncident.segment.status === "down" ? "Outage" : "Degraded"}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Root Cause</p>
+                  <p className="text-sm font-medium">{selectedIncident.segment.description || "Unknown"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Requests Affected</p>
+                  <p className="text-sm font-mono font-semibold">{selectedIncident.segment.requestsAffected?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
