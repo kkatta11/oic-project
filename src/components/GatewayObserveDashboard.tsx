@@ -257,7 +257,7 @@ const stepIcon = (type: FlowStep["type"]) => {
 const GatewayObserveDashboard = () => {
   const [selectedInstance, setSelectedInstance] = useState<GatewayInstance | null>(null);
   const [selectedMetricsGateway, setSelectedMetricsGateway] = useState<string | null>(null);
-  const [healthTimeRange, setHealthTimeRange] = useState<"24h" | "7d" | "30d">("7d");
+  const [healthTimeRange, setHealthTimeRange] = useState<"current" | "24h" | "7d" | "30d">("current");
   const [selectedIncident, setSelectedIncident] = useState<{ gateway: string; segment: TimelineSegment } | null>(null);
 
   return (
@@ -357,7 +357,7 @@ const GatewayObserveDashboard = () => {
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
               <CardTitle className="text-base font-semibold">Gateway Uptime Timeline</CardTitle>
               <div className="flex gap-1">
-                {(["24h", "7d", "30d"] as const).map((range) => (
+                {(["current", "24h", "7d", "30d"] as const).map((range) => (
                   <Button
                     key={range}
                     variant={healthTimeRange === range ? "default" : "outline"}
@@ -365,7 +365,7 @@ const GatewayObserveDashboard = () => {
                     className="h-7 text-xs px-3"
                     onClick={() => setHealthTimeRange(range)}
                   >
-                    {range === "24h" ? "Last 24h" : range === "7d" ? "7 Days" : "30 Days"}
+                    {range === "current" ? "Current Status" : range === "24h" ? "Last 24h" : range === "7d" ? "7 Days" : "30 Days"}
                   </Button>
                 ))}
               </div>
