@@ -257,6 +257,8 @@ const stepIcon = (type: FlowStep["type"]) => {
 const GatewayObserveDashboard = () => {
   const [selectedInstance, setSelectedInstance] = useState<GatewayInstance | null>(null);
   const [selectedMetricsGateway, setSelectedMetricsGateway] = useState<string | null>(null);
+  const [healthTimeRange, setHealthTimeRange] = useState<"24h" | "7d" | "30d">("7d");
+  const [selectedIncident, setSelectedIncident] = useState<{ gateway: string; segment: TimelineSegment } | null>(null);
 
   return (
     <div className="space-y-4">
