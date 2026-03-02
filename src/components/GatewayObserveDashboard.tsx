@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, CheckCircle2, XCircle, Shield, Briefcase, Server, Send, Inbox, Activity, Wifi, WifiOff, BarChart3 } from "lucide-react";
+import { Eye, CheckCircle2, XCircle, Shield, Briefcase, Server, Send, Inbox, Activity, Wifi, WifiOff, BarChart3, Clock, AlertTriangle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
