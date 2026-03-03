@@ -1,126 +1,60 @@
 
 
-# Standardize Status Badges and Dropdown Action Menus Across All Cards
+# Enhanced PII Detection Policy Configuration
 
 ## Overview
 
-Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
+Replace the current 3-field PII config (appliesTo, action, sensitivity) with a comprehensive tabbed configuration dialog covering the key areas from the requirements: Detection, Classification, Enforcement Actions, and Policy Scope.
 
-## Changes
+## Change — `src/components/SecurityPoliciesCard.tsx`
 
-### 1. `src/components/MCPServersCard.tsx`
+### 1. Replace simple schema with custom dialog
 
-**Add Activate/Deactivate to dropdown menu:**
+Like `t9` (Tools Filter), the PII policy `t1` will get its own custom dialog instead of using the generic `policyConfigSchemas` renderer. Remove `t1` from `policyConfigSchemas` and add dedicated state + dialog.
 
-The MCP Servers card already has the dropdown menu pattern. Changes needed:
-- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
-- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
-- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
+### 2. PII Configuration Dialog — Tabbed Layout
 
-Updated dropdown items:
-- Edit
-- Refresh Metadata
-- Separator
-- Activate / Deactivate (dynamic label based on current status)
-- Separator
-- Remove (destructive)
+A dialog with 4 tabs:
 
-**Add toggle handler:**
-```typescript
-const handleToggleStatus = (serverId: string) => {
-  const updated = servers.map((s) =>
-    s.id === serverId
-      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
-      : s
-  );
-  updateServers(updated);
-};
-```
+**Tab 1: Detection**
+- **Built-in Detectors** — Multi-select checklist of PII types: Email, Phone, SSN, Credit Card, Driver's License, Passport, Government ID, Bank Account, IP Address, Sensitive URLs, API Keys/Tokens, Home Address, Date of Birth
+- **Custom Patterns** — Small list editor: each row has a label (text) + regex pattern (text) + Add/Remove buttons
+- **ML Enhancement** — Toggle for NER-based detection (optional enhancement flag)
 
-### 2. `src/components/MCPGatewayCard.tsx`
+**Tab 2: Classification**
+- **Severity Level** — Select: Critical / High / Medium / Low
+- **Data Categories** — Multi-select: Financial, Health, Identity, Contact, Authentication
+- **Compliance Tags** — Multi-select: GDPR, CCPA, HIPAA, PCI-DSS, SOX
+- **Confidence Threshold** — Number input (0-100%) for minimum detection confidence
 
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
+**Tab 3: Enforcement**
+- **Primary Action** — Select: Block, Redact, Replace, Truncate, Encrypt, Log Warning
+- **Block Options** (shown when action=Block): block with logging toggle, block with alerting toggle, confidence threshold for conditional block
+- **Redaction Style** (shown when action=Redact): Select — Partial Mask, Hash, Tokenize, Format-Preserving. Selective redaction toggle (response only)
+- **Replacement Style** (shown when action=Replace): Select — Placeholder Values, Synthetic Data
+- **Alert Recipients** — Text input for email addresses
 
-**Replace gateway row controls (lines 700-712):**
+**Tab 4: Scope**
+- **Applies To** — Select: Request / Response / Both (existing field)
+- **Scan Targets** — Multi-select: Body, Headers, URL Parameters, Path Segments
+- **Policy Granularity** — Select: Global, Per-Server, Per-Request-Type
+- **PII Count Threshold** — Number input: only trigger if N+ PII fields detected
+- **Time-based** — Toggle + time range inputs for business hours restriction
 
-Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
-- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
-- A three-dots `DropdownMenu` with:
-  - Edit
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
+### 3. Config Summary Update
 
-**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
+Update `getConfigSummary` for `t1` to show key selections: e.g. "Action: Redact · 8 detectors · Severity: High · HIPAA, GDPR"
 
-**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
+### 4. Default Config
 
-### 3. `src/components/SecurityPoliciesCard.tsx`
+Sensible defaults: all 13 built-in detectors enabled, severity=medium, action=block, appliesTo=both, scan targets=[body], confidence threshold=80, granularity=global.
 
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
+### 5. State Management
 
-**Replace policy row controls (lines 474-482):**
+New state variables for the PII dialog (similar pattern to Tools Filter):
+- `piiConfigOpen` boolean
+- `piiConfigValues` object holding all nested config
+- `piiEditPolicy` for edit vs. add mode
 
-Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (only if `hasEditableConfig`)
-  - Separator (only if edit shown)
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Add StatusBadge component** (same green/olive pattern).
-
-### 4. `src/components/BusinessPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 484-488):**
-
-Remove the `Switch` and `Trash2` button. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (calls existing `openEdit(policy)`)
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-Keep the existing `Eye` popover for viewing details -- it stays as-is.
-
-**Add StatusBadge component** (same pattern).
-
-## Consistent StatusBadge Pattern
-
-All four components will use the same styling:
-
-```typescript
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === "Active";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-      isActive
-        ? "bg-redwood-green-light text-redwood-green"
-        : "bg-redwood-olive-light text-redwood-olive"
-    }`}>
-      {status}
-    </span>
-  );
-};
-```
-
-## Consistent Row Layout
-
-All card item rows follow:
-```text
-[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
-```
-
-## Summary of Removals
-- All `Switch` toggle components from item rows (and import cleanup where no longer used)
-- All standalone `Trash2` icon buttons from item rows
-- All standalone `Pencil` icon buttons from item rows
-- Status toggle section from MCP Servers edit dialog
+The config object stored in the policy will contain all fields, and the dialog will hydrate from it on edit.
 
