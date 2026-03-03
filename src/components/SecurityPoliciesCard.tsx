@@ -1030,7 +1030,29 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
 
             {toolsFilterServerId && serverTools.length > 0 && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Include Tools ({toolsFilterIncluded.size} of {serverTools.length} included)</Label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={toolsFilterIncluded.size === serverTools.length}
+                    ref={(el) => {
+                      if (el) {
+                        (el as unknown as HTMLButtonElement).dataset.state =
+                          toolsFilterIncluded.size > 0 && toolsFilterIncluded.size < serverTools.length
+                            ? "indeterminate"
+                            : toolsFilterIncluded.size === serverTools.length
+                              ? "checked"
+                              : "unchecked";
+                      }
+                    }}
+                    onCheckedChange={() => {
+                      if (toolsFilterIncluded.size < serverTools.length) {
+                        setToolsFilterIncluded(new Set(serverTools.map(t => t.id)));
+                      } else {
+                        setToolsFilterIncluded(new Set());
+                      }
+                    }}
+                  />
+                  <span className="text-xs font-medium">Include Tools ({toolsFilterIncluded.size} of {serverTools.length} included)</span>
+                </label>
                 <div className="space-y-1 rounded-md border border-border p-3 max-h-48 overflow-y-auto">
                   {serverTools.map((tool) => (
                     <label key={tool.id} className="flex items-start gap-2 py-1.5 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1">
