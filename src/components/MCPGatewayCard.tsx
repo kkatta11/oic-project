@@ -28,6 +28,7 @@ import {
 import type { SecurityPolicy } from "@/components/SecurityPoliciesCard";
 import type { BusinessPolicy } from "@/components/BusinessPoliciesCard";
 import type { MCPServer } from "@/components/MCPServersCard";
+import { nativeTools } from "@/components/ToolsCard";
 
 const iconMap: Record<string, LucideIcon> = {
   ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock, Filter,
@@ -280,6 +281,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setEditGateway(gw);
     setGatewayName(gw.name);
     const restoredServers = gw.servers.map((srv) => {
+      if (srv.name === "Native Tools Server") return { ...srv, icon: Wrench };
       const catalogMatch = catalogServers.find((c) => c.name === srv.name);
       return { ...srv, icon: catalogMatch?.icon || Server };
     });
@@ -312,6 +314,12 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     }
     const tools: { serverName: string; toolName: string; description: string }[] = [];
     for (const gwServer of gw.servers) {
+      if (gwServer.name === "Native Tools Server") {
+        for (const nt of nativeTools) {
+          tools.push({ serverName: "Native Tools", toolName: nt.name, description: "Built-in agent tool" });
+        }
+        continue;
+      }
       const fullServer = mcpServers.find((s) => s.name === gwServer.name);
       if (fullServer) {
         for (const tool of fullServer.tools) {
@@ -425,6 +433,36 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                         })}
                       </div>
                     )}
+
+                    {/* Native Tools Server entry */}
+                    <div className="mt-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Native</p>
+                      <div className="rounded-md border border-border">
+                        <div className="flex items-center gap-3 px-3 py-2.5">
+                          <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground"><Wrench size={14} /></div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-foreground">Native Tools Server</p>
+                            <p className="text-[10px] text-muted-foreground">Built-in agent capabilities</p>
+                          </div>
+                          {(() => {
+                            const added = registeredServers.some((r) => r.name === "Native Tools Server");
+                            return (
+                              <Button variant={added ? "ghost" : "outline"} size="sm" disabled={added} onClick={() => {
+                                if (added) return;
+                                setRegisteredServers((prev) => [...prev, {
+                                  id: `native-${Date.now()}`,
+                                  name: "Native Tools Server",
+                                  url: "",
+                                  transport: "native",
+                                  auth: "none",
+                                  icon: Wrench,
+                                }]);
+                              }} className="h-7 text-xs">{added ? "Added" : "Add"}</Button>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
                   </TabsContent>
                   <TabsContent value="register" className="space-y-3 pt-3">
                     <div className="grid grid-cols-2 gap-3">
