@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Plus, ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Database, Lock, Filter, MoreHorizontal, Pencil, type LucideIcon } from "lucide-react";
+import { Plus, ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Database, Lock, Filter, MoreHorizontal, Pencil, X, type LucideIcon } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -52,23 +53,7 @@ interface PolicyFieldDef {
 }
 
 const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
-  t1: [
-    { key: "appliesTo", label: "Applies To", type: "select", options: [
-      { value: "request", label: "Request Only" },
-      { value: "response", label: "Response Only" },
-      { value: "both", label: "Both" },
-    ], default: "both" },
-    { key: "action", label: "Action", type: "select", options: [
-      { value: "block", label: "Block" },
-      { value: "redact", label: "Redact" },
-      { value: "log-warning", label: "Log Warning" },
-    ], default: "block" },
-    { key: "sensitivity", label: "Sensitivity Level", type: "select", options: [
-      { value: "low", label: "Low" },
-      { value: "medium", label: "Medium" },
-      { value: "high", label: "High" },
-    ], default: "medium" },
-  ],
+  // t1 — PII Detection: custom handling, not standard schema
   // t2 — no config fields
   t3: [
     { key: "action", label: "Action", type: "select", options: [
@@ -159,6 +144,104 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   // t9 — Tools Filter: custom handling, not standard schema
 };
 
+// --- PII Detection constants ---
+
+const PII_DETECTORS = [
+  { id: "email", label: "Email Addresses" },
+  { id: "phone", label: "Phone Numbers" },
+  { id: "ssn", label: "Social Security Numbers" },
+  { id: "credit_card", label: "Credit Card Numbers" },
+  { id: "drivers_license", label: "Driver's License Numbers" },
+  { id: "passport", label: "Passport Numbers" },
+  { id: "government_id", label: "Government ID Numbers" },
+  { id: "bank_account", label: "Bank Account Numbers" },
+  { id: "ip_address", label: "IP Addresses" },
+  { id: "sensitive_url", label: "Sensitive URLs" },
+  { id: "api_key", label: "API Keys & Tokens" },
+  { id: "home_address", label: "Home Addresses" },
+  { id: "dob", label: "Dates of Birth" },
+];
+
+const PII_DATA_CATEGORIES = [
+  { value: "financial", label: "Financial" },
+  { value: "health", label: "Health" },
+  { value: "identity", label: "Identity" },
+  { value: "contact", label: "Contact" },
+  { value: "authentication", label: "Authentication" },
+];
+
+const PII_COMPLIANCE_TAGS = [
+  { value: "gdpr", label: "GDPR" },
+  { value: "ccpa", label: "CCPA" },
+  { value: "hipaa", label: "HIPAA" },
+  { value: "pci-dss", label: "PCI-DSS" },
+  { value: "sox", label: "SOX" },
+];
+
+const PII_SCAN_TARGETS = [
+  { value: "body", label: "Body" },
+  { value: "headers", label: "Headers" },
+  { value: "url_params", label: "URL Parameters" },
+  { value: "path_segments", label: "Path Segments" },
+];
+
+interface PIICustomPattern {
+  label: string;
+  regex: string;
+}
+
+interface PIIConfig {
+  detectors: string[];
+  customPatterns: PIICustomPattern[];
+  mlEnabled: boolean;
+  severity: string;
+  dataCategories: string[];
+  complianceTags: string[];
+  confidenceThreshold: number;
+  action: string;
+  blockWithLogging: boolean;
+  blockWithAlerting: boolean;
+  blockConfidenceThreshold: number;
+  redactionStyle: string;
+  selectiveRedaction: boolean;
+  replacementStyle: string;
+  alertRecipients: string;
+  appliesTo: string;
+  scanTargets: string[];
+  granularity: string;
+  piiCountThreshold: number;
+  timeBased: boolean;
+  timeStart: string;
+  timeEnd: string;
+}
+
+function getDefaultPIIConfig(): PIIConfig {
+  return {
+    detectors: PII_DETECTORS.map((d) => d.id),
+    customPatterns: [],
+    mlEnabled: false,
+    severity: "medium",
+    dataCategories: [],
+    complianceTags: [],
+    confidenceThreshold: 80,
+    action: "block",
+    blockWithLogging: true,
+    blockWithAlerting: false,
+    blockConfidenceThreshold: 90,
+    redactionStyle: "partial-mask",
+    selectiveRedaction: false,
+    replacementStyle: "placeholder",
+    alertRecipients: "",
+    appliesTo: "both",
+    scanTargets: ["body"],
+    granularity: "global",
+    piiCountThreshold: 1,
+    timeBased: false,
+    timeStart: "09:00",
+    timeEnd: "17:00",
+  };
+}
+
 function getDefaultConfig(templateId: string): Record<string, any> {
   const schema = policyConfigSchemas[templateId];
   if (!schema) return {};
@@ -168,6 +251,19 @@ function getDefaultConfig(templateId: string): Record<string, any> {
 }
 
 function getConfigSummary(templateId: string, config: Record<string, any>): string {
+  if (templateId === "t1") {
+    const detectors = Array.isArray(config?.detectors) ? config.detectors.length : 0;
+    const action = config?.action || "block";
+    const actionLabel = { block: "Block", redact: "Redact", replace: "Replace", truncate: "Truncate", encrypt: "Encrypt", "log-warning": "Log Warning" }[action] || action;
+    const severity = config?.severity || "medium";
+    const sevLabel = severity.charAt(0).toUpperCase() + severity.slice(1);
+    const parts = [`Action: ${actionLabel}`, `${detectors} detectors`, `Severity: ${sevLabel}`];
+    const tags = Array.isArray(config?.complianceTags) && config.complianceTags.length > 0
+      ? config.complianceTags.map((t: string) => PII_COMPLIANCE_TAGS.find((c) => c.value === t)?.label || t).join(", ")
+      : null;
+    if (tags) parts.push(tags);
+    return parts.join(" · ");
+  }
   if (templateId === "t9") {
     const serverName = config?.serverName || "Unknown";
     const included = Array.isArray(config?.includedTools) ? config.includedTools.length : 0;
@@ -217,6 +313,312 @@ function savePolicies(policies: SecurityPolicy[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(policies));
 }
 
+// --- PII Config Dialog Component ---
+
+function PIIConfigDialog({
+  open,
+  onOpenChange,
+  config,
+  onConfigChange,
+  onSave,
+  isEdit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  config: PIIConfig;
+  onConfigChange: (config: PIIConfig) => void;
+  onSave: () => void;
+  isEdit: boolean;
+}) {
+  const update = <K extends keyof PIIConfig>(key: K, value: PIIConfig[K]) => {
+    onConfigChange({ ...config, [key]: value });
+  };
+
+  const toggleDetector = (id: string) => {
+    const next = config.detectors.includes(id)
+      ? config.detectors.filter((d) => d !== id)
+      : [...config.detectors, id];
+    update("detectors", next);
+  };
+
+  const toggleArrayItem = (key: "dataCategories" | "complianceTags" | "scanTargets", value: string) => {
+    const arr = config[key];
+    const next = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
+    update(key, next);
+  };
+
+  const addCustomPattern = () => {
+    update("customPatterns", [...config.customPatterns, { label: "", regex: "" }]);
+  };
+
+  const updateCustomPattern = (idx: number, field: "label" | "regex", value: string) => {
+    const next = config.customPatterns.map((p, i) => i === idx ? { ...p, [field]: value } : p);
+    update("customPatterns", next);
+  };
+
+  const removeCustomPattern = (idx: number) => {
+    update("customPatterns", config.customPatterns.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit: PII Detection" : "Configure: PII Detection"}</DialogTitle>
+          <DialogDescription>
+            {isEdit ? "Modify PII detection policy configuration." : "Configure the PII detection policy before adding."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs defaultValue="detection" className="mt-1">
+          <TabsList className="w-full">
+            <TabsTrigger value="detection" className="flex-1 text-xs">Detection</TabsTrigger>
+            <TabsTrigger value="classification" className="flex-1 text-xs">Classification</TabsTrigger>
+            <TabsTrigger value="enforcement" className="flex-1 text-xs">Enforcement</TabsTrigger>
+            <TabsTrigger value="scope" className="flex-1 text-xs">Scope</TabsTrigger>
+          </TabsList>
+
+          {/* Detection Tab */}
+          <TabsContent value="detection" className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Built-in Detectors ({config.detectors.length} of {PII_DETECTORS.length})</Label>
+              <div className="grid grid-cols-2 gap-1 rounded-md border border-border p-3 max-h-52 overflow-y-auto">
+                {PII_DETECTORS.map((d) => (
+                  <label key={d.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/50 rounded px-1">
+                    <Checkbox checked={config.detectors.includes(d.id)} onCheckedChange={() => toggleDetector(d.id)} />
+                    <span className="text-xs text-foreground">{d.label}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-1">
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => update("detectors", PII_DETECTORS.map((d) => d.id))}>Select All</Button>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => update("detectors", [])}>Clear All</Button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Custom Patterns</Label>
+              <div className="space-y-2">
+                {config.customPatterns.map((p, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input className="h-7 text-xs flex-1" placeholder="Label" value={p.label} onChange={(e) => updateCustomPattern(idx, "label", e.target.value)} />
+                    <Input className="h-7 text-xs flex-1 font-mono" placeholder="Regex pattern" value={p.regex} onChange={(e) => updateCustomPattern(idx, "regex", e.target.value)} />
+                    <button onClick={() => removeCustomPattern(idx)} className="text-muted-foreground hover:text-destructive"><X size={14} /></button>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addCustomPattern}>
+                  <Plus size={12} className="mr-1" /> Add Pattern
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border border-border p-3">
+              <div>
+                <p className="text-xs font-medium text-foreground">ML-Based Detection (NER)</p>
+                <p className="text-[10px] text-muted-foreground">Named Entity Recognition for person/org names</p>
+              </div>
+              <Switch checked={config.mlEnabled} onCheckedChange={(v) => update("mlEnabled", v)} className="scale-75" />
+            </div>
+          </TabsContent>
+
+          {/* Classification Tab */}
+          <TabsContent value="classification" className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Severity Level</Label>
+              <Select value={config.severity} onValueChange={(v) => update("severity", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="critical">Critical</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Data Categories</Label>
+              <div className="flex flex-wrap gap-3">
+                {PII_DATA_CATEGORIES.map((c) => (
+                  <label key={c.value} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <Checkbox checked={config.dataCategories.includes(c.value)} onCheckedChange={() => toggleArrayItem("dataCategories", c.value)} />
+                    {c.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Compliance Tags</Label>
+              <div className="flex flex-wrap gap-3">
+                {PII_COMPLIANCE_TAGS.map((c) => (
+                  <label key={c.value} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <Checkbox checked={config.complianceTags.includes(c.value)} onCheckedChange={() => toggleArrayItem("complianceTags", c.value)} />
+                    {c.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Confidence Threshold (%)</Label>
+              <Input type="number" className="h-8 text-xs w-24" min={0} max={100} value={config.confidenceThreshold} onChange={(e) => update("confidenceThreshold", Number(e.target.value))} />
+            </div>
+          </TabsContent>
+
+          {/* Enforcement Tab */}
+          <TabsContent value="enforcement" className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Primary Action</Label>
+              <Select value={config.action} onValueChange={(v) => update("action", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="block">Block</SelectItem>
+                  <SelectItem value="redact">Redact</SelectItem>
+                  <SelectItem value="replace">Replace</SelectItem>
+                  <SelectItem value="truncate">Truncate</SelectItem>
+                  <SelectItem value="encrypt">Encrypt</SelectItem>
+                  <SelectItem value="log-warning">Log Warning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {config.action === "block" && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Block Options</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-foreground">Block with Logging</span>
+                  <Switch checked={config.blockWithLogging} onCheckedChange={(v) => update("blockWithLogging", v)} className="scale-75" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-foreground">Block with Alerting</span>
+                  <Switch checked={config.blockWithAlerting} onCheckedChange={(v) => update("blockWithAlerting", v)} className="scale-75" />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs text-foreground">Conditional Block Threshold (%)</span>
+                  <Input type="number" className="h-7 text-xs w-24" min={0} max={100} value={config.blockConfidenceThreshold} onChange={(e) => update("blockConfidenceThreshold", Number(e.target.value))} />
+                </div>
+              </div>
+            )}
+
+            {config.action === "redact" && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Redaction Options</p>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Redaction Style</Label>
+                  <Select value={config.redactionStyle} onValueChange={(v) => update("redactionStyle", v)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="partial-mask">Partial Mask</SelectItem>
+                      <SelectItem value="hash">Hash</SelectItem>
+                      <SelectItem value="tokenize">Tokenize</SelectItem>
+                      <SelectItem value="format-preserving">Format-Preserving</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-foreground">Selective Redaction (response only)</span>
+                  <Switch checked={config.selectiveRedaction} onCheckedChange={(v) => update("selectiveRedaction", v)} className="scale-75" />
+                </div>
+              </div>
+            )}
+
+            {config.action === "replace" && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Replacement Options</p>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Replacement Style</Label>
+                  <Select value={config.replacementStyle} onValueChange={(v) => update("replacementStyle", v)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="placeholder">Placeholder Values</SelectItem>
+                      <SelectItem value="synthetic">Synthetic Data</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Alert Recipients (emails)</Label>
+              <Input type="text" className="h-8 text-xs" placeholder="security@example.com, admin@example.com" value={config.alertRecipients} onChange={(e) => update("alertRecipients", e.target.value)} />
+            </div>
+          </TabsContent>
+
+          {/* Scope Tab */}
+          <TabsContent value="scope" className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Applies To</Label>
+              <Select value={config.appliesTo} onValueChange={(v) => update("appliesTo", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="request">Request Only</SelectItem>
+                  <SelectItem value="response">Response Only</SelectItem>
+                  <SelectItem value="both">Both</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Scan Targets</Label>
+              <div className="flex flex-wrap gap-3">
+                {PII_SCAN_TARGETS.map((t) => (
+                  <label key={t.value} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <Checkbox checked={config.scanTargets.includes(t.value)} onCheckedChange={() => toggleArrayItem("scanTargets", t.value)} />
+                    {t.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Policy Granularity</Label>
+              <Select value={config.granularity} onValueChange={(v) => update("granularity", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="global">Global</SelectItem>
+                  <SelectItem value="per-server">Per-Server</SelectItem>
+                  <SelectItem value="per-request-type">Per-Request-Type</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">PII Count Threshold</Label>
+              <Input type="number" className="h-8 text-xs w-24" min={1} value={config.piiCountThreshold} onChange={(e) => update("piiCountThreshold", Number(e.target.value))} />
+              <p className="text-[10px] text-muted-foreground">Only trigger if this many PII fields are detected</p>
+            </div>
+
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-foreground">Time-Based Restriction</p>
+                  <p className="text-[10px] text-muted-foreground">Only enforce during specific hours</p>
+                </div>
+                <Switch checked={config.timeBased} onCheckedChange={(v) => update("timeBased", v)} className="scale-75" />
+              </div>
+              {config.timeBased && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Input type="time" className="h-7 text-xs w-28" value={config.timeStart} onChange={(e) => update("timeStart", e.target.value)} />
+                  <span className="text-xs text-muted-foreground">to</span>
+                  <Input type="time" className="h-7 text-xs w-28" value={config.timeEnd} onChange={(e) => update("timeEnd", e.target.value)} />
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button size="sm" onClick={onSave}>
+            {isEdit ? "Save Changes" : "Add Policy"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // --- Component ---
 
 interface SecurityPoliciesCardProps {
@@ -238,6 +640,11 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   const [toolsFilterIncluded, setToolsFilterIncluded] = useState<Set<string>>(new Set());
   const [toolsFilterEditPolicy, setToolsFilterEditPolicy] = useState<SecurityPolicy | null>(null);
 
+  // PII Detection state
+  const [piiConfigOpen, setPiiConfigOpen] = useState(false);
+  const [piiConfigValues, setPiiConfigValues] = useState<PIIConfig>(getDefaultPIIConfig());
+  const [piiEditPolicy, setPiiEditPolicy] = useState<SecurityPolicy | null>(null);
+
   const usedTemplateIds = new Set(policies.map((p) => p.templateId));
   // Tools Filter (t9) can be added multiple times (one per server), so don't exclude it
   const availableTemplates = securityPolicyRepository.filter((t) => t.templateId === "t9" || !usedTemplateIds.has(t.templateId));
@@ -257,12 +664,18 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   // Add flow
   const handleAddFromRepo = (template: typeof securityPolicyRepository[0]) => {
     if (template.templateId === "t9") {
-      // Open Tools Filter dialog
       setToolsFilterEditPolicy(null);
       setToolsFilterServerId("");
       setToolsFilterIncluded(new Set());
       setAddOpen(false);
       setToolsFilterOpen(true);
+      return;
+    }
+    if (template.templateId === "t1") {
+      setPiiEditPolicy(null);
+      setPiiConfigValues(getDefaultPIIConfig());
+      setAddOpen(false);
+      setPiiConfigOpen(true);
       return;
     }
     const templateSchema = policyConfigSchemas[template.templateId];
@@ -296,6 +709,12 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       setToolsFilterServerId(policy.config?.serverId || "");
       setToolsFilterIncluded(new Set(policy.config?.includedTools || []));
       setToolsFilterOpen(true);
+      return;
+    }
+    if (policy.templateId === "t1") {
+      setPiiEditPolicy(policy);
+      setPiiConfigValues({ ...getDefaultPIIConfig(), ...policy.config });
+      setPiiConfigOpen(true);
       return;
     }
     const templateSchema = policyConfigSchemas[policy.templateId];
@@ -332,6 +751,34 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     setConfigTemplate(null);
     setConfigEditPolicy(null);
     setConfigValues({});
+  };
+
+  // Save PII config
+  const handlePiiSave = () => {
+    const configObj = { ...piiConfigValues } as Record<string, any>;
+    if (piiEditPolicy) {
+      const updated = policies.map((p) =>
+        p.id === piiEditPolicy.id ? { ...p, config: configObj } : p
+      );
+      onPoliciesChange(updated);
+      savePolicies(updated);
+    } else {
+      const template = securityPolicyRepository.find((t) => t.templateId === "t1")!;
+      const newPolicy: SecurityPolicy = {
+        id: `sp-${Date.now()}`,
+        name: template.name,
+        description: template.description,
+        icon: template.icon,
+        active: true,
+        templateId: "t1",
+        config: configObj,
+      };
+      const updated = [...policies, newPolicy];
+      onPoliciesChange(updated);
+      savePolicies(updated);
+    }
+    setPiiConfigOpen(false);
+    setPiiEditPolicy(null);
   };
 
   // Save Tools Filter
@@ -536,6 +983,21 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         </DialogContent>
       </Dialog>
 
+      {/* PII Detection dialog */}
+      <PIIConfigDialog
+        open={piiConfigOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPiiConfigOpen(false);
+            setPiiEditPolicy(null);
+          }
+        }}
+        config={piiConfigValues}
+        onConfigChange={setPiiConfigValues}
+        onSave={handlePiiSave}
+        isEdit={!!piiEditPolicy}
+      />
+
       {/* Tools Filter dialog */}
       <Dialog open={toolsFilterOpen} onOpenChange={(open) => {
         if (!open) {
@@ -603,7 +1065,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         {policies.map((policy) => {
           const Icon = iconMap[policy.icon] || ShieldCheck;
           const summary = getConfigSummary(policy.templateId, policy.config);
-          const hasEditableConfig = policy.templateId === "t9" || (policyConfigSchemas[policy.templateId]?.length ?? 0) > 0;
+          const hasEditableConfig = policy.templateId === "t9" || policy.templateId === "t1" || (policyConfigSchemas[policy.templateId]?.length ?? 0) > 0;
           return (
             <div key={policy.id} className="flex items-center gap-3 px-5 py-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground">
