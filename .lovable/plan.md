@@ -1,126 +1,60 @@
 
 
-# Standardize Status Badges and Dropdown Action Menus Across All Cards
+# Enhanced Instance Flow Dialog — Payload & Security Policy Details
 
 ## Overview
 
-Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
+Enhance the Instance Flow dialog in `GatewayObserveDashboard.tsx` to show request/response payloads and security policy condition details when clicking on individual flow steps.
 
-## Changes
+## Changes — `src/components/GatewayObserveDashboard.tsx`
 
-### 1. `src/components/MCPServersCard.tsx`
+### 1. Extend Mock Data
 
-**Add Activate/Deactivate to dropdown menu:**
-
-The MCP Servers card already has the dropdown menu pattern. Changes needed:
-- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
-- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
-- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
-
-Updated dropdown items:
-- Edit
-- Refresh Metadata
-- Separator
-- Activate / Deactivate (dynamic label based on current status)
-- Separator
-- Remove (destructive)
-
-**Add toggle handler:**
-```typescript
-const handleToggleStatus = (serverId: string) => {
-  const updated = servers.map((s) =>
-    s.id === serverId
-      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
-      : s
-  );
-  updateServers(updated);
-};
-```
-
-### 2. `src/components/MCPGatewayCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
-
-**Replace gateway row controls (lines 700-712):**
-
-Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
-- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
-- A three-dots `DropdownMenu` with:
-  - Edit
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
-
-**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
-
-### 3. `src/components/SecurityPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 474-482):**
-
-Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (only if `hasEditableConfig`)
-  - Separator (only if edit shown)
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Add StatusBadge component** (same green/olive pattern).
-
-### 4. `src/components/BusinessPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 484-488):**
-
-Remove the `Switch` and `Trash2` button. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (calls existing `openEdit(policy)`)
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-Keep the existing `Eye` popover for viewing details -- it stays as-is.
-
-**Add StatusBadge component** (same pattern).
-
-## Consistent StatusBadge Pattern
-
-All four components will use the same styling:
+Add `payload` and `policyDetail` fields to the `FlowStep` interface and mock data:
 
 ```typescript
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === "Active";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-      isActive
-        ? "bg-redwood-green-light text-redwood-green"
-        : "bg-redwood-olive-light text-redwood-olive"
-    }`}>
-      {status}
-    </span>
-  );
-};
+interface FlowStep {
+  name: string;
+  type: "request" | "security" | "business" | "mcp" | "response";
+  status: "passed" | "failed";
+  duration: string;
+  payload?: { request?: Record<string, any>; response?: Record<string, any> };
+  policyDetail?: {
+    conditionEvaluated: string;    // e.g. "invoice_amount > 10000"
+    conditionResult: boolean;
+    action: string;                // e.g. "Block Request", "Passed"
+    matchedPattern?: string;       // e.g. "PII: SSN detected in field 'vendor_tax_id'"
+    confidence?: number;           // e.g. 92
+  };
+}
 ```
 
-## Consistent Row Layout
+Populate existing mock instances with realistic payloads (JSON objects for request/response on request, mcp, and response steps) and policy details (on security and business steps showing which condition fired and the outcome).
 
-All card item rows follow:
-```text
-[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
-```
+### 2. Make Flow Steps Expandable
 
-## Summary of Removals
-- All `Switch` toggle components from item rows (and import cleanup where no longer used)
-- All standalone `Trash2` icon buttons from item rows
-- All standalone `Pencil` icon buttons from item rows
-- Status toggle section from MCP Servers edit dialog
+Replace the static flow step rows with clickable/expandable rows. When a step is clicked, expand it inline to show:
+
+- **For request/response/mcp steps**: A tabbed view with "Request Payload" and "Response Payload" tabs showing formatted JSON in a `<pre>` block with monospace styling.
+- **For security/business steps**: A "Policy Evaluation" section showing:
+  - Condition evaluated (e.g., `"PII scan on field 'vendor_tax_id'"`)
+  - Result: Passed/Failed badge
+  - Action taken (e.g., "Allowed", "Blocked — 403 Forbidden")
+  - Matched pattern (if any, e.g., `"SQL Injection: UNION SELECT detected"`)
+  - Confidence score (if applicable, shown as percentage)
+
+### 3. State
+
+Add `expandedStep: number | null` state inside the Instance Detail Dialog section to track which step is expanded. Clicking a step toggles it.
+
+### 4. Visual Treatment
+
+- Add a subtle chevron indicator on each step row to signal expandability.
+- Expanded content appears below the step row with a light background (`bg-muted/50`), rounded corners, and compact padding.
+- Payload JSON uses `text-xs font-mono` with max-height and overflow scroll.
+- Policy details use a small key-value layout with labels and badges.
+
+### 5. Dialog Width
+
+Increase `max-w-lg` to `max-w-2xl` to accommodate payload content.
 
