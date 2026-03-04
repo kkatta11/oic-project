@@ -374,6 +374,8 @@ function PIIConfigDialog({
   onConfigChange,
   onSave,
   isEdit,
+  policyName,
+  onPolicyNameChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -381,6 +383,8 @@ function PIIConfigDialog({
   onConfigChange: (config: PIIConfig) => void;
   onSave: () => void;
   isEdit: boolean;
+  policyName: string;
+  onPolicyNameChange: (name: string) => void;
 }) {
   const update = <K extends keyof PIIConfig>(key: K, value: PIIConfig[K]) => {
     onConfigChange({ ...config, [key]: value });
@@ -421,6 +425,11 @@ function PIIConfigDialog({
             {isEdit ? "Modify PII detection policy configuration." : "Configure the PII detection policy before adding."}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="grid gap-1.5 mt-2">
+          <Label className="text-xs font-medium">Policy Name</Label>
+          <Input className="h-8 text-xs" value={policyName} onChange={(e) => onPolicyNameChange(e.target.value)} placeholder="PII Detection" />
+        </div>
 
         <Tabs defaultValue="detection" className="mt-1">
           <TabsList className="w-full">
