@@ -1320,8 +1320,13 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
               {configEditPolicy ? "Modify the configuration for this policy." : "Configure the policy before adding."}
             </DialogDescription>
           </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-1.5">
+              <Label className="text-xs font-medium">Policy Name</Label>
+              <Input className="h-8 text-xs" value={policyName} onChange={(e) => setPolicyName(e.target.value)} placeholder="Policy name" />
+            </div>
           {hasConfig && (
-            <div className="grid gap-4 py-2">
+            <>
               {schema.map((field) => (
                 <div key={field.key} className="grid gap-1.5">
                   <Label className="text-xs font-medium">{field.label}</Label>
@@ -1406,6 +1411,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         onSave={handleIdsSave}
         isEdit={!!idsEditPolicy}
         mcpServers={mcpServers}
+        policyName={policyName}
+        onPolicyNameChange={setPolicyName}
       />
 
       {/* PII Detection dialog */}
@@ -1421,6 +1428,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         onConfigChange={setPiiConfigValues}
         onSave={handlePiiSave}
         isEdit={!!piiEditPolicy}
+        policyName={policyName}
+        onPolicyNameChange={setPolicyName}
       />
 
       {/* Tools Filter dialog */}
