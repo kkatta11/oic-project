@@ -1407,7 +1407,53 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
             </div>
           {hasConfig && (
             <>
-              {schema.map((field) => (
+              {schema.map((field) => {
+                // Conditional visibility for enforcement-related fields
+                if (!isEnforcementFieldVisible(currentTemplateId, field.key, configValues)) return null;
+
+                // Dynamic options for targetServerId
+                if (field.key === "targetServerId") {
+                  const serverOptions = [
+                    { value: "native-tools", label: "Native Tools" },
+                    ...activeServers.map((s) => ({ value: s.id, label: s.name })),
+                  ];
+                  return (
+                    <div key={field.key} className="grid gap-1.5">
+                      <Label className="text-xs font-medium">{field.label}</Label>
+                      <Select value={String(configValues[field.key] ?? "")} onValueChange={(v) => { updateConfigValue(field.key, v); updateConfigValue("targetToolId", ""); }}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a server" /></SelectTrigger>
+                        <SelectContent>
+                          {serverOptions.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                }
+
+                // Dynamic options for targetToolId
+                if (field.key === "targetToolId") {
+                  const selectedServerId = configValues.targetServerId;
+                  const toolOptions = selectedServerId === "native-tools"
+                    ? nativeTools.map((t) => ({ value: t.id, label: t.name }))
+                    : (mcpServers.find((s) => s.id === selectedServerId)?.allTools ?? []).map((t) => ({ value: t.id, label: t.name }));
+                  return (
+                    <div key={field.key} className="grid gap-1.5">
+                      <Label className="text-xs font-medium">{field.label}</Label>
+                      <Select value={String(configValues[field.key] ?? "")} onValueChange={(v) => updateConfigValue(field.key, v)}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a tool" /></SelectTrigger>
+                        <SelectContent>
+                          {toolOptions.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                }
+
+                return (
                 <div key={field.key} className="grid gap-1.5">
                   <Label className="text-xs font-medium">{field.label}</Label>
 
@@ -1465,7 +1511,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </>
           )}
           </div>
@@ -1605,7 +1652,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         )}
         {policies.map((policy) => {
           const Icon = iconMap[policy.icon] || ShieldCheck;
-          const summary = getConfigSummary(policy.templateId, policy.config);
+          const summary = getConfigSummary(policy.templateId, policy.config, mcpServers);
           const hasEditableConfig = policy.templateId === "t9" || policy.templateId === "t1" || policy.templateId === "t4" || (policyConfigSchemas[policy.templateId]?.length ?? 0) > 0;
           return (
             <div key={policy.id} className="flex items-center gap-3 px-5 py-2.5">
