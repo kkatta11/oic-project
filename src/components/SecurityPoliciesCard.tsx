@@ -69,25 +69,7 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
     { key: "alertRecipients", label: "Alert Recipients (emails)", type: "text", default: "" },
     { key: "whitelistExceptions", label: "Whitelist Exceptions", type: "text", default: "" },
   ],
-  t4: [
-    { key: "sensitivity", label: "Sensitivity Level", type: "select", options: [
-      { value: "low", label: "Low" },
-      { value: "medium", label: "Medium" },
-      { value: "high", label: "High" },
-    ], default: "medium" },
-    { key: "bruteForceThreshold", label: "Brute Force Threshold (attempts)", type: "number", default: 5 },
-    { key: "bruteForceWindow", label: "Brute Force Window (seconds)", type: "number", default: 60 },
-    { key: "rateSpikeMultiplier", label: "Rate Spike Multiplier", type: "number", default: 10, suffix: "x" },
-    { key: "behavioralMonitoring", label: "Behavioral Monitoring", type: "toggle", default: false },
-    { key: "geoCheckInterval", label: "Geographic Check Interval (min)", type: "number", default: 15 },
-    { key: "responseAction", label: "Response Action", type: "select", options: [
-      { value: "alert", label: "Alert" },
-      { value: "throttle", label: "Throttle" },
-      { value: "require-mfa", label: "Require MFA" },
-      { value: "block", label: "Block" },
-    ], default: "alert" },
-    { key: "exceptions", label: "Exceptions (IPs / processors)", type: "text", default: "" },
-  ],
+  // t4 — Intrusion Detection: custom handling, not standard schema
   t5: [
     { key: "threshold", label: "Threshold (requests)", type: "number", default: 100 },
     { key: "timeWindow", label: "Time Window", type: "select", options: [
@@ -242,6 +224,64 @@ function getDefaultPIIConfig(): PIIConfig {
   };
 }
 
+// --- Intrusion Detection constants ---
+
+const IDS_PATTERN_TYPES = [
+  { id: "sql_injection", label: "SQL Injection", defaultThreshold: 85, fpRate: "< 2%", description: "Detect UNION-based, time-based, error-based injection, SQL keywords, escape sequences, hex payloads" },
+  { id: "command_injection", label: "Command Injection", defaultThreshold: 90, fpRate: "< 2%", description: "Detect shell metacharacters, command substitution, Bash/PowerShell/cmd.exe payloads" },
+  { id: "path_traversal", label: "Path Traversal", defaultThreshold: 95, fpRate: "< 1%", description: "Detect ../ sequences, URL-encoded traversal, absolute paths to restricted directories" },
+  { id: "prompt_injection", label: "Prompt Injection", defaultThreshold: 80, fpRate: "< 5%", description: "Detect system prompt overrides, IGNORE PREVIOUS, role-playing injection, prompt reveal attempts" },
+];
+
+const IDS_EVASION_TECHNIQUES = [
+  { id: "url_encoding", label: "URL Encoding (%27, %3D)" },
+  { id: "html_entity", label: "HTML Entity Encoding" },
+  { id: "unicode_normalization", label: "Unicode Normalization" },
+  { id: "base64", label: "Base64 Encoding" },
+  { id: "hex_encoding", label: "Hex Encoding (0x...)" },
+  { id: "double_url_encoding", label: "Double URL Encoding" },
+  { id: "case_variation", label: "Case Variations" },
+  { id: "null_byte_injection", label: "Null Byte Injection" },
+];
+
+interface IDSConfig {
+  enabledPatterns: string[];
+  evasionHandling: string[];
+  confidenceThresholds: Record<string, number>;
+  responseAction: string;
+  blockWithLogging: boolean;
+  blockWithAlerting: boolean;
+  errorMessage: string;
+  includeRequestId: boolean;
+  maxBlockLatencyMs: number;
+  alertRecipients: string;
+  globalEnabled: boolean;
+  appliesTo: string;
+  perServerOverrides: Record<string, { enabled: boolean; patterns: string[]; thresholds: Record<string, number> }>;
+  whitelistPatterns: { tool: string; pattern: string; description: string }[];
+}
+
+function getDefaultIDSConfig(): IDSConfig {
+  const thresholds: Record<string, number> = {};
+  IDS_PATTERN_TYPES.forEach((p) => { thresholds[p.id] = p.defaultThreshold; });
+  return {
+    enabledPatterns: IDS_PATTERN_TYPES.map((p) => p.id),
+    evasionHandling: IDS_EVASION_TECHNIQUES.map((e) => e.id),
+    confidenceThresholds: thresholds,
+    responseAction: "block",
+    blockWithLogging: true,
+    blockWithAlerting: false,
+    errorMessage: "Request validation failed",
+    includeRequestId: true,
+    maxBlockLatencyMs: 50,
+    alertRecipients: "",
+    globalEnabled: true,
+    appliesTo: "both",
+    perServerOverrides: {},
+    whitelistPatterns: [],
+  };
+}
+
 function getDefaultConfig(templateId: string): Record<string, any> {
   const schema = policyConfigSchemas[templateId];
   if (!schema) return {};
@@ -263,6 +303,18 @@ function getConfigSummary(templateId: string, config: Record<string, any>): stri
       : null;
     if (tags) parts.push(tags);
     return parts.join(" · ");
+  }
+  if (templateId === "t4") {
+    const patterns = Array.isArray(config?.enabledPatterns) ? config.enabledPatterns.length : 0;
+    const action = config?.responseAction || "block";
+    const actionLabel = { block: "Block (403)", "log-alert": "Log & Alert", throttle: "Throttle" }[action] || action;
+    const thresholds = config?.confidenceThresholds as Record<string, number> | undefined;
+    let thresholdRange = "";
+    if (thresholds) {
+      const vals = Object.values(thresholds).filter((v) => typeof v === "number");
+      if (vals.length > 0) thresholdRange = ` · Thresholds: ${Math.min(...vals)}-${Math.max(...vals)}%`;
+    }
+    return `Action: ${actionLabel} · ${patterns} pattern${patterns !== 1 ? "s" : ""}${thresholdRange}`;
   }
   if (templateId === "t9") {
     const serverName = config?.serverName || "Unknown";
@@ -619,6 +671,288 @@ function PIIConfigDialog({
   );
 }
 
+// --- Intrusion Detection Config Dialog ---
+
+function IntrusionDetectionConfigDialog({
+  open,
+  onOpenChange,
+  config,
+  onConfigChange,
+  onSave,
+  isEdit,
+  mcpServers,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  config: IDSConfig;
+  onConfigChange: (config: IDSConfig) => void;
+  onSave: () => void;
+  isEdit: boolean;
+  mcpServers: MCPServer[];
+}) {
+  const update = <K extends keyof IDSConfig>(key: K, value: IDSConfig[K]) => {
+    onConfigChange({ ...config, [key]: value });
+  };
+
+  const toggleArrayItem = (key: "enabledPatterns" | "evasionHandling", value: string) => {
+    const arr = config[key];
+    const next = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
+    update(key, next);
+  };
+
+  const updateThreshold = (patternId: string, value: number) => {
+    update("confidenceThresholds", { ...config.confidenceThresholds, [patternId]: value });
+  };
+
+  const activeServers = mcpServers.filter((s) => s.status === "Active");
+
+  const updateServerOverride = (serverId: string, field: string, value: any) => {
+    const existing = config.perServerOverrides[serverId] || { enabled: true, patterns: IDS_PATTERN_TYPES.map(p => p.id), thresholds: {} };
+    update("perServerOverrides", { ...config.perServerOverrides, [serverId]: { ...existing, [field]: value } });
+  };
+
+  const toggleServerPattern = (serverId: string, patternId: string) => {
+    const existing = config.perServerOverrides[serverId] || { enabled: true, patterns: IDS_PATTERN_TYPES.map(p => p.id), thresholds: {} };
+    const patterns = existing.patterns.includes(patternId)
+      ? existing.patterns.filter((p: string) => p !== patternId)
+      : [...existing.patterns, patternId];
+    update("perServerOverrides", { ...config.perServerOverrides, [serverId]: { ...existing, patterns } });
+  };
+
+  const addWhitelistEntry = () => {
+    update("whitelistPatterns", [...config.whitelistPatterns, { tool: "", pattern: "", description: "" }]);
+  };
+
+  const updateWhitelistEntry = (idx: number, field: "tool" | "pattern" | "description", value: string) => {
+    const next = config.whitelistPatterns.map((e, i) => i === idx ? { ...e, [field]: value } : e);
+    update("whitelistPatterns", next);
+  };
+
+  const removeWhitelistEntry = (idx: number) => {
+    update("whitelistPatterns", config.whitelistPatterns.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit: Intrusion Detection" : "Configure: Intrusion Detection"}</DialogTitle>
+          <DialogDescription>
+            {isEdit ? "Modify intrusion detection policy configuration." : "Configure the intrusion detection policy before adding."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs defaultValue="detection" className="mt-1">
+          <TabsList className="w-full">
+            <TabsTrigger value="detection" className="flex-1 text-xs">Detection</TabsTrigger>
+            <TabsTrigger value="thresholds" className="flex-1 text-xs">Thresholds</TabsTrigger>
+            <TabsTrigger value="enforcement" className="flex-1 text-xs">Enforcement</TabsTrigger>
+            <TabsTrigger value="scope" className="flex-1 text-xs">Scope</TabsTrigger>
+            <TabsTrigger value="whitelisting" className="flex-1 text-xs">Whitelisting</TabsTrigger>
+          </TabsList>
+
+          {/* Detection Tab */}
+          <TabsContent value="detection" className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Attack Pattern Detection ({config.enabledPatterns.length} of {IDS_PATTERN_TYPES.length})</Label>
+              <div className="space-y-1 rounded-md border border-border p-3 max-h-60 overflow-y-auto">
+                {IDS_PATTERN_TYPES.map((p) => (
+                  <label key={p.id} className="flex items-start gap-2 py-1.5 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1">
+                    <Checkbox checked={config.enabledPatterns.includes(p.id)} onCheckedChange={() => toggleArrayItem("enabledPatterns", p.id)} className="mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-foreground">{p.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{p.description}</p>
+                      <p className="text-[10px] text-muted-foreground/70">Target false-positive rate: {p.fpRate}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-1">
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => update("enabledPatterns", IDS_PATTERN_TYPES.map(p => p.id))}>Select All</Button>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => update("enabledPatterns", [])}>Clear All</Button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Evasion Handling ({config.evasionHandling.length} of {IDS_EVASION_TECHNIQUES.length})</Label>
+              <div className="grid grid-cols-2 gap-1 rounded-md border border-border p-3">
+                {IDS_EVASION_TECHNIQUES.map((e) => (
+                  <label key={e.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/50 rounded px-1">
+                    <Checkbox checked={config.evasionHandling.includes(e.id)} onCheckedChange={() => toggleArrayItem("evasionHandling", e.id)} />
+                    <span className="text-xs text-foreground">{e.label}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-1">
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => update("evasionHandling", IDS_EVASION_TECHNIQUES.map(e => e.id))}>Select All</Button>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => update("evasionHandling", [])}>Clear All</Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Thresholds Tab */}
+          <TabsContent value="thresholds" className="space-y-4 py-2">
+            <p className="text-[10px] text-muted-foreground">Higher threshold = fewer false positives but may miss some attacks. Lower threshold = more protection but more false positives.</p>
+            <div className="space-y-3">
+              {IDS_PATTERN_TYPES.filter((p) => config.enabledPatterns.includes(p.id)).map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-md border border-border p-3">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">{p.label}</p>
+                    <p className="text-[10px] text-muted-foreground">Default: {p.defaultThreshold}%</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      className="h-7 text-xs w-20"
+                      min={0}
+                      max={100}
+                      value={config.confidenceThresholds[p.id] ?? p.defaultThreshold}
+                      onChange={(e) => updateThreshold(p.id, Number(e.target.value))}
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                </div>
+              ))}
+              {config.enabledPatterns.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">Enable detection patterns to configure thresholds.</p>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Enforcement Tab */}
+          <TabsContent value="enforcement" className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Primary Action</Label>
+              <Select value={config.responseAction} onValueChange={(v) => update("responseAction", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="block">Block (403 Forbidden)</SelectItem>
+                  <SelectItem value="log-alert">Log & Alert</SelectItem>
+                  <SelectItem value="throttle">Throttle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {config.responseAction === "block" && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Block Options</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-foreground">Block with Logging</span>
+                  <Switch checked={config.blockWithLogging} onCheckedChange={(v) => update("blockWithLogging", v)} className="scale-75" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-foreground">Block with Alerting</span>
+                  <Switch checked={config.blockWithAlerting} onCheckedChange={(v) => update("blockWithAlerting", v)} className="scale-75" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-foreground">Include Request ID in Response</span>
+                  <Switch checked={config.includeRequestId} onCheckedChange={(v) => update("includeRequestId", v)} className="scale-75" />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Error Message</Label>
+              <Input type="text" className="h-8 text-xs" value={config.errorMessage} onChange={(e) => update("errorMessage", e.target.value)} />
+              <p className="text-[10px] text-muted-foreground">Generic message returned to clients. No attack details are disclosed.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Max Blocking Latency (ms)</Label>
+              <Input type="number" className="h-8 text-xs w-24" min={1} value={config.maxBlockLatencyMs} onChange={(e) => update("maxBlockLatencyMs", Number(e.target.value))} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Alert Recipients (emails)</Label>
+              <Input type="text" className="h-8 text-xs" placeholder="security@example.com" value={config.alertRecipients} onChange={(e) => update("alertRecipients", e.target.value)} />
+            </div>
+          </TabsContent>
+
+          {/* Scope Tab */}
+          <TabsContent value="scope" className="space-y-4 py-2">
+            <div className="flex items-center justify-between rounded-md border border-border p-3">
+              <div>
+                <p className="text-xs font-medium text-foreground">Global IDS Enable</p>
+                <p className="text-[10px] text-muted-foreground">Enable/disable at gateway level. Changes take effect immediately.</p>
+              </div>
+              <Switch checked={config.globalEnabled} onCheckedChange={(v) => update("globalEnabled", v)} className="scale-75" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Applies To</Label>
+              <Select value={config.appliesTo} onValueChange={(v) => update("appliesTo", v)}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="request">Request Only</SelectItem>
+                  <SelectItem value="response">Response Only</SelectItem>
+                  <SelectItem value="both">Both</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {activeServers.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Per-Server Configuration</Label>
+                <p className="text-[10px] text-muted-foreground">Override detection settings for individual MCP servers.</p>
+                <div className="space-y-2">
+                  {activeServers.map((server) => {
+                    const override = config.perServerOverrides[server.id] || { enabled: true, patterns: IDS_PATTERN_TYPES.map(p => p.id), thresholds: {} };
+                    return (
+                      <div key={server.id} className="rounded-md border border-border p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-foreground">{server.name}</span>
+                          <Switch checked={override.enabled} onCheckedChange={(v) => updateServerOverride(server.id, "enabled", v)} className="scale-75" />
+                        </div>
+                        {override.enabled && (
+                          <div className="flex flex-wrap gap-2 ml-1">
+                            {IDS_PATTERN_TYPES.map((p) => (
+                              <label key={p.id} className="flex items-center gap-1 text-[10px] cursor-pointer">
+                                <Checkbox checked={override.patterns.includes(p.id)} onCheckedChange={() => toggleServerPattern(server.id, p.id)} />
+                                {p.label}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Whitelisting Tab */}
+          <TabsContent value="whitelisting" className="space-y-4 py-2">
+            <p className="text-[10px] text-muted-foreground">Define safe patterns per tool to reduce false positives. Regex-based whitelist patterns bypass detection for known-safe invocations.</p>
+            <div className="space-y-2">
+              {config.whitelistPatterns.map((entry, idx) => (
+                <div key={idx} className="flex items-start gap-2 rounded-md border border-border p-2">
+                  <div className="flex-1 space-y-1.5">
+                    <Input className="h-7 text-xs" placeholder="Tool name" value={entry.tool} onChange={(e) => updateWhitelistEntry(idx, "tool", e.target.value)} />
+                    <Input className="h-7 text-xs font-mono" placeholder="Regex pattern" value={entry.pattern} onChange={(e) => updateWhitelistEntry(idx, "pattern", e.target.value)} />
+                    <Input className="h-7 text-xs" placeholder="Description" value={entry.description} onChange={(e) => updateWhitelistEntry(idx, "description", e.target.value)} />
+                  </div>
+                  <button onClick={() => removeWhitelistEntry(idx)} className="text-muted-foreground hover:text-destructive mt-1"><X size={14} /></button>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addWhitelistEntry}>
+                <Plus size={12} className="mr-1" /> Add Whitelist Entry
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button size="sm" onClick={onSave}>
+            {isEdit ? "Save Changes" : "Add Policy"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // --- Component ---
 
 interface SecurityPoliciesCardProps {
@@ -644,6 +978,11 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   const [piiConfigOpen, setPiiConfigOpen] = useState(false);
   const [piiConfigValues, setPiiConfigValues] = useState<PIIConfig>(getDefaultPIIConfig());
   const [piiEditPolicy, setPiiEditPolicy] = useState<SecurityPolicy | null>(null);
+
+  // Intrusion Detection state
+  const [idsConfigOpen, setIdsConfigOpen] = useState(false);
+  const [idsConfigValues, setIdsConfigValues] = useState<IDSConfig>(getDefaultIDSConfig());
+  const [idsEditPolicy, setIdsEditPolicy] = useState<SecurityPolicy | null>(null);
 
   const usedTemplateIds = new Set(policies.map((p) => p.templateId));
   // Tools Filter (t9) can be added multiple times (one per server), so don't exclude it
@@ -676,6 +1015,13 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       setPiiConfigValues(getDefaultPIIConfig());
       setAddOpen(false);
       setPiiConfigOpen(true);
+      return;
+    }
+    if (template.templateId === "t4") {
+      setIdsEditPolicy(null);
+      setIdsConfigValues(getDefaultIDSConfig());
+      setAddOpen(false);
+      setIdsConfigOpen(true);
       return;
     }
     const templateSchema = policyConfigSchemas[template.templateId];
@@ -715,6 +1061,12 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       setPiiEditPolicy(policy);
       setPiiConfigValues({ ...getDefaultPIIConfig(), ...policy.config });
       setPiiConfigOpen(true);
+      return;
+    }
+    if (policy.templateId === "t4") {
+      setIdsEditPolicy(policy);
+      setIdsConfigValues({ ...getDefaultIDSConfig(), ...policy.config } as IDSConfig);
+      setIdsConfigOpen(true);
       return;
     }
     const templateSchema = policyConfigSchemas[policy.templateId];
@@ -779,6 +1131,34 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     }
     setPiiConfigOpen(false);
     setPiiEditPolicy(null);
+  };
+
+  // Save IDS config
+  const handleIdsSave = () => {
+    const configObj = { ...idsConfigValues } as Record<string, any>;
+    if (idsEditPolicy) {
+      const updated = policies.map((p) =>
+        p.id === idsEditPolicy.id ? { ...p, config: configObj } : p
+      );
+      onPoliciesChange(updated);
+      savePolicies(updated);
+    } else {
+      const template = securityPolicyRepository.find((t) => t.templateId === "t4")!;
+      const newPolicy: SecurityPolicy = {
+        id: `sp-${Date.now()}`,
+        name: template.name,
+        description: template.description,
+        icon: template.icon,
+        active: true,
+        templateId: "t4",
+        config: configObj,
+      };
+      const updated = [...policies, newPolicy];
+      onPoliciesChange(updated);
+      savePolicies(updated);
+    }
+    setIdsConfigOpen(false);
+    setIdsEditPolicy(null);
   };
 
   // Save Tools Filter
@@ -983,6 +1363,22 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         </DialogContent>
       </Dialog>
 
+      {/* Intrusion Detection dialog */}
+      <IntrusionDetectionConfigDialog
+        open={idsConfigOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIdsConfigOpen(false);
+            setIdsEditPolicy(null);
+          }
+        }}
+        config={idsConfigValues}
+        onConfigChange={setIdsConfigValues}
+        onSave={handleIdsSave}
+        isEdit={!!idsEditPolicy}
+        mcpServers={mcpServers}
+      />
+
       {/* PII Detection dialog */}
       <PIIConfigDialog
         open={piiConfigOpen}
@@ -1087,7 +1483,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         {policies.map((policy) => {
           const Icon = iconMap[policy.icon] || ShieldCheck;
           const summary = getConfigSummary(policy.templateId, policy.config);
-          const hasEditableConfig = policy.templateId === "t9" || policy.templateId === "t1" || (policyConfigSchemas[policy.templateId]?.length ?? 0) > 0;
+          const hasEditableConfig = policy.templateId === "t9" || policy.templateId === "t1" || policy.templateId === "t4" || (policyConfigSchemas[policy.templateId]?.length ?? 0) > 0;
           return (
             <div key={policy.id} className="flex items-center gap-3 px-5 py-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground">
