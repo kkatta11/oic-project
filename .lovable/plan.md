@@ -1,126 +1,115 @@
 
 
-# Standardize Status Badges and Dropdown Action Menus Across All Cards
+# Enhanced Intrusion Detection Policy Configuration
 
 ## Overview
 
-Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
+Replace the current simple schema-based `t4` (Intrusion Detection) config with a dedicated custom dialog component (`IntrusionDetectionConfigDialog`) featuring 5 tabs, similar to the PII Detection (`t1`) pattern.
 
-## Changes
+## Changes — `src/components/SecurityPoliciesCard.tsx`
 
-### 1. `src/components/MCPServersCard.tsx`
+### 1. Remove `t4` from `policyConfigSchemas`
 
-**Add Activate/Deactivate to dropdown menu:**
+Delete lines 72-90 (the `t4` entry in `policyConfigSchemas`). Intrusion Detection will now use custom handling like `t1` and `t9`.
 
-The MCP Servers card already has the dropdown menu pattern. Changes needed:
-- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
-- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
-- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
+### 2. Add Constants
 
-Updated dropdown items:
-- Edit
-- Refresh Metadata
-- Separator
-- Activate / Deactivate (dynamic label based on current status)
-- Separator
-- Remove (destructive)
-
-**Add toggle handler:**
-```typescript
-const handleToggleStatus = (serverId: string) => {
-  const updated = servers.map((s) =>
-    s.id === serverId
-      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
-      : s
-  );
-  updateServers(updated);
-};
-```
-
-### 2. `src/components/MCPGatewayCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
-
-**Replace gateway row controls (lines 700-712):**
-
-Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
-- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
-- A three-dots `DropdownMenu` with:
-  - Edit
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
-
-**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
-
-### 3. `src/components/SecurityPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 474-482):**
-
-Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (only if `hasEditableConfig`)
-  - Separator (only if edit shown)
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Add StatusBadge component** (same green/olive pattern).
-
-### 4. `src/components/BusinessPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 484-488):**
-
-Remove the `Switch` and `Trash2` button. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (calls existing `openEdit(policy)`)
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-Keep the existing `Eye` popover for viewing details -- it stays as-is.
-
-**Add StatusBadge component** (same pattern).
-
-## Consistent StatusBadge Pattern
-
-All four components will use the same styling:
-
-```typescript
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === "Active";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-      isActive
-        ? "bg-redwood-green-light text-redwood-green"
-        : "bg-redwood-olive-light text-redwood-olive"
-    }`}>
-      {status}
-    </span>
-  );
-};
-```
-
-## Consistent Row Layout
-
-All card item rows follow:
 ```text
-[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
+IDS_PATTERN_TYPES = [
+  { id: "sql_injection", label: "SQL Injection", defaultThreshold: 85 },
+  { id: "command_injection", label: "Command Injection", defaultThreshold: 90 },
+  { id: "path_traversal", label: "Path Traversal", defaultThreshold: 95 },
+  { id: "prompt_injection", label: "Prompt Injection", defaultThreshold: 80 },
+]
+
+IDS_EVASION_TECHNIQUES = [
+  "url_encoding", "html_entity", "unicode_normalization",
+  "base64", "hex_encoding", "double_url_encoding",
+  "case_variation", "null_byte_injection"
+]
 ```
 
-## Summary of Removals
-- All `Switch` toggle components from item rows (and import cleanup where no longer used)
-- All standalone `Trash2` icon buttons from item rows
-- All standalone `Pencil` icon buttons from item rows
-- Status toggle section from MCP Servers edit dialog
+### 3. Add `IDSConfig` Interface
+
+```typescript
+interface IDSConfig {
+  // Detection tab
+  enabledPatterns: string[];           // which of the 4 pattern types are active
+  evasionHandling: string[];           // which evasion techniques to handle
+  // Classification tab (per-pattern thresholds)
+  confidenceThresholds: Record<string, number>; // e.g. { sql_injection: 85, ... }
+  // Enforcement tab
+  responseAction: string;              // "block" | "log-alert" | "throttle"
+  blockWithLogging: boolean;
+  blockWithAlerting: boolean;
+  errorMessage: string;                // generic error message text
+  includeRequestId: boolean;
+  maxBlockLatencyMs: number;           // target blocking latency
+  alertRecipients: string;
+  // Scope tab
+  globalEnabled: boolean;              // gateway-level toggle
+  appliesTo: string;                   // request | response | both
+  // Per-server config
+  perServerOverrides: Record<string, {
+    enabled: boolean;
+    patterns: string[];
+    thresholds: Record<string, number>;
+  }>;
+  // Whitelisting tab
+  whitelistPatterns: { tool: string; pattern: string; description: string }[];
+}
+```
+
+### 4. Add `IntrusionDetectionConfigDialog` Component
+
+A dialog with 5 tabs following the same pattern as `PIIConfigDialog`:
+
+**Tab 1 — Detection Patterns**
+- Checklist of 4 pattern types (SQL Injection, Command Injection, Path Traversal, Prompt Injection) each with a brief description
+- Multi-select checklist for evasion handling techniques (8 items)
+- Each pattern type shows its target false-positive rate as helper text
+
+**Tab 2 — Confidence Thresholds**
+- For each enabled pattern type, a number input (0-100%) for the confidence threshold
+- Shows default values and description of higher vs lower threshold tradeoffs
+
+**Tab 3 — Enforcement**
+- Primary Action select: Block (403), Log & Alert, Throttle
+- When action=Block: toggles for logging, alerting, include request ID
+- Error message text input (default: "Request validation failed")
+- Max blocking latency number input (default: 50ms)
+- Alert recipients text input
+
+**Tab 4 — Scope**
+- Global enable/disable toggle
+- Applies To select: Request / Response / Both
+- Per-server configuration section: list MCP servers from props, each with enable/disable toggle and pattern selection checkboxes
+
+**Tab 5 — Whitelisting**
+- List editor for whitelist entries: tool name (text), regex pattern (text), description (text)
+- Add/Remove row buttons
+
+### 5. State Management
+
+Add state variables (same pattern as PII):
+- `idsConfigOpen: boolean`
+- `idsConfigValues: IDSConfig`
+- `idsEditPolicy: SecurityPolicy | null`
+
+### 6. Integration
+
+- In `handleAddFromRepo`: when `templateId === "t4"`, open the IDS dialog with defaults instead of using generic schema
+- In `handleEditPolicy`: when `templateId === "t4"`, hydrate `idsConfigValues` from `policy.config` and open dialog
+- `handleIdsSave`: save config to policy, same pattern as `handlePiiSave`
+
+### 7. Config Summary
+
+Update `getConfigSummary` for `t4`:
+```
+"Action: Block · 4 patterns · Thresholds: 85-95%"
+```
+
+### 8. Default Config
+
+All 4 patterns enabled, all 8 evasion techniques enabled, action=block, logging=true, alerting=false, error message="Request validation failed", includeRequestId=true, maxBlockLatencyMs=50, globalEnabled=true, appliesTo="both", empty per-server overrides and whitelist.
 
