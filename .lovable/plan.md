@@ -1,126 +1,45 @@
-
-
-# Standardize Status Badges and Dropdown Action Menus Across All Cards
+# Add Custom Policy Name to Security Policy Creation
 
 ## Overview
 
-Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
+Currently, when creating a new security policy, the name is auto-set from the template name (e.g., "PII Detection", "Intrusion Detection"). This change adds an editable "Policy Name" input field to all create/edit flows so users can provide a custom name. Prefill the Name with the Template name by default for ease.
 
-## Changes
+## Changes — `src/components/SecurityPoliciesCard.tsx`
 
-### 1. `src/components/MCPServersCard.tsx`
+### 1. Add `policyName` State
 
-**Add Activate/Deactivate to dropdown menu:**
+Add a new state variable `policyName: string` to the main component for tracking the user-provided name across all policy creation flows.
 
-The MCP Servers card already has the dropdown menu pattern. Changes needed:
-- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
-- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
-- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
+### 2. Standard Config Dialog (Rate Limiting, Payload Size, Encryption, etc.)
 
-Updated dropdown items:
-- Edit
-- Refresh Metadata
-- Separator
-- Activate / Deactivate (dynamic label based on current status)
-- Separator
-- Remove (destructive)
+- Add a "Policy Name" `<Input>` field above the existing config fields in the config dialog, pre-filled with the template name on create or the existing policy name on edit.
+- Set `policyName` in `handleAddFromRepo` (for schema-based templates) and `handleEditPolicy`.
+- Use `policyName` in `handleConfigSave` instead of `configTemplate.name`.
+- Also use it when saving no-schema policies (direct add without config dialog) — for these, auto-use the template name as before (no dialog to show a name field).
 
-**Add toggle handler:**
-```typescript
-const handleToggleStatus = (serverId: string) => {
-  const updated = servers.map((s) =>
-    s.id === serverId
-      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
-      : s
-  );
-  updateServers(updated);
-};
-```
+### 3. PII Detection Dialog (`PIIConfigDialog`)
 
-### 2. `src/components/MCPGatewayCard.tsx`
+- Pass `policyName` and `onPolicyNameChange` as new props.
+- Add a "Policy Name" input at the top of the dialog (above the tabs), pre-filled with "PII Detection" on create or the existing name on edit.
+- Set `policyName` in the add/edit handlers before opening the dialog.
+- Use `policyName` in `handlePiiSave`.
 
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
+### 4. Intrusion Detection Dialog (`IntrusionDetectionConfigDialog`)
 
-**Replace gateway row controls (lines 700-712):**
+- Same pattern as PII: pass `policyName`/`onPolicyNameChange` props.
+- Add "Policy Name" input at the top of the dialog.
+- Use in `handleIdsSave`.
 
-Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
-- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
-- A three-dots `DropdownMenu` with:
-  - Edit
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
+### 5. Tools Filter Dialog
 
-**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
+- Add the "Policy Name" input to the inline Tools Filter dialog, pre-filled with `Tools Filter: <server>`.
+- Use in `handleToolsFilterSave` — but still auto-append the server name if the user leaves the default.
 
-**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
+### 6. Edit Flow
 
-### 3. `src/components/SecurityPoliciesCard.tsx`
+When editing any policy, populate `policyName` from `policy.name`. On save, update the policy's `name` field with the edited value.
 
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
+## UI Treatment
 
-**Replace policy row controls (lines 474-482):**
-
-Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (only if `hasEditableConfig`)
-  - Separator (only if edit shown)
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Add StatusBadge component** (same green/olive pattern).
-
-### 4. `src/components/BusinessPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 484-488):**
-
-Remove the `Switch` and `Trash2` button. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (calls existing `openEdit(policy)`)
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-Keep the existing `Eye` popover for viewing details -- it stays as-is.
-
-**Add StatusBadge component** (same pattern).
-
-## Consistent StatusBadge Pattern
-
-All four components will use the same styling:
-
-```typescript
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === "Active";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-      isActive
-        ? "bg-redwood-green-light text-redwood-green"
-        : "bg-redwood-olive-light text-redwood-olive"
-    }`}>
-      {status}
-    </span>
-  );
-};
-```
-
-## Consistent Row Layout
-
-All card item rows follow:
-```text
-[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
-```
-
-## Summary of Removals
-- All `Switch` toggle components from item rows (and import cleanup where no longer used)
-- All standalone `Trash2` icon buttons from item rows
-- All standalone `Pencil` icon buttons from item rows
-- Status toggle section from MCP Servers edit dialog
-
+- The "Policy Name" field is a simple `<Input>` with a `<Label>` reading "Policy Name", placed as the first field in each dialog, before any tabs or config fields.
+- Default value is the template name; user can override it.
