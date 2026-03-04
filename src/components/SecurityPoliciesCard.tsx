@@ -56,8 +56,8 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   // t1 — PII Detection: custom handling, not standard schema
   t2: [
     { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
-      { value: "gateway", label: "Gateway" },
-      { value: "server", label: "Server" },
+      { value: "gateway", label: "MCP Gateway" },
+      { value: "server", label: "MCP Server" },
       { value: "tool", label: "Tool" },
     ], default: "gateway" },
     { key: "targetServerId", label: "Target Server", type: "select", options: [], default: "" },
@@ -89,7 +89,7 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   // t4 — Intrusion Detection: custom handling, not standard schema
   t5: [
     { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
-      { value: "gateway", label: "Gateway" },
+      { value: "gateway", label: "MCP Gateway" },
       { value: "server", label: "MCP Server" },
       { value: "native-tools", label: "Native Tools Server" },
     ], default: "gateway" },
@@ -107,8 +107,8 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   ],
   t6: [
     { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
-      { value: "gateway", label: "Gateway" },
-      { value: "server", label: "Server" },
+      { value: "gateway", label: "MCP Gateway" },
+      { value: "server", label: "MCP Server" },
       { value: "tool", label: "Tool" },
     ], default: "gateway" },
     { key: "targetServerId", label: "Target Server", type: "select", options: [], default: "" },
@@ -132,8 +132,8 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   // t7 — no config fields (merged into Intrusion Detection)
   t8: [
     { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
-      { value: "gateway", label: "Gateway" },
-      { value: "server", label: "Server" },
+      { value: "gateway", label: "MCP Gateway" },
+      { value: "server", label: "MCP Server" },
       { value: "tool", label: "Tool" },
     ], default: "gateway" },
     { key: "targetServerId", label: "Target Server", type: "select", options: [], default: "" },
@@ -188,7 +188,7 @@ function getEnforcementLevelLabel(templateId: string, config: Record<string, any
   if (templateId === "t5" && level === "native-tools") return "Level: Native Tools Server";
   const serverId = config?.targetServerId;
   const serverName = serverId === "native-tools" ? "Native Tools" : mcpServers.find(s => s.id === serverId)?.name;
-  if (level === "server") return serverName ? `Level: Server (${serverName})` : "Level: Server";
+  if (level === "server") return serverName ? `Level: MCP Server (${serverName})` : "Level: MCP Server";
   if (level === "tool") {
     const toolId = config?.targetToolId;
     const server = serverId === "native-tools" ? null : mcpServers.find(s => s.id === serverId);
