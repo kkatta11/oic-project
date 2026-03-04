@@ -1085,16 +1085,17 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
 
   // Save config (add or edit) for standard policies
   const handleConfigSave = () => {
+    const finalName = policyName.trim() || configTemplate?.name || configEditPolicy?.name || "";
     if (configEditPolicy) {
       const updated = policies.map((p) =>
-        p.id === configEditPolicy.id ? { ...p, config: { ...configValues } } : p
+        p.id === configEditPolicy.id ? { ...p, name: finalName, config: { ...configValues } } : p
       );
       onPoliciesChange(updated);
       savePolicies(updated);
     } else if (configTemplate) {
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
-        name: configTemplate.name,
+        name: finalName,
         description: configTemplate.description,
         icon: configTemplate.icon,
         active: true,
@@ -1114,9 +1115,10 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   // Save PII config
   const handlePiiSave = () => {
     const configObj = { ...piiConfigValues } as Record<string, any>;
+    const finalName = policyName.trim() || "PII Detection";
     if (piiEditPolicy) {
       const updated = policies.map((p) =>
-        p.id === piiEditPolicy.id ? { ...p, config: configObj } : p
+        p.id === piiEditPolicy.id ? { ...p, name: finalName, config: configObj } : p
       );
       onPoliciesChange(updated);
       savePolicies(updated);
@@ -1124,7 +1126,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       const template = securityPolicyRepository.find((t) => t.templateId === "t1")!;
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
-        name: template.name,
+        name: finalName,
         description: template.description,
         icon: template.icon,
         active: true,
@@ -1142,9 +1144,10 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   // Save IDS config
   const handleIdsSave = () => {
     const configObj = { ...idsConfigValues } as Record<string, any>;
+    const finalName = policyName.trim() || "Intrusion Detection";
     if (idsEditPolicy) {
       const updated = policies.map((p) =>
-        p.id === idsEditPolicy.id ? { ...p, config: configObj } : p
+        p.id === idsEditPolicy.id ? { ...p, name: finalName, config: configObj } : p
       );
       onPoliciesChange(updated);
       savePolicies(updated);
@@ -1152,7 +1155,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       const template = securityPolicyRepository.find((t) => t.templateId === "t4")!;
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
-        name: template.name,
+        name: finalName,
         description: template.description,
         icon: template.icon,
         active: true,
@@ -1178,10 +1181,12 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       serverName: displayName,
       includedTools: Array.from(toolsFilterIncluded),
     };
+    const finalName = policyName.trim() || `Tools Filter: ${displayName}`;
+    const desc = `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`;
     if (toolsFilterEditPolicy) {
       const updated = policies.map((p) =>
         p.id === toolsFilterEditPolicy.id
-          ? { ...p, name: `Tools Filter: ${displayName}`, description: `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`, config }
+          ? { ...p, name: finalName, description: desc, config }
           : p
       );
       onPoliciesChange(updated);
@@ -1189,8 +1194,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     } else {
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
-        name: `Tools Filter: ${displayName}`,
-        description: `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`,
+        name: finalName,
+        description: desc,
         icon: "Filter",
         active: true,
         templateId: "t9",
