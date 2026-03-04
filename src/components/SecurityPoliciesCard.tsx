@@ -690,6 +690,8 @@ function IntrusionDetectionConfigDialog({
   onSave,
   isEdit,
   mcpServers,
+  policyName,
+  onPolicyNameChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -698,6 +700,8 @@ function IntrusionDetectionConfigDialog({
   onSave: () => void;
   isEdit: boolean;
   mcpServers: MCPServer[];
+  policyName: string;
+  onPolicyNameChange: (name: string) => void;
 }) {
   const update = <K extends keyof IDSConfig>(key: K, value: IDSConfig[K]) => {
     onConfigChange({ ...config, [key]: value });
@@ -750,6 +754,11 @@ function IntrusionDetectionConfigDialog({
             {isEdit ? "Modify intrusion detection policy configuration." : "Configure the intrusion detection policy before adding."}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="grid gap-1.5 mt-2">
+          <Label className="text-xs font-medium">Policy Name</Label>
+          <Input className="h-8 text-xs" value={policyName} onChange={(e) => onPolicyNameChange(e.target.value)} placeholder="Intrusion Detection" />
+        </div>
 
         <Tabs defaultValue="detection" className="mt-1">
           <TabsList className="w-full">
