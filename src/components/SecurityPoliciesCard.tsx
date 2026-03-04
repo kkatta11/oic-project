@@ -967,6 +967,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   const [configTemplate, setConfigTemplate] = useState<typeof securityPolicyRepository[0] | null>(null);
   const [configEditPolicy, setConfigEditPolicy] = useState<SecurityPolicy | null>(null);
   const [configValues, setConfigValues] = useState<Record<string, any>>({});
+  const [policyName, setPolicyName] = useState("");
 
   // Tools Filter state
   const [toolsFilterOpen, setToolsFilterOpen] = useState(false);
@@ -1006,6 +1007,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       setToolsFilterEditPolicy(null);
       setToolsFilterServerId("");
       setToolsFilterIncluded(new Set());
+      setPolicyName(`Tools Filter`);
       setAddOpen(false);
       setToolsFilterOpen(true);
       return;
@@ -1013,6 +1015,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     if (template.templateId === "t1") {
       setPiiEditPolicy(null);
       setPiiConfigValues(getDefaultPIIConfig());
+      setPolicyName(template.name);
       setAddOpen(false);
       setPiiConfigOpen(true);
       return;
@@ -1020,6 +1023,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     if (template.templateId === "t4") {
       setIdsEditPolicy(null);
       setIdsConfigValues(getDefaultIDSConfig());
+      setPolicyName(template.name);
       setAddOpen(false);
       setIdsConfigOpen(true);
       return;
@@ -1044,12 +1048,14 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     setConfigTemplate(template);
     setConfigEditPolicy(null);
     setConfigValues(getDefaultConfig(template.templateId));
+    setPolicyName(template.name);
     setAddOpen(false);
     setConfigDialogOpen(true);
   };
 
   // Edit flow
   const handleEditPolicy = (policy: SecurityPolicy) => {
+    setPolicyName(policy.name);
     if (policy.templateId === "t9") {
       setToolsFilterEditPolicy(policy);
       setToolsFilterServerId(policy.config?.serverId || "");
