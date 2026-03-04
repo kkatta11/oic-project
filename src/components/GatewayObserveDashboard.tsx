@@ -138,6 +138,14 @@ interface FlowStep {
   type: "request" | "security" | "business" | "mcp" | "response";
   status: "passed" | "failed";
   duration: string;
+  payload?: { request?: Record<string, any>; response?: Record<string, any> };
+  policyDetail?: {
+    conditionEvaluated: string;
+    conditionResult: boolean;
+    action: string;
+    matchedPattern?: string;
+    confidence?: number;
+  };
 }
 
 interface GatewayInstance {
