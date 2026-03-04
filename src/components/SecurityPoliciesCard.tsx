@@ -1386,8 +1386,9 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
                   )}
                 </div>
               ))}
-            </div>
+            </>
           )}
+          </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setConfigDialogOpen(false)}>Cancel</Button>
             <Button size="sm" onClick={handleConfigSave}>
