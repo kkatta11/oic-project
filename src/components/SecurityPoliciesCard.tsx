@@ -1449,6 +1449,10 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Policy Name</Label>
+              <Input className="h-8 text-xs" value={policyName} onChange={(e) => setPolicyName(e.target.value)} placeholder="Tools Filter" />
+            </div>
+            <div className="space-y-1.5">
               <Label className="text-xs font-medium">Tool Source</Label>
               <Select value={toolsFilterServerId} onValueChange={(v) => { setToolsFilterServerId(v); setToolsFilterIncluded(new Set()); }}>
                 <SelectTrigger className="h-8 text-xs">
