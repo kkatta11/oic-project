@@ -374,6 +374,8 @@ function PIIConfigDialog({
   onConfigChange,
   onSave,
   isEdit,
+  policyName,
+  onPolicyNameChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -381,6 +383,8 @@ function PIIConfigDialog({
   onConfigChange: (config: PIIConfig) => void;
   onSave: () => void;
   isEdit: boolean;
+  policyName: string;
+  onPolicyNameChange: (name: string) => void;
 }) {
   const update = <K extends keyof PIIConfig>(key: K, value: PIIConfig[K]) => {
     onConfigChange({ ...config, [key]: value });
@@ -421,6 +425,11 @@ function PIIConfigDialog({
             {isEdit ? "Modify PII detection policy configuration." : "Configure the PII detection policy before adding."}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="grid gap-1.5 mt-2">
+          <Label className="text-xs font-medium">Policy Name</Label>
+          <Input className="h-8 text-xs" value={policyName} onChange={(e) => onPolicyNameChange(e.target.value)} placeholder="PII Detection" />
+        </div>
 
         <Tabs defaultValue="detection" className="mt-1">
           <TabsList className="w-full">
@@ -681,6 +690,8 @@ function IntrusionDetectionConfigDialog({
   onSave,
   isEdit,
   mcpServers,
+  policyName,
+  onPolicyNameChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -689,6 +700,8 @@ function IntrusionDetectionConfigDialog({
   onSave: () => void;
   isEdit: boolean;
   mcpServers: MCPServer[];
+  policyName: string;
+  onPolicyNameChange: (name: string) => void;
 }) {
   const update = <K extends keyof IDSConfig>(key: K, value: IDSConfig[K]) => {
     onConfigChange({ ...config, [key]: value });
@@ -741,6 +754,11 @@ function IntrusionDetectionConfigDialog({
             {isEdit ? "Modify intrusion detection policy configuration." : "Configure the intrusion detection policy before adding."}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="grid gap-1.5 mt-2">
+          <Label className="text-xs font-medium">Policy Name</Label>
+          <Input className="h-8 text-xs" value={policyName} onChange={(e) => onPolicyNameChange(e.target.value)} placeholder="Intrusion Detection" />
+        </div>
 
         <Tabs defaultValue="detection" className="mt-1">
           <TabsList className="w-full">
@@ -967,6 +985,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   const [configTemplate, setConfigTemplate] = useState<typeof securityPolicyRepository[0] | null>(null);
   const [configEditPolicy, setConfigEditPolicy] = useState<SecurityPolicy | null>(null);
   const [configValues, setConfigValues] = useState<Record<string, any>>({});
+  const [policyName, setPolicyName] = useState("");
 
   // Tools Filter state
   const [toolsFilterOpen, setToolsFilterOpen] = useState(false);
@@ -1006,6 +1025,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       setToolsFilterEditPolicy(null);
       setToolsFilterServerId("");
       setToolsFilterIncluded(new Set());
+      setPolicyName(`Tools Filter`);
       setAddOpen(false);
       setToolsFilterOpen(true);
       return;
@@ -1013,6 +1033,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     if (template.templateId === "t1") {
       setPiiEditPolicy(null);
       setPiiConfigValues(getDefaultPIIConfig());
+      setPolicyName(template.name);
       setAddOpen(false);
       setPiiConfigOpen(true);
       return;
@@ -1020,6 +1041,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     if (template.templateId === "t4") {
       setIdsEditPolicy(null);
       setIdsConfigValues(getDefaultIDSConfig());
+      setPolicyName(template.name);
       setAddOpen(false);
       setIdsConfigOpen(true);
       return;
@@ -1044,12 +1066,14 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     setConfigTemplate(template);
     setConfigEditPolicy(null);
     setConfigValues(getDefaultConfig(template.templateId));
+    setPolicyName(template.name);
     setAddOpen(false);
     setConfigDialogOpen(true);
   };
 
   // Edit flow
   const handleEditPolicy = (policy: SecurityPolicy) => {
+    setPolicyName(policy.name);
     if (policy.templateId === "t9") {
       setToolsFilterEditPolicy(policy);
       setToolsFilterServerId(policy.config?.serverId || "");
@@ -1079,16 +1103,17 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
 
   // Save config (add or edit) for standard policies
   const handleConfigSave = () => {
+    const finalName = policyName.trim() || configTemplate?.name || configEditPolicy?.name || "";
     if (configEditPolicy) {
       const updated = policies.map((p) =>
-        p.id === configEditPolicy.id ? { ...p, config: { ...configValues } } : p
+        p.id === configEditPolicy.id ? { ...p, name: finalName, config: { ...configValues } } : p
       );
       onPoliciesChange(updated);
       savePolicies(updated);
     } else if (configTemplate) {
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
-        name: configTemplate.name,
+        name: finalName,
         description: configTemplate.description,
         icon: configTemplate.icon,
         active: true,
@@ -1108,9 +1133,10 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   // Save PII config
   const handlePiiSave = () => {
     const configObj = { ...piiConfigValues } as Record<string, any>;
+    const finalName = policyName.trim() || "PII Detection";
     if (piiEditPolicy) {
       const updated = policies.map((p) =>
-        p.id === piiEditPolicy.id ? { ...p, config: configObj } : p
+        p.id === piiEditPolicy.id ? { ...p, name: finalName, config: configObj } : p
       );
       onPoliciesChange(updated);
       savePolicies(updated);
@@ -1118,7 +1144,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       const template = securityPolicyRepository.find((t) => t.templateId === "t1")!;
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
-        name: template.name,
+        name: finalName,
         description: template.description,
         icon: template.icon,
         active: true,
@@ -1136,9 +1162,10 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   // Save IDS config
   const handleIdsSave = () => {
     const configObj = { ...idsConfigValues } as Record<string, any>;
+    const finalName = policyName.trim() || "Intrusion Detection";
     if (idsEditPolicy) {
       const updated = policies.map((p) =>
-        p.id === idsEditPolicy.id ? { ...p, config: configObj } : p
+        p.id === idsEditPolicy.id ? { ...p, name: finalName, config: configObj } : p
       );
       onPoliciesChange(updated);
       savePolicies(updated);
@@ -1146,7 +1173,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       const template = securityPolicyRepository.find((t) => t.templateId === "t4")!;
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
-        name: template.name,
+        name: finalName,
         description: template.description,
         icon: template.icon,
         active: true,
@@ -1172,10 +1199,12 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       serverName: displayName,
       includedTools: Array.from(toolsFilterIncluded),
     };
+    const finalName = policyName.trim() || `Tools Filter: ${displayName}`;
+    const desc = `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`;
     if (toolsFilterEditPolicy) {
       const updated = policies.map((p) =>
         p.id === toolsFilterEditPolicy.id
-          ? { ...p, name: `Tools Filter: ${displayName}`, description: `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`, config }
+          ? { ...p, name: finalName, description: desc, config }
           : p
       );
       onPoliciesChange(updated);
@@ -1183,8 +1212,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
     } else {
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
-        name: `Tools Filter: ${displayName}`,
-        description: `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`,
+        name: finalName,
+        description: desc,
         icon: "Filter",
         active: true,
         templateId: "t9",
@@ -1291,8 +1320,13 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
               {configEditPolicy ? "Modify the configuration for this policy." : "Configure the policy before adding."}
             </DialogDescription>
           </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-1.5">
+              <Label className="text-xs font-medium">Policy Name</Label>
+              <Input className="h-8 text-xs" value={policyName} onChange={(e) => setPolicyName(e.target.value)} placeholder="Policy name" />
+            </div>
           {hasConfig && (
-            <div className="grid gap-4 py-2">
+            <>
               {schema.map((field) => (
                 <div key={field.key} className="grid gap-1.5">
                   <Label className="text-xs font-medium">{field.label}</Label>
@@ -1352,8 +1386,9 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
                   )}
                 </div>
               ))}
-            </div>
+            </>
           )}
+          </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setConfigDialogOpen(false)}>Cancel</Button>
             <Button size="sm" onClick={handleConfigSave}>
@@ -1377,6 +1412,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         onSave={handleIdsSave}
         isEdit={!!idsEditPolicy}
         mcpServers={mcpServers}
+        policyName={policyName}
+        onPolicyNameChange={setPolicyName}
       />
 
       {/* PII Detection dialog */}
@@ -1392,6 +1429,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         onConfigChange={setPiiConfigValues}
         onSave={handlePiiSave}
         isEdit={!!piiEditPolicy}
+        policyName={policyName}
+        onPolicyNameChange={setPolicyName}
       />
 
       {/* Tools Filter dialog */}
@@ -1409,6 +1448,10 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
             <DialogDescription>Select a tool source and choose tools to include.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Policy Name</Label>
+              <Input className="h-8 text-xs" value={policyName} onChange={(e) => setPolicyName(e.target.value)} placeholder="Tools Filter" />
+            </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Tool Source</Label>
               <Select value={toolsFilterServerId} onValueChange={(v) => { setToolsFilterServerId(v); setToolsFilterIncluded(new Set()); }}>
