@@ -292,6 +292,8 @@ const GatewayObserveDashboard = () => {
   const [selectedMetricsGateway, setSelectedMetricsGateway] = useState<string | null>(null);
   const [healthTimeRange, setHealthTimeRange] = useState<"current" | "24h" | "7d" | "30d">("current");
   const [selectedIncident, setSelectedIncident] = useState<{ gateway: string; segment: TimelineSegment } | null>(null);
+  const [expandedStep, setExpandedStep] = useState<number | null>(null);
+  const [payloadTab, setPayloadTab] = useState<"request" | "response">("request");
 
   return (
     <div className="space-y-4">
