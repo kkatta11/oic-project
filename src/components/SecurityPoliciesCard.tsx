@@ -26,7 +26,7 @@ export const securityPolicyRepository = [
   { templateId: "t4", name: "Intrusion Detection", description: "Identify suspicious patterns", icon: "ShieldCheck" },
   { templateId: "t5", name: "Rate Limiting", description: "Check quota consumption", icon: "Gauge" },
   { templateId: "t6", name: "Payload Size", description: "Validate request size", icon: "Package" },
-  { templateId: "t7", name: "SQL Injection", description: "Detect injection attempts", icon: "Database" },
+  
   { templateId: "t8", name: "Encryption", description: "Prepare encrypted transmission", icon: "Lock" },
   { templateId: "t9", name: "Tools Filter", description: "Allow specific tools from MCP servers", icon: "Filter" },
 ];
