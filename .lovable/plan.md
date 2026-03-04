@@ -1,63 +1,126 @@
 
 
-# Add Enforcement Level (Scope) to Security Policies
+# Standardize Status Badges and Dropdown Action Menus Across All Cards
 
-## Summary
+## Overview
 
-Add an "Enforcement Level" selector to four security policy types, controlling at what granularity each policy is applied. The level options vary by policy type:
+Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
 
-| Policy | Levels |
-|---|---|
-| Rate Limiting (t5) | Gateway, MCP Server, Native Tools Server |
-| Schema Validation (t2) | Gateway, Server, Tool |
-| Payload Size (t6) | Gateway, Server, Tool |
-| Encryption (t8) | Gateway, Server, Tool |
+## Changes
 
-When "Server" or "Tool" is selected, a secondary selector appears to pick the specific server (from active MCP servers + Native Tools) and optionally the specific tool.
+### 1. `src/components/MCPServersCard.tsx`
 
-## Changes — `src/components/SecurityPoliciesCard.tsx`
+**Add Activate/Deactivate to dropdown menu:**
 
-### 1. Add `enforcementLevel` field to config schemas
+The MCP Servers card already has the dropdown menu pattern. Changes needed:
+- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
+- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
+- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
 
-For each of the four templates, add an `enforcementLevel` select field as the **first** config field:
+Updated dropdown items:
+- Edit
+- Refresh Metadata
+- Separator
+- Activate / Deactivate (dynamic label based on current status)
+- Separator
+- Remove (destructive)
 
-- **t5 (Rate Limiting)**: Options — `gateway` (default), `server`, `native-tools`. "Server" means a specific MCP server; "native-tools" targets the Native Tools Server specifically.
-- **t2 (Schema Validation)**: Needs a config schema created. Options — `gateway` (default), `server`, `tool`.
-- **t6 (Payload Size)**: Add as first field. Options — `gateway` (default), `server`, `tool`.
-- **t8 (Encryption)**: Add as first field. Options — `gateway` (default), `server`, `tool`.
+**Add toggle handler:**
+```typescript
+const handleToggleStatus = (serverId: string) => {
+  const updated = servers.map((s) =>
+    s.id === serverId
+      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
+      : s
+  );
+  updateServers(updated);
+};
+```
 
-### 2. Add conditional server/tool picker fields
+### 2. `src/components/MCPGatewayCard.tsx`
 
-Add two additional fields to the schemas that are **conditionally rendered** based on `enforcementLevel`:
+**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
 
-- `targetServerId`: A select field showing active MCP servers + "Native Tools". Shown when level is `server` or `tool`.
-- `targetToolId`: A select field showing tools from the selected server. Shown only when level is `tool`.
+**Replace gateway row controls (lines 700-712):**
 
-Since the standard config dialog renders fields from the schema generically, add special handling in the config dialog render loop: when rendering `targetServerId` or `targetToolId`, dynamically populate their options from `mcpServers` and the selected server's tools rather than using static options.
+Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
+- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
+- A three-dots `DropdownMenu` with:
+  - Edit
+  - Separator
+  - Activate / Deactivate (dynamic)
+  - Separator
+  - Delete (destructive)
 
-### 3. Update config dialog rendering
+**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
 
-In the config dialog's field rendering section, add conditional logic:
-- Hide `targetServerId` when `enforcementLevel` is `gateway`.
-- Hide `targetToolId` when `enforcementLevel` is not `tool`.
-- Populate `targetServerId` options dynamically from `activeServers` + a "Native Tools" entry.
-- Populate `targetToolId` options dynamically from the selected server's tools (or `nativeTools` if Native Tools is selected).
+**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
 
-### 4. Update `getConfigSummary`
+### 3. `src/components/SecurityPoliciesCard.tsx`
 
-Enhance the summary string for these templates to include the enforcement level and target, e.g., "Level: Server (Oracle ERP Cloud) · 100 req/min · Block".
+**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
 
-### 5. Schema Validation (t2) — add config schema
+**Replace policy row controls (lines 474-482):**
 
-Currently t2 has no config schema. Create one with:
-- `enforcementLevel` (gateway/server/tool)
-- `targetServerId` / `targetToolId` (conditional)
-- `validationMode`: Strict / Lenient
-- `action`: Block / Warn / Log
+Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
+- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
+- A three-dots `DropdownMenu` with:
+  - Edit (only if `hasEditableConfig`)
+  - Separator (only if edit shown)
+  - Activate / Deactivate (dynamic)
+  - Separator
+  - Delete (destructive)
 
-## Technical Notes
+**Add StatusBadge component** (same green/olive pattern).
 
-- The `PolicyFieldDef` type already supports `select` with dynamic options — but currently all options are static. The conditional server/tool fields will need special-case rendering in the dialog (check `field.key === "targetServerId"` etc.) to inject dynamic options from props.
-- No new components needed; all changes are within the existing config dialog render logic.
-- Rate Limiting uses "Native Tools Server" as a distinct top-level option rather than listing it under a generic "Server" picker, since the requirement specifically calls out "Gateway / MCP Server / Native Tools Server" as the three levels.
+### 4. `src/components/BusinessPoliciesCard.tsx`
+
+**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
+
+**Replace policy row controls (lines 484-488):**
+
+Remove the `Switch` and `Trash2` button. Replace with:
+- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
+- A three-dots `DropdownMenu` with:
+  - Edit (calls existing `openEdit(policy)`)
+  - Separator
+  - Activate / Deactivate (dynamic)
+  - Separator
+  - Delete (destructive)
+
+Keep the existing `Eye` popover for viewing details -- it stays as-is.
+
+**Add StatusBadge component** (same pattern).
+
+## Consistent StatusBadge Pattern
+
+All four components will use the same styling:
+
+```typescript
+const StatusBadge = ({ status }: { status: string }) => {
+  const isActive = status === "Active";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+      isActive
+        ? "bg-redwood-green-light text-redwood-green"
+        : "bg-redwood-olive-light text-redwood-olive"
+    }`}>
+      {status}
+    </span>
+  );
+};
+```
+
+## Consistent Row Layout
+
+All card item rows follow:
+```text
+[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
+```
+
+## Summary of Removals
+- All `Switch` toggle components from item rows (and import cleanup where no longer used)
+- All standalone `Trash2` icon buttons from item rows
+- All standalone `Pencil` icon buttons from item rows
+- Status toggle section from MCP Servers edit dialog
 

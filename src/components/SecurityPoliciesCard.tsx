@@ -54,7 +54,24 @@ interface PolicyFieldDef {
 
 const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   // t1 — PII Detection: custom handling, not standard schema
-  // t2 — no config fields
+  t2: [
+    { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
+      { value: "gateway", label: "Gateway" },
+      { value: "server", label: "Server" },
+      { value: "tool", label: "Tool" },
+    ], default: "gateway" },
+    { key: "targetServerId", label: "Target Server", type: "select", options: [], default: "" },
+    { key: "targetToolId", label: "Target Tool", type: "select", options: [], default: "" },
+    { key: "validationMode", label: "Validation Mode", type: "select", options: [
+      { value: "strict", label: "Strict" },
+      { value: "lenient", label: "Lenient" },
+    ], default: "strict" },
+    { key: "action", label: "Action", type: "select", options: [
+      { value: "block", label: "Block" },
+      { value: "warn", label: "Warn" },
+      { value: "log", label: "Log" },
+    ], default: "block" },
+  ],
   t3: [
     { key: "action", label: "Action", type: "select", options: [
       { value: "block", label: "Block" },
@@ -71,6 +88,12 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   ],
   // t4 — Intrusion Detection: custom handling, not standard schema
   t5: [
+    { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
+      { value: "gateway", label: "Gateway" },
+      { value: "server", label: "MCP Server" },
+      { value: "native-tools", label: "Native Tools Server" },
+    ], default: "gateway" },
+    { key: "targetServerId", label: "Target Server", type: "select", options: [], default: "" },
     { key: "threshold", label: "Threshold (requests)", type: "number", default: 100 },
     { key: "timeWindow", label: "Time Window", type: "select", options: [
       { value: "per-minute", label: "Per Minute" },
@@ -83,6 +106,13 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
     ], default: "block" },
   ],
   t6: [
+    { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
+      { value: "gateway", label: "Gateway" },
+      { value: "server", label: "Server" },
+      { value: "tool", label: "Tool" },
+    ], default: "gateway" },
+    { key: "targetServerId", label: "Target Server", type: "select", options: [], default: "" },
+    { key: "targetToolId", label: "Target Tool", type: "select", options: [], default: "" },
     { key: "appliesTo", label: "Applies To", type: "select", options: [
       { value: "request", label: "Request Only" },
       { value: "response", label: "Response Only" },
@@ -101,6 +131,13 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   ],
   // t7 — no config fields (merged into Intrusion Detection)
   t8: [
+    { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
+      { value: "gateway", label: "Gateway" },
+      { value: "server", label: "Server" },
+      { value: "tool", label: "Tool" },
+    ], default: "gateway" },
+    { key: "targetServerId", label: "Target Server", type: "select", options: [], default: "" },
+    { key: "targetToolId", label: "Target Tool", type: "select", options: [], default: "" },
     { key: "appliesTo", label: "Applies To", type: "select", options: [
       { value: "request", label: "Request Only" },
       { value: "response", label: "Response Only" },
@@ -125,6 +162,44 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
   ],
   // t9 — Tools Filter: custom handling, not standard schema
 };
+
+// Helper to check if a field should be visible based on enforcement level
+const ENFORCEMENT_LEVEL_TEMPLATES = ["t2", "t5", "t6", "t8"];
+
+function isEnforcementFieldVisible(templateId: string, fieldKey: string, configValues: Record<string, any>): boolean {
+  if (!ENFORCEMENT_LEVEL_TEMPLATES.includes(templateId)) return true;
+  const level = configValues.enforcementLevel || "gateway";
+  if (fieldKey === "targetServerId") {
+    // For t5, "server" level means MCP server; "native-tools" is a separate level with no picker
+    if (templateId === "t5") return level === "server";
+    return level === "server" || level === "tool";
+  }
+  if (fieldKey === "targetToolId") {
+    // t5 doesn't have tool-level
+    if (templateId === "t5") return false;
+    return level === "tool";
+  }
+  return true;
+}
+
+function getEnforcementLevelLabel(templateId: string, config: Record<string, any>, mcpServers: MCPServer[]): string {
+  const level = config?.enforcementLevel;
+  if (!level || level === "gateway") return "";
+  if (templateId === "t5" && level === "native-tools") return "Level: Native Tools Server";
+  const serverId = config?.targetServerId;
+  const serverName = serverId === "native-tools" ? "Native Tools" : mcpServers.find(s => s.id === serverId)?.name;
+  if (level === "server") return serverName ? `Level: Server (${serverName})` : "Level: Server";
+  if (level === "tool") {
+    const toolId = config?.targetToolId;
+    const server = serverId === "native-tools" ? null : mcpServers.find(s => s.id === serverId);
+    const toolName = serverId === "native-tools"
+      ? nativeTools.find(t => t.id === toolId)?.name
+      : server?.allTools?.find(t => t.id === toolId)?.name;
+    const target = toolName ? `${serverName || "Server"} / ${toolName}` : serverName || "Server";
+    return `Level: Tool (${target})`;
+  }
+  return "";
+}
 
 // --- PII Detection constants ---
 
@@ -290,7 +365,7 @@ function getDefaultConfig(templateId: string): Record<string, any> {
   return cfg;
 }
 
-function getConfigSummary(templateId: string, config: Record<string, any>): string {
+function getConfigSummary(templateId: string, config: Record<string, any>, mcpServers?: MCPServer[]): string {
   if (templateId === "t1") {
     const detectors = Array.isArray(config?.detectors) ? config.detectors.length : 0;
     const action = config?.action || "block";
@@ -323,9 +398,14 @@ function getConfigSummary(templateId: string, config: Record<string, any>): stri
   }
   const schema = policyConfigSchemas[templateId];
   if (!schema || schema.length === 0) return "";
+  // Build enforcement level prefix
+  const enforcementPrefix = mcpServers ? getEnforcementLevelLabel(templateId, config, mcpServers) : "";
   const parts: string[] = [];
+  if (enforcementPrefix) parts.push(enforcementPrefix);
   for (const field of schema) {
     if (field.type === "text") continue;
+    // Skip enforcement meta-fields from summary
+    if (["enforcementLevel", "targetServerId", "targetToolId"].includes(field.key)) continue;
     const val = config?.[field.key];
     if (val === undefined || val === null) continue;
     if (field.type === "toggle") {
@@ -341,7 +421,7 @@ function getConfigSummary(templateId: string, config: Record<string, any>): stri
     } else {
       parts.push(`${field.label}: ${val}${field.suffix ?? ""}`);
     }
-    if (parts.length >= 3) break;
+    if (parts.length >= 4) break;
   }
   return parts.join(" · ");
 }
@@ -1327,7 +1407,53 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
             </div>
           {hasConfig && (
             <>
-              {schema.map((field) => (
+              {schema.map((field) => {
+                // Conditional visibility for enforcement-related fields
+                if (!isEnforcementFieldVisible(currentTemplateId, field.key, configValues)) return null;
+
+                // Dynamic options for targetServerId
+                if (field.key === "targetServerId") {
+                  const serverOptions = [
+                    { value: "native-tools", label: "Native Tools" },
+                    ...activeServers.map((s) => ({ value: s.id, label: s.name })),
+                  ];
+                  return (
+                    <div key={field.key} className="grid gap-1.5">
+                      <Label className="text-xs font-medium">{field.label}</Label>
+                      <Select value={String(configValues[field.key] ?? "")} onValueChange={(v) => { updateConfigValue(field.key, v); updateConfigValue("targetToolId", ""); }}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a server" /></SelectTrigger>
+                        <SelectContent>
+                          {serverOptions.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                }
+
+                // Dynamic options for targetToolId
+                if (field.key === "targetToolId") {
+                  const selectedServerId = configValues.targetServerId;
+                  const toolOptions = selectedServerId === "native-tools"
+                    ? nativeTools.map((t) => ({ value: t.id, label: t.name }))
+                    : (mcpServers.find((s) => s.id === selectedServerId)?.allTools ?? []).map((t) => ({ value: t.id, label: t.name }));
+                  return (
+                    <div key={field.key} className="grid gap-1.5">
+                      <Label className="text-xs font-medium">{field.label}</Label>
+                      <Select value={String(configValues[field.key] ?? "")} onValueChange={(v) => updateConfigValue(field.key, v)}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a tool" /></SelectTrigger>
+                        <SelectContent>
+                          {toolOptions.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                }
+
+                return (
                 <div key={field.key} className="grid gap-1.5">
                   <Label className="text-xs font-medium">{field.label}</Label>
 
@@ -1385,7 +1511,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </>
           )}
           </div>
@@ -1525,7 +1652,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         )}
         {policies.map((policy) => {
           const Icon = iconMap[policy.icon] || ShieldCheck;
-          const summary = getConfigSummary(policy.templateId, policy.config);
+          const summary = getConfigSummary(policy.templateId, policy.config, mcpServers);
           const hasEditableConfig = policy.templateId === "t9" || policy.templateId === "t1" || policy.templateId === "t4" || (policyConfigSchemas[policy.templateId]?.length ?? 0) > 0;
           return (
             <div key={policy.id} className="flex items-center gap-3 px-5 py-2.5">
