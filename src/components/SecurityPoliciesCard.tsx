@@ -425,47 +425,6 @@ function getConfigSummary(templateId: string, config: Record<string, any>, mcpSe
   }
   return parts.join(" · ");
 }
-  if (templateId === "t4") {
-    const patterns = Array.isArray(config?.enabledPatterns) ? config.enabledPatterns.length : 0;
-    const action = config?.responseAction || "block";
-    const actionLabel = { block: "Block (403)", "log-alert": "Log & Alert", throttle: "Throttle" }[action] || action;
-    const thresholds = config?.confidenceThresholds as Record<string, number> | undefined;
-    let thresholdRange = "";
-    if (thresholds) {
-      const vals = Object.values(thresholds).filter((v) => typeof v === "number");
-      if (vals.length > 0) thresholdRange = ` · Thresholds: ${Math.min(...vals)}-${Math.max(...vals)}%`;
-    }
-    return `Action: ${actionLabel} · ${patterns} pattern${patterns !== 1 ? "s" : ""}${thresholdRange}`;
-  }
-  if (templateId === "t9") {
-    const serverName = config?.serverName || "Unknown";
-    const included = Array.isArray(config?.includedTools) ? config.includedTools.length : 0;
-    return `Server: ${serverName} · Includes: ${included} tool${included !== 1 ? "s" : ""}`;
-  }
-  const schema = policyConfigSchemas[templateId];
-  if (!schema || schema.length === 0) return "";
-  const parts: string[] = [];
-  for (const field of schema) {
-    if (field.type === "text") continue;
-    const val = config?.[field.key];
-    if (val === undefined || val === null) continue;
-    if (field.type === "toggle") {
-      parts.push(`${field.label}: ${val ? "Yes" : "No"}`);
-    } else if (field.type === "multi-select" && Array.isArray(val)) {
-      if (val.length > 0) {
-        const labels = val.map((v: string) => field.options?.find((o) => o.value === v)?.label ?? v);
-        parts.push(labels.join(", "));
-      }
-    } else if (field.options) {
-      const label = field.options.find((o) => o.value === val)?.label ?? val;
-      parts.push(`${field.label}: ${label}`);
-    } else {
-      parts.push(`${field.label}: ${val}${field.suffix ?? ""}`);
-    }
-    if (parts.length >= 3) break;
-  }
-  return parts.join(" · ");
-}
 
 // --- Storage ---
 
