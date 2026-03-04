@@ -592,8 +592,8 @@ const GatewayObserveDashboard = () => {
       </Tabs>
 
       {/* Instance Detail Dialog */}
-      <Dialog open={!!selectedInstance} onOpenChange={(open) => !open && setSelectedInstance(null)}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={!!selectedInstance} onOpenChange={(open) => { if (!open) { setSelectedInstance(null); setExpandedStep(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base">Instance Flow — {selectedInstance?.toolName}</DialogTitle>
             <DialogDescription>
@@ -603,32 +603,116 @@ const GatewayObserveDashboard = () => {
 
           {selectedInstance && (
             <div className="space-y-0">
-              {selectedInstance.flow.map((step, idx) => (
-                <div key={idx} className="relative flex items-start gap-3 pb-4 last:pb-0">
-                  {idx < selectedInstance.flow.length - 1 && (
-                    <div className="absolute left-[15px] top-8 h-[calc(100%-16px)] w-px bg-border" />
-                  )}
-                  <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
-                    step.status === "passed"
-                      ? "border-[hsl(var(--redwood-green))] bg-[hsl(var(--redwood-green-light))] text-[hsl(var(--redwood-green))]"
-                      : "border-destructive bg-destructive/10 text-destructive"
-                  }`}>
-                    {stepIcon(step.type)}
-                  </div>
-                  <div className="flex flex-1 items-center justify-between pt-1">
-                    <div>
-                      <p className="text-sm font-medium">{step.name}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{step.type}</p>
+              {selectedInstance.flow.map((step, idx) => {
+                const isExpanded = expandedStep === idx;
+                const hasDetail = step.payload || step.policyDetail;
+                return (
+                  <div key={idx} className="relative">
+                    {idx < selectedInstance.flow.length - 1 && (
+                      <div className="absolute left-[15px] top-8 h-[calc(100%-0px)] w-px bg-border" />
+                    )}
+                    <div
+                      className={`relative flex items-start gap-3 pb-1 cursor-pointer rounded-md px-1 py-1 transition-colors ${hasDetail ? "hover:bg-muted/40" : ""}`}
+                      onClick={() => hasDetail && setExpandedStep(isExpanded ? null : idx)}
+                    >
+                      <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
+                        step.status === "passed"
+                          ? "border-[hsl(var(--redwood-green))] bg-[hsl(var(--redwood-green-light))] text-[hsl(var(--redwood-green))]"
+                          : "border-destructive bg-destructive/10 text-destructive"
+                      }`}>
+                        {stepIcon(step.type)}
+                      </div>
+                      <div className="flex flex-1 items-center justify-between pt-1">
+                        <div>
+                          <p className="text-sm font-medium">{step.name}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{step.type}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-muted-foreground">{step.duration}</span>
+                          {step.status === "passed"
+                            ? <CheckCircle2 size={14} className="text-[hsl(var(--redwood-green))]" />
+                            : <XCircle size={14} className="text-destructive" />}
+                          {hasDetail && (
+                            <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-muted-foreground">{step.duration}</span>
-                      {step.status === "passed"
-                        ? <CheckCircle2 size={14} className="text-[hsl(var(--redwood-green))]" />
-                        : <XCircle size={14} className="text-destructive" />}
-                    </div>
+
+                    {/* Expanded content */}
+                    {isExpanded && (
+                      <div className="ml-11 mr-1 mb-2 mt-1 rounded-md bg-muted/50 border border-border p-3 space-y-3">
+                        {/* Payload section */}
+                        {step.payload && (
+                          <div>
+                            <div className="flex gap-1 mb-2">
+                              {step.payload.request !== undefined && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setPayloadTab("request"); }}
+                                  className={`px-2 py-0.5 text-[11px] font-medium rounded ${payloadTab === "request" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                                >
+                                  Request
+                                </button>
+                              )}
+                              {step.payload.response !== undefined && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setPayloadTab("response"); }}
+                                  className={`px-2 py-0.5 text-[11px] font-medium rounded ${payloadTab === "response" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                                >
+                                  Response
+                                </button>
+                              )}
+                            </div>
+                            <pre className="text-xs font-mono bg-background rounded border border-border p-2 overflow-x-auto max-h-40 overflow-y-auto">
+                              {JSON.stringify(
+                                payloadTab === "request" ? step.payload.request : step.payload.response,
+                                null, 2
+                              ) ?? "null"}
+                            </pre>
+                          </div>
+                        )}
+
+                        {/* Policy detail section */}
+                        {step.policyDetail && (
+                          <div className="space-y-2">
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Policy Evaluation</p>
+                            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+                              <span className="text-muted-foreground font-medium">Condition</span>
+                              <span className="font-mono">{step.policyDetail.conditionEvaluated}</span>
+
+                              <span className="text-muted-foreground font-medium">Result</span>
+                              <span>
+                                {step.policyDetail.conditionResult
+                                  ? <Badge className="bg-[hsl(var(--redwood-green))] text-white border-transparent text-[10px] px-1.5 py-0">Passed</Badge>
+                                  : <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Failed</Badge>}
+                              </span>
+
+                              <span className="text-muted-foreground font-medium">Action</span>
+                              <span>{step.policyDetail.action}</span>
+
+                              {step.policyDetail.matchedPattern && (
+                                <>
+                                  <span className="text-muted-foreground font-medium">Pattern</span>
+                                  <span className="font-mono text-[hsl(var(--redwood-gold))]">{step.policyDetail.matchedPattern}</span>
+                                </>
+                              )}
+
+                              {step.policyDetail.confidence !== undefined && (
+                                <>
+                                  <span className="text-muted-foreground font-medium">Confidence</span>
+                                  <span className="font-semibold">{step.policyDetail.confidence}%</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!isExpanded && <div className="h-3" />}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                 <span className="text-sm font-medium">Total Duration</span>
                 <span className="text-sm font-semibold font-mono">{selectedInstance.duration}</span>
