@@ -242,6 +242,15 @@ const gatewayInstances: GatewayInstance[] = [
   },
 ];
 
+const auditLog = [
+  { timestamp: "2026-02-23 09:45:10", action: "Created", artifactType: "Gateway", name: "Invoice Validation Gateway", user: "admin@oracle.com" },
+  { timestamp: "2026-02-23 09:30:22", action: "Updated", artifactType: "Security Policy", name: "PII Detection", user: "admin@oracle.com" },
+  { timestamp: "2026-02-22 16:12:05", action: "Created", artifactType: "MCP Server", name: "Slack Community Server", user: "dev@oracle.com" },
+  { timestamp: "2026-02-22 14:55:33", action: "Deleted", artifactType: "Business Policy", name: "Legacy Threshold Rule", user: "admin@oracle.com" },
+  { timestamp: "2026-02-22 11:20:18", action: "Updated", artifactType: "Gateway", name: "Procurement Gateway", user: "dev@oracle.com" },
+  { timestamp: "2026-02-21 17:08:44", action: "Created", artifactType: "Business Policy", name: "Invoice Amount Check", user: "admin@oracle.com" },
+];
+
 // ── Helpers ────────────────────────────────────────────────
 
 const statusBadge = (status: string) => {
