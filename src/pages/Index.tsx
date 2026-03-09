@@ -109,7 +109,17 @@ const Index = () => {
       <div className="h-1.5 bg-gradient-to-r from-redwood-gold via-redwood-banner to-redwood-gold" />
 
       <div className="border-b border-border bg-card px-6 py-4">
-        <h1 className="text-xl font-bold text-foreground">Smart Invoice Validation AgAI</h1>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft size={16} />
+            <span>Projects</span>
+          </button>
+          <div className="h-5 w-px bg-border" />
+          <h1 className="text-xl font-bold text-foreground">{projectData.name}</h1>
+        </div>
       </div>
 
       <div className="flex items-center justify-between border-b border-border bg-card px-6">
