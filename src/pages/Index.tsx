@@ -162,7 +162,7 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1" key={projectId}>
         <SidebarNav
           activeItem={activeSidebarItem}
           onItemClick={setActiveSidebarItem}
