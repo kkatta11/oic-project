@@ -208,9 +208,11 @@ interface ServerToolSelectorProps {
   selectedToolId: string;
   onServerChange: (serverId: string) => void;
   onToolChange: (toolId: string) => void;
+  projectTools?: NativeTool[];
 }
 
-const ServerToolSelector = ({ mcpServers, toolSource, onToolSourceChange, selectedServerId, selectedToolId, onServerChange, onToolChange }: ServerToolSelectorProps) => {
+const ServerToolSelector = ({ mcpServers, toolSource, onToolSourceChange, selectedServerId, selectedToolId, onServerChange, onToolChange, projectTools }: ServerToolSelectorProps) => {
+  const toolsList = projectTools || nativeTools;
   const activeServers = mcpServers.filter((s) => s.status === "Active");
   const selectedServer = activeServers.find((s) => s.id === selectedServerId);
   const tools = selectedServer?.tools || [];
