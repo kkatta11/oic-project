@@ -592,7 +592,7 @@ const GatewayObserveDashboard = () => {
       </Tabs>
 
       {/* Instance Detail Dialog */}
-      <Dialog open={!!selectedInstance} onOpenChange={(open) => { if (!open) { setSelectedInstance(null); setExpandedStep(null); } }}>
+      <Dialog open={!!selectedInstance} onOpenChange={(open) => { if (!open) { setSelectedInstance(null); setExpandedSteps(new Set()); } }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base">Instance Flow — {selectedInstance?.toolName}</DialogTitle>
