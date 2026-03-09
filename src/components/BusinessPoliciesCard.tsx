@@ -295,12 +295,13 @@ function buildSelectedToolKey(server: MCPServer, toolId: string): string {
   return `${server.name.replace(/\s+/g, "")}.${tool.name.replace(/\s+/g, "")}`;
 }
 
-function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[]): { serverId: string; toolId: string; toolSource: ToolSource } {
+function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[], projectTools?: NativeTool[]): { serverId: string; toolId: string; toolSource: ToolSource } {
+  const toolsList = projectTools || nativeTools;
   if (!selectedTools.length) return { serverId: "", toolId: "", toolSource: "mcp" };
   const key = selectedTools[0];
   if (key.startsWith("NativeTools.")) {
     const toolName = key.substring("NativeTools.".length);
-    const nt = nativeTools.find((t) => t.name.replace(/\s+/g, "") === toolName) || activeTools.find((t) => t.name.replace(/\s+/g, "") === toolName);
+    const nt = toolsList.find((t) => t.name.replace(/\s+/g, "") === toolName);
     return { serverId: "", toolId: nt?.id || "", toolSource: "native" };
   }
   const dotIdx = key.indexOf(".");
