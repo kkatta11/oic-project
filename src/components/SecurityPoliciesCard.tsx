@@ -1235,7 +1235,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       };
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     }
     setPiiConfigOpen(false);
     setPiiEditPolicy(null);
