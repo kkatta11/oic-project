@@ -319,7 +319,7 @@ function formatToolLabel(mcpServers: MCPServer[], selectedTools: string[]): stri
   const key = selectedTools[0];
   if (key.startsWith("NativeTools.")) {
     const toolName = key.substring("NativeTools.".length);
-    const nt = nativeTools.find((t) => t.name.replace(/\s+/g, "") === toolName);
+    const nt = nativeTools.find((t) => t.name.replace(/\s+/g, "") === toolName) || activeTools.find((t) => t.name.replace(/\s+/g, "") === toolName);
     return `Native Tools → ${nt?.name || toolName}`;
   }
   const { serverId, toolId } = deriveServerAndTool(mcpServers, selectedTools);
