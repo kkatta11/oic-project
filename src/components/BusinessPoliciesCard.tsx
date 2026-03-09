@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MCPServer } from "@/components/MCPServersCard";
-import { nativeTools } from "@/components/ToolsCard";
+import { nativeTools, type NativeTool } from "@/components/ToolsCard";
 
 export interface PolicyCondition {
   id: string;

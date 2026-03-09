@@ -28,7 +28,7 @@ import {
 import type { SecurityPolicy } from "@/components/SecurityPoliciesCard";
 import type { BusinessPolicy } from "@/components/BusinessPoliciesCard";
 import type { MCPServer } from "@/components/MCPServersCard";
-import { nativeTools } from "@/components/ToolsCard";
+import { nativeTools, type NativeTool } from "@/components/ToolsCard";
 
 const iconMap: Record<string, LucideIcon> = {
   ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock, Filter,
