@@ -73,6 +73,7 @@ interface MCPGatewayCardProps {
   securityPolicies?: SecurityPolicy[];
   businessPolicies?: BusinessPolicy[];
   projectId?: string;
+  tools?: NativeTool[];
 }
 
 const authLabel = (auth: string) => {
