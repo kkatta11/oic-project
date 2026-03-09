@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MCPServer } from "@/components/MCPServersCard";
-import { nativeTools } from "@/components/ToolsCard";
+import { nativeTools, type NativeTool } from "@/components/ToolsCard";
 
 export interface PolicyCondition {
   id: string;
@@ -208,9 +208,11 @@ interface ServerToolSelectorProps {
   selectedToolId: string;
   onServerChange: (serverId: string) => void;
   onToolChange: (toolId: string) => void;
+  projectTools?: NativeTool[];
 }
 
-const ServerToolSelector = ({ mcpServers, toolSource, onToolSourceChange, selectedServerId, selectedToolId, onServerChange, onToolChange }: ServerToolSelectorProps) => {
+const ServerToolSelector = ({ mcpServers, toolSource, onToolSourceChange, selectedServerId, selectedToolId, onServerChange, onToolChange, projectTools }: ServerToolSelectorProps) => {
+  const toolsList = projectTools || nativeTools;
   const activeServers = mcpServers.filter((s) => s.status === "Active");
   const selectedServer = activeServers.find((s) => s.id === selectedServerId);
   const tools = selectedServer?.tools || [];
@@ -241,7 +243,7 @@ const ServerToolSelector = ({ mcpServers, toolSource, onToolSourceChange, select
           <Select value={selectedToolId} onValueChange={onToolChange}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a native tool…" /></SelectTrigger>
             <SelectContent>
-              {nativeTools.map((t) => (
+              {toolsList.map((t) => (
                 <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
               ))}
             </SelectContent>
@@ -293,12 +295,13 @@ function buildSelectedToolKey(server: MCPServer, toolId: string): string {
   return `${server.name.replace(/\s+/g, "")}.${tool.name.replace(/\s+/g, "")}`;
 }
 
-function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[]): { serverId: string; toolId: string; toolSource: ToolSource } {
+function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[], projectTools?: NativeTool[]): { serverId: string; toolId: string; toolSource: ToolSource } {
+  const toolsList = projectTools || nativeTools;
   if (!selectedTools.length) return { serverId: "", toolId: "", toolSource: "mcp" };
   const key = selectedTools[0];
   if (key.startsWith("NativeTools.")) {
     const toolName = key.substring("NativeTools.".length);
-    const nt = nativeTools.find((t) => t.name.replace(/\s+/g, "") === toolName);
+    const nt = toolsList.find((t) => t.name.replace(/\s+/g, "") === toolName);
     return { serverId: "", toolId: nt?.id || "", toolSource: "native" };
   }
   const dotIdx = key.indexOf(".");
@@ -314,15 +317,16 @@ function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[]): 
   return { serverId: "", toolId: "", toolSource: "mcp" };
 }
 
-function formatToolLabel(mcpServers: MCPServer[], selectedTools: string[]): string {
+function formatToolLabel(mcpServers: MCPServer[], selectedTools: string[], projectTools?: NativeTool[]): string {
+  const toolsList = projectTools || nativeTools;
   if (!selectedTools.length) return "";
   const key = selectedTools[0];
   if (key.startsWith("NativeTools.")) {
     const toolName = key.substring("NativeTools.".length);
-    const nt = nativeTools.find((t) => t.name.replace(/\s+/g, "") === toolName);
+    const nt = toolsList.find((t) => t.name.replace(/\s+/g, "") === toolName);
     return `Native Tools → ${nt?.name || toolName}`;
   }
-  const { serverId, toolId } = deriveServerAndTool(mcpServers, selectedTools);
+  const { serverId, toolId } = deriveServerAndTool(mcpServers, selectedTools, projectTools);
   const server = mcpServers.find((s) => s.id === serverId);
   const tool = server?.tools.find((t) => t.id === toolId);
   if (server && tool) return `${server.name} → ${tool.name}`;
@@ -335,9 +339,11 @@ interface BusinessPoliciesCardProps {
   onPoliciesChange: (policies: BusinessPolicy[]) => void;
   mcpServers?: MCPServer[];
   projectId?: string;
+  tools?: NativeTool[];
 }
 
-const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], projectId }: BusinessPoliciesCardProps) => {
+const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], projectId, tools: projectTools }: BusinessPoliciesCardProps) => {
+  const activeTools = projectTools || nativeTools;
   const save = (p: BusinessPolicy[]) => saveBusinessPolicies(p, projectId);
   const [createOpen, setCreateOpen] = useState(false);
   const [editPolicy, setEditPolicy] = useState<BusinessPolicy | null>(null);
@@ -371,7 +377,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   };
 
   const nativeServerProxy: MCPServer[] = toolSource === "native"
-    ? [{ id: "native-tools", name: "Native Tools", status: "Active" as const, icon: Cpu, tools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), allTools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), url: "", transport: "", authType: "" } as MCPServer]
+    ? [{ id: "native-tools", name: "Native Tools", status: "Active" as const, icon: Cpu, tools: activeTools.map(t => ({ id: t.id, name: t.name, description: "" })), allTools: activeTools.map(t => ({ id: t.id, name: t.name, description: "" })), url: "", transport: "", authType: "" } as MCPServer]
     : [];
   const scopedServers = toolSource === "native" ? nativeServerProxy : mcpServers.filter((s) => s.id === selectedServerId);
 
@@ -380,7 +386,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   const buildToolKey = (): string => {
     if (toolSource === "native") {
-      const nt = nativeTools.find((t) => t.id === selectedToolId);
+      const nt = activeTools.find((t) => t.id === selectedToolId);
       return nt ? `NativeTools.${nt.name.replace(/\s+/g, "")}` : "";
     }
     if (!selectedServer) return "";
@@ -435,7 +441,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   const openEdit = (policy: BusinessPolicy) => {
     setEditPolicy(policy);
-    const { serverId, toolId, toolSource: ts } = deriveServerAndTool(mcpServers, policy.selectedTools || []);
+    const { serverId, toolId, toolSource: ts } = deriveServerAndTool(mcpServers, policy.selectedTools || [], activeTools);
     setToolSource(ts);
     setSelectedServerId(serverId);
     setSelectedToolId(toolId);
@@ -464,6 +470,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         selectedToolId={selectedToolId}
         onServerChange={setSelectedServerId}
         onToolChange={setSelectedToolId}
+        projectTools={activeTools}
       />
       {/* Condition builder */}
       <div className="space-y-3">
@@ -545,7 +552,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
             <div className="min-w-0 flex-1">
               <span className="text-sm font-medium text-foreground">{policy.name}</span>
               <p className="text-xs text-muted-foreground">
-                {formatToolLabel(mcpServers, policy.selectedTools || [])}
+                {formatToolLabel(mcpServers, policy.selectedTools || [], activeTools)}
                 {(policy.selectedTools || []).length > 0 ? " · " : ""}
                 {policy.conditions.length} condition{policy.conditions.length !== 1 ? "s" : ""} · {actionLabel(policy.action || "block")}
               </p>
@@ -563,7 +570,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
                     <div>
                       <p className="text-[11px] font-medium text-muted-foreground mb-1">Applied to:</p>
                       <span className="inline-flex items-center rounded bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
-                        {formatToolLabel(mcpServers, policy.selectedTools || [])}
+                        {formatToolLabel(mcpServers, policy.selectedTools || [], activeTools)}
                       </span>
                     </div>
                   )}

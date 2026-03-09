@@ -1,6 +1,13 @@
-import { MoreHorizontal, Plus, FileText, CheckSquare, FileSearch, GitMerge, ShieldCheck, Search } from "lucide-react";
+import { MoreHorizontal, Plus, FileText, CheckSquare, FileSearch, GitMerge, ShieldCheck, Search, Ship, Globe, Package, Clock } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-export const nativeTools = [
+export interface NativeTool {
+  id: string;
+  name: string;
+  icon: LucideIcon;
+}
+
+export const nativeTools: NativeTool[] = [
   { id: "1", name: "Risk Assessment", icon: ShieldCheck },
   { id: "2", name: "Get Invoice Details", icon: FileText },
   { id: "3", name: "Contract Search", icon: Search },
@@ -9,7 +16,21 @@ export const nativeTools = [
   { id: "6", name: "Match PO", icon: GitMerge },
 ];
 
-const ToolsCard = () => {
+export const travelTools: NativeTool[] = [
+  { id: "t1", name: "Track Shipment", icon: Ship },
+  { id: "t2", name: "Route Optimizer", icon: Globe },
+  { id: "t3", name: "Inventory Check", icon: Package },
+  { id: "t4", name: "Validate Customs", icon: ShieldCheck },
+  { id: "t5", name: "Supplier Lookup", icon: Search },
+  { id: "t6", name: "Estimate Delivery", icon: Clock },
+];
+
+interface ToolsCardProps {
+  tools?: NativeTool[];
+}
+
+const ToolsCard = ({ tools }: ToolsCardProps) => {
+  const displayTools = tools || nativeTools;
   return (
     <div className="rounded-lg border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
@@ -20,7 +41,7 @@ const ToolsCard = () => {
       </div>
 
       <div className="divide-y divide-border">
-        {nativeTools.map((tool) => {
+        {displayTools.map((tool) => {
           const Icon = tool.icon;
           return (
             <div key={tool.id} className="flex items-center gap-3 px-5 py-3">

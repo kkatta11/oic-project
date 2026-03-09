@@ -43,7 +43,7 @@ const Index = () => {
       return (
         <>
           <SimpleCard title="Agents" description="Create and manage AI agents for your integration workflows." />
-          <ToolsCard />
+          <ToolsCard tools={projectData.tools} />
           <SimpleCard title="Agent Patterns" description="Configure reusable patterns for agent behavior." />
           <SimpleCard title="Prompt Templates" description="Design and manage prompt templates for agent interactions." />
         </>
@@ -52,10 +52,10 @@ const Index = () => {
     if (activeSidebarItem === "gateway") {
       return (
         <>
-          <MCPGatewayCard activeMCPServers={mcpServers} mcpServers={mcpServers} securityPolicies={securityPolicies} businessPolicies={businessPolicies} projectId={projectId} />
+          <MCPGatewayCard activeMCPServers={mcpServers} mcpServers={mcpServers} securityPolicies={securityPolicies} businessPolicies={businessPolicies} projectId={projectId} tools={projectData.tools} />
           <MCPServersCard servers={mcpServers} onServersChange={setMcpServers} />
-          <SecurityPoliciesCard policies={securityPolicies} onPoliciesChange={setSecurityPolicies} mcpServers={mcpServers} projectId={projectId} />
-          <BusinessPoliciesCard policies={businessPolicies} onPoliciesChange={setBusinessPolicies} mcpServers={mcpServers} projectId={projectId} />
+          <SecurityPoliciesCard policies={securityPolicies} onPoliciesChange={setSecurityPolicies} mcpServers={mcpServers} projectId={projectId} tools={projectData.tools} />
+          <BusinessPoliciesCard policies={businessPolicies} onPoliciesChange={setBusinessPolicies} mcpServers={mcpServers} projectId={projectId} tools={projectData.tools} />
         </>
       );
     }

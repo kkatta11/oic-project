@@ -28,7 +28,7 @@ import {
 import type { SecurityPolicy } from "@/components/SecurityPoliciesCard";
 import type { BusinessPolicy } from "@/components/BusinessPoliciesCard";
 import type { MCPServer } from "@/components/MCPServersCard";
-import { nativeTools } from "@/components/ToolsCard";
+import { nativeTools, type NativeTool } from "@/components/ToolsCard";
 
 const iconMap: Record<string, LucideIcon> = {
   ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock, Filter,
@@ -73,6 +73,7 @@ interface MCPGatewayCardProps {
   securityPolicies?: SecurityPolicy[];
   businessPolicies?: BusinessPolicy[];
   projectId?: string;
+  tools?: NativeTool[];
 }
 
 const authLabel = (auth: string) => {
@@ -91,7 +92,8 @@ const getPolicyScope = (policy: SecurityPolicy): string => {
   return "Request";
 };
 
-const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [], projectId }: MCPGatewayCardProps) => {
+const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [], projectId, tools: projectTools }: MCPGatewayCardProps) => {
+  const activeTools = projectTools || nativeTools;
   const storageKey = projectId ? `mcp-gateways-${projectId}` : "mcp-gateways";
   const [open, setOpen] = useState(false);
   const [gateways, setGateways] = useState<SavedGateway[]>(() => {
@@ -317,7 +319,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     const tools: { serverName: string; toolName: string; description: string }[] = [];
     for (const gwServer of gw.servers) {
       if (gwServer.name === "Native Tools Server") {
-        for (const nt of nativeTools) {
+        for (const nt of activeTools) {
           tools.push({ serverName: "Native Tools", toolName: nt.name, description: "Built-in agent tool" });
         }
         continue;
