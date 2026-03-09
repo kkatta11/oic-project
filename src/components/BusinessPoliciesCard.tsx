@@ -81,16 +81,18 @@ const toolPayloadAttributes: Record<string, string[]> = {
   "Match PO": ["invoice_id", "po_number", "vendor_id", "tolerance"],
 };
 
-export function loadBusinessPolicies(): BusinessPolicy[] {
+export function loadBusinessPolicies(projectId?: string): BusinessPolicy[] {
+  const key = projectId ? `business-policies-${projectId}` : "business-policies";
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(key);
     if (stored) return JSON.parse(stored);
   } catch {}
   return [];
 }
 
-export function saveBusinessPolicies(policies: BusinessPolicy[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(policies));
+export function saveBusinessPolicies(policies: BusinessPolicy[], projectId?: string) {
+  const key = projectId ? `business-policies-${projectId}` : "business-policies";
+  localStorage.setItem(key, JSON.stringify(policies));
 }
 
 // --- Attribute Picker scoped to a single server ---
