@@ -18,7 +18,7 @@ export const projects: Project[] = [
     name: "Smart Invoice Validation AgAI",
     type: "Developed",
     lastUpdated: "Mar 3, 2026 03:10:40 PM IST",
-    subtitle: "DO NOT MODIFY. USED FOR DEMOS",
+    
   },
   {
     id: "travel-supply-chain",
