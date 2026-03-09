@@ -1290,7 +1290,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
           : p
       );
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     } else {
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
