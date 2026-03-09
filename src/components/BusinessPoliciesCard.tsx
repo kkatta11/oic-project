@@ -373,7 +373,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   };
 
   const nativeServerProxy: MCPServer[] = toolSource === "native"
-    ? [{ id: "native-tools", name: "Native Tools", status: "Active" as const, icon: Cpu, tools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), allTools: nativeTools.map(t => ({ id: t.id, name: t.name, description: "" })), url: "", transport: "", authType: "" } as MCPServer]
+    ? [{ id: "native-tools", name: "Native Tools", status: "Active" as const, icon: Cpu, tools: activeTools.map(t => ({ id: t.id, name: t.name, description: "" })), allTools: activeTools.map(t => ({ id: t.id, name: t.name, description: "" })), url: "", transport: "", authType: "" } as MCPServer]
     : [];
   const scopedServers = toolSource === "native" ? nativeServerProxy : mcpServers.filter((s) => s.id === selectedServerId);
 
