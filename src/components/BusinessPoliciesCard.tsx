@@ -570,7 +570,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
                     <div>
                       <p className="text-[11px] font-medium text-muted-foreground mb-1">Applied to:</p>
                       <span className="inline-flex items-center rounded bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
-                        {formatToolLabel(mcpServers, policy.selectedTools || [])}
+                        {formatToolLabel(mcpServers, policy.selectedTools || [], activeTools)}
                       </span>
                     </div>
                   )}
