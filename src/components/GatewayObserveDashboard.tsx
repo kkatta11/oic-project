@@ -737,7 +737,8 @@ const GatewayObserveDashboard = () => {
                 <span className="text-sm font-semibold font-mono">{selectedInstance.duration}</span>
               </div>
             </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
