@@ -382,7 +382,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   const buildToolKey = (): string => {
     if (toolSource === "native") {
-      const nt = nativeTools.find((t) => t.id === selectedToolId);
+      const nt = activeTools.find((t) => t.id === selectedToolId);
       return nt ? `NativeTools.${nt.name.replace(/\s+/g, "")}` : "";
     }
     if (!selectedServer) return "";
