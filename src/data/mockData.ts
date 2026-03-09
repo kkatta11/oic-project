@@ -45,13 +45,13 @@ export const connections: Connection[] = [
 ];
 
 export const sidebarItems = [
-  { id: "integrations", label: "Integration", icon: "Minimize2" as const },
-  { id: "agent", label: "AI Agents", icon: "Diamond" as const },
-  { id: "rpa", label: "RPA Robot", icon: "Share2" as const },
-  { id: "hitl", label: "HITL", icon: "CircleDot" as const },
-  { id: "decision", label: "Decision", icon: "LayoutGrid" as const },
-  { id: "healthcare", label: "Healthcare", icon: "Cross" as const },
-  { id: "b2b", label: "B2B", icon: "Building2" as const },
-  { id: "knowledge", label: "Knowledge Base", icon: "Library" as const },
-  { id: "gateway", label: "Gateway", icon: "ShieldCheck" as const },
+  { id: "integrations", label: "Integration", icon: "integration" },
+  { id: "agent", label: "AI Agents", icon: "ai-agents" },
+  { id: "rpa", label: "RPA Robot", icon: "rpa-robot" },
+  { id: "hitl", label: "HITL", icon: "hitl" },
+  { id: "decision", label: "Decision", icon: "decision" },
+  { id: "healthcare", label: "Healthcare", icon: "healthcare" },
+  { id: "b2b", label: "B2B", icon: "b2b" },
+  { id: "knowledge", label: "Knowledge Base", icon: "knowledge-base" },
+  { id: "gateway", label: "Gateway", icon: "ShieldCheck" },
 ];
