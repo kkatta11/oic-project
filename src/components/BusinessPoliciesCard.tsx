@@ -552,7 +552,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
             <div className="min-w-0 flex-1">
               <span className="text-sm font-medium text-foreground">{policy.name}</span>
               <p className="text-xs text-muted-foreground">
-                {formatToolLabel(mcpServers, policy.selectedTools || [])}
+                {formatToolLabel(mcpServers, policy.selectedTools || [], activeTools)}
                 {(policy.selectedTools || []).length > 0 ? " · " : ""}
                 {policy.conditions.length} condition{policy.conditions.length !== 1 ? "s" : ""} · {actionLabel(policy.action || "block")}
               </p>
