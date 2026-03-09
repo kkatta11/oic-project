@@ -1,25 +1,15 @@
-import { GitBranch, Plug, Search, Library, Clock, Package, Bot, Wrench, Workflow, FileText, Network, Server, ShieldCheck, BookOpen, Cog, Users, Scale, Heart, Building2 } from "lucide-react";
+import { Minimize2, Diamond, Share2, CircleDot, LayoutGrid, Cross, Building2, Library, ShieldCheck } from "lucide-react";
 
 const iconMap = {
-  GitBranch,
-  Plug,
-  Search,
-  Library,
-  Clock,
-  Package,
-  Bot,
-  Wrench,
-  Workflow,
-  FileText,
-  Network,
-  Server,
-  ShieldCheck,
-  BookOpen,
-  Cog,
-  Users,
-  Scale,
-  Heart,
+  Minimize2,
+  Diamond,
+  Share2,
+  CircleDot,
+  LayoutGrid,
+  Cross,
   Building2,
+  Library,
+  ShieldCheck,
 };
 
 interface SidebarNavProps {
