@@ -1221,7 +1221,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         p.id === piiEditPolicy.id ? { ...p, name: finalName, config: configObj } : p
       );
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     } else {
       const template = securityPolicyRepository.find((t) => t.templateId === "t1")!;
       const newPolicy: SecurityPolicy = {
