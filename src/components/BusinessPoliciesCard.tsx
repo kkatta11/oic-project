@@ -470,6 +470,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         selectedToolId={selectedToolId}
         onServerChange={setSelectedServerId}
         onToolChange={setSelectedToolId}
+        projectTools={activeTools}
       />
       {/* Condition builder */}
       <div className="space-y-3">
