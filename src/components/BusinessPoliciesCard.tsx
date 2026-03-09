@@ -30,7 +30,6 @@ export interface BusinessPolicy {
   action: string;
 }
 
-const STORAGE_KEY = "business-policies";
 const actions = [
   { value: "block", label: "Block Request" },
   { value: "log_warning", label: "Log Warning" },
