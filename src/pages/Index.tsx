@@ -20,9 +20,13 @@ const tabs = ["Design", "Deploy", "Observe"];
 
 
 const Index = () => {
+  const { projectId = "smart-invoice" } = useParams();
+  const navigate = useNavigate();
+  const projectData = getProjectData(projectId);
+
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
-  const [mcpServers, setMcpServers] = useState<MCPServer[]>(defaultMCPServers);
+  const [mcpServers, setMcpServers] = useState<MCPServer[]>(projectData.mcpServers);
   const [securityPolicies, setSecurityPolicies] = useState<SecurityPolicy[]>(loadSecurityPolicies);
   const [businessPolicies, setBusinessPolicies] = useState<BusinessPolicy[]>(loadBusinessPolicies);
 
