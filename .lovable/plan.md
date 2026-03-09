@@ -1,126 +1,39 @@
 
 
-# Standardize Status Badges and Dropdown Action Menus Across All Cards
+# Update Sidebar Icons to Match Reference Screenshot
 
-## Overview
+## Problem
+The sidebar icons don't match the reference screenshot. The order and icons need to be updated, and Gateway should move to 9th (last) position.
 
-Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
+## Icon Mapping (from screenshot)
+Based on the screenshot shapes:
+
+1. **Integration** → `Minimize2` (square with inward corner arrows)
+2. **AI Agents** → `Diamond` (diamond/gem shape with dot)
+3. **RPA Robot** → `Share2` (connected nodes)
+4. **HITL** → `CircleDot` (simple circles representing people)
+5. **Decision** → `LayoutGrid` (grid/table pattern)
+6. **Healthcare** → `Cross` (medical cross shape)
+7. **B2B** → `Building2` (building — keep as-is)
+8. **Knowledge Base** → `Library` (bookshelf with shelves)
+9. **Gateway** → `ShieldCheck` (keep current icon, move to last)
 
 ## Changes
 
-### 1. `src/components/MCPServersCard.tsx`
+### 1. `src/components/SidebarNav.tsx`
+- Update imports: add `Minimize2`, `Diamond`, `Share2`, `CircleDot`, `LayoutGrid`, `Cross`; remove unused icons (`GitBranch`, `Bot`, `Cog`, `Users`, `Scale`, `Heart`, `BookOpen`)
+- Update `iconMap` with the new icon references
 
-**Add Activate/Deactivate to dropdown menu:**
-
-The MCP Servers card already has the dropdown menu pattern. Changes needed:
-- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
-- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
-- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
-
-Updated dropdown items:
-- Edit
-- Refresh Metadata
-- Separator
-- Activate / Deactivate (dynamic label based on current status)
-- Separator
-- Remove (destructive)
-
-**Add toggle handler:**
-```typescript
-const handleToggleStatus = (serverId: string) => {
-  const updated = servers.map((s) =>
-    s.id === serverId
-      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
-      : s
-  );
-  updateServers(updated);
-};
-```
-
-### 2. `src/components/MCPGatewayCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
-
-**Replace gateway row controls (lines 700-712):**
-
-Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
-- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
-- A three-dots `DropdownMenu` with:
-  - Edit
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
-
-**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
-
-### 3. `src/components/SecurityPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 474-482):**
-
-Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (only if `hasEditableConfig`)
-  - Separator (only if edit shown)
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Add StatusBadge component** (same green/olive pattern).
-
-### 4. `src/components/BusinessPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 484-488):**
-
-Remove the `Switch` and `Trash2` button. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (calls existing `openEdit(policy)`)
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-Keep the existing `Eye` popover for viewing details -- it stays as-is.
-
-**Add StatusBadge component** (same pattern).
-
-## Consistent StatusBadge Pattern
-
-All four components will use the same styling:
-
-```typescript
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === "Active";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-      isActive
-        ? "bg-redwood-green-light text-redwood-green"
-        : "bg-redwood-olive-light text-redwood-olive"
-    }`}>
-      {status}
-    </span>
-  );
-};
-```
-
-## Consistent Row Layout
-
-All card item rows follow:
-```text
-[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
-```
-
-## Summary of Removals
-- All `Switch` toggle components from item rows (and import cleanup where no longer used)
-- All standalone `Trash2` icon buttons from item rows
-- All standalone `Pencil` icon buttons from item rows
-- Status toggle section from MCP Servers edit dialog
+### 2. `src/data/mockData.ts`
+- Reorder `sidebarItems`: move gateway to position 9
+- Update icon string references:
+  - integrations: `"Minimize2"`
+  - agent: `"Diamond"`
+  - rpa: `"Share2"`
+  - hitl: `"CircleDot"`
+  - decision: `"LayoutGrid"`
+  - healthcare: `"Cross"`
+  - b2b: `"Building2"` (unchanged)
+  - knowledge: `"Library"`
+  - gateway: `"ShieldCheck"` (unchanged, moved to last)
 
