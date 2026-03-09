@@ -1141,7 +1141,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       };
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
       if (availableTemplates.length <= 1) setAddOpen(false);
       return;
     }
