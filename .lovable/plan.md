@@ -1,126 +1,58 @@
 
 
-# Standardize Status Badges and Dropdown Action Menus Across All Cards
+# Add Projects Listing Page with Navigation
 
-## Overview
+## Summary
 
-Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
+Add a top-level "Projects" page matching the Oracle Integration screenshot. The current detail view becomes a project-specific page. Two projects: the existing "Smart Invoice Validation AgAI" and a new project (e.g., "Travel Industry Supply Chain") with one MCP gateway and a set of tools.
 
 ## Changes
 
-### 1. `src/components/MCPServersCard.tsx`
+### 1. Create `src/pages/Projects.tsx` — Projects listing page
 
-**Add Activate/Deactivate to dropdown menu:**
+A full-page view with:
+- `OracleHeader` at top, gold gradient bar
+- Left sidebar with navigation items matching the screenshot (Home, Projects, Design, B2B, Healthcare, Observability, Settings, Visual Builder, Process) — "Projects" highlighted
+- Main content: "Projects" title, count, search/filter icons, table with columns: Name, Type, Last updated
+- Two project rows:
+  1. **Smart Invoice Validation AgAI** — Type: "Developed", Last updated: "Mar 3, 2026 03:10:40 PM IST", subtitle: "DO NOT MODIFY. USED FOR DEMOS"
+  2. **Travel Industry Supply Chain** — Type: "Developed", Last updated: "Mar 7, 2026 08:41:17 AM IST"
+- Clicking a project name navigates to `/project/:id`
 
-The MCP Servers card already has the dropdown menu pattern. Changes needed:
-- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
-- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
-- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
+### 2. Create `src/data/projectsData.ts` — Project definitions
 
-Updated dropdown items:
-- Edit
-- Refresh Metadata
-- Separator
-- Activate / Deactivate (dynamic label based on current status)
-- Separator
-- Remove (destructive)
+Define a projects array and per-project data:
+- Project 1 (`smart-invoice`): Uses existing `mockData` integrations/connections, existing MCP servers, tools, policies
+- Project 2 (`travel-supply-chain`): Has one MCP gateway with a few servers, a unique set of tools (e.g., "Track Shipment", "Validate Customs", "Route Optimizer"), minimal integrations/connections
 
-**Add toggle handler:**
-```typescript
-const handleToggleStatus = (serverId: string) => {
-  const updated = servers.map((s) =>
-    s.id === serverId
-      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
-      : s
-  );
-  updateServers(updated);
-};
+### 3. Update `src/pages/Index.tsx` → `src/pages/ProjectDetail.tsx`
+
+- Rename conceptually (or keep file, add route param)
+- Read `projectId` from URL params
+- Load project-specific data (integrations, connections, MCP servers, tools) based on project ID
+- Add a breadcrumb or back link "← Projects" at the top to navigate back
+
+### 4. Update `src/App.tsx` — Add routes
+
+```
+<Route path="/" element={<Projects />} />
+<Route path="/project/:projectId" element={<Index />} />
 ```
 
-### 2. `src/components/MCPGatewayCard.tsx`
+### 5. Create `src/components/ProjectsSidebar.tsx`
 
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
+A wider sidebar (matching screenshot) with labeled nav items: Home, Projects, Design, B2B, Healthcare, Observability, Settings, Visual Builder, Process — with chevrons for expandable items.
 
-**Replace gateway row controls (lines 700-712):**
+### 6. Project 2 data — "Travel Industry Supply Chain"
 
-Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
-- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
-- A three-dots `DropdownMenu` with:
-  - Edit
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
+- 1 MCP Gateway: "Supply Chain Gateway"
+- MCP Servers: e.g., "Oracle SCM Cloud", "Logistics API"
+- Tools: "Track Shipment", "Validate Customs Declaration", "Route Optimizer", "Inventory Check", "Supplier Lookup"
+- A few integrations and connections relevant to supply chain
 
-**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
+## Technical Notes
 
-**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
-
-### 3. `src/components/SecurityPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 474-482):**
-
-Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (only if `hasEditableConfig`)
-  - Separator (only if edit shown)
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Add StatusBadge component** (same green/olive pattern).
-
-### 4. `src/components/BusinessPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 484-488):**
-
-Remove the `Switch` and `Trash2` button. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (calls existing `openEdit(policy)`)
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-Keep the existing `Eye` popover for viewing details -- it stays as-is.
-
-**Add StatusBadge component** (same pattern).
-
-## Consistent StatusBadge Pattern
-
-All four components will use the same styling:
-
-```typescript
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === "Active";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-      isActive
-        ? "bg-redwood-green-light text-redwood-green"
-        : "bg-redwood-olive-light text-redwood-olive"
-    }`}>
-      {status}
-    </span>
-  );
-};
-```
-
-## Consistent Row Layout
-
-All card item rows follow:
-```text
-[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
-```
-
-## Summary of Removals
-- All `Switch` toggle components from item rows (and import cleanup where no longer used)
-- All standalone `Trash2` icon buttons from item rows
-- All standalone `Pencil` icon buttons from item rows
-- Status toggle section from MCP Servers edit dialog
+- The existing `Index.tsx` state management stays intact for Project 1; Project 2 gets its own default data sets
+- Project selection is via URL routing (`/project/smart-invoice`, `/project/travel-supply-chain`)
+- The projects sidebar is distinct from the in-project sidebar (wider, text labels, different items)
 
