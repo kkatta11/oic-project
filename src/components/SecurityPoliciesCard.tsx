@@ -428,11 +428,10 @@ function getConfigSummary(templateId: string, config: Record<string, any>, mcpSe
 
 // --- Storage ---
 
-const STORAGE_KEY = "security-policies";
-
-function loadPolicies(): SecurityPolicy[] {
+function loadPolicies(projectId?: string): SecurityPolicy[] {
+  const key = projectId ? `security-policies-${projectId}` : "security-policies";
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(key);
     if (stored) {
       const parsed = JSON.parse(stored) as SecurityPolicy[];
       return parsed.map((p) => ({ ...p, config: p.config ?? {} }));
@@ -441,8 +440,9 @@ function loadPolicies(): SecurityPolicy[] {
   return [];
 }
 
-function savePolicies(policies: SecurityPolicy[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(policies));
+function savePolicies(policies: SecurityPolicy[], projectId?: string) {
+  const key = projectId ? `security-policies-${projectId}` : "security-policies";
+  localStorage.setItem(key, JSON.stringify(policies));
 }
 
 // --- PII Config Dialog Component ---
