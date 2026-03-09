@@ -241,7 +241,7 @@ const ServerToolSelector = ({ mcpServers, toolSource, onToolSourceChange, select
           <Select value={selectedToolId} onValueChange={onToolChange}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a native tool…" /></SelectTrigger>
             <SelectContent>
-              {nativeTools.map((t) => (
+              {activeTools.map((t) => (
                 <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
               ))}
             </SelectContent>
