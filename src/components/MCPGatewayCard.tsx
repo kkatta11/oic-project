@@ -228,7 +228,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   };
 
   const persistGateways = (updated: SavedGateway[]) => {
-    localStorage.setItem("mcp-gateways", JSON.stringify(updated));
+    localStorage.setItem(storageKey, JSON.stringify(updated));
   };
 
   const handleCreate = () => {

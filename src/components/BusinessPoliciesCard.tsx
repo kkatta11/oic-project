@@ -334,9 +334,11 @@ interface BusinessPoliciesCardProps {
   policies: BusinessPolicy[];
   onPoliciesChange: (policies: BusinessPolicy[]) => void;
   mcpServers?: MCPServer[];
+  projectId?: string;
 }
 
-const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: BusinessPoliciesCardProps) => {
+const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], projectId }: BusinessPoliciesCardProps) => {
+  const save = (p: BusinessPolicy[]) => saveBusinessPolicies(p, projectId);
   const [createOpen, setCreateOpen] = useState(false);
   const [editPolicy, setEditPolicy] = useState<BusinessPolicy | null>(null);
 

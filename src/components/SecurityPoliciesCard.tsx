@@ -1057,9 +1057,11 @@ interface SecurityPoliciesCardProps {
   policies: SecurityPolicy[];
   onPoliciesChange: (policies: SecurityPolicy[]) => void;
   mcpServers?: MCPServer[];
+  projectId?: string;
 }
 
-const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: SecurityPoliciesCardProps) => {
+const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], projectId }: SecurityPoliciesCardProps) => {
+  const save = (p: SecurityPolicy[]) => savePolicies(p, projectId);
   const [addOpen, setAddOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [configTemplate, setConfigTemplate] = useState<typeof securityPolicyRepository[0] | null>(null);
