@@ -430,7 +430,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const handleDelete = (id: string) => {
     const updated = policies.filter((p) => p.id !== id);
     onPoliciesChange(updated);
-    saveBusinessPolicies(updated);
+    save(updated);
   };
 
   const openEdit = (policy: BusinessPolicy) => {

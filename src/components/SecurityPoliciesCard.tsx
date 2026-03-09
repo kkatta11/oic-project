@@ -1341,7 +1341,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const handleDelete = (id: string) => {
     const updated = policies.filter((p) => p.id !== id);
     onPoliciesChange(updated);
-    savePolicies(updated);
+    save(updated);
   };
 
   return (
