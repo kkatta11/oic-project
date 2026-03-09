@@ -628,7 +628,11 @@ const GatewayObserveDashboard = () => {
                     )}
                     <div
                       className={`relative flex items-start gap-3 pb-1 cursor-pointer rounded-md px-1 py-1 transition-colors ${hasDetail ? "hover:bg-muted/40" : ""}`}
-                      onClick={() => hasDetail && setExpandedStep(isExpanded ? null : idx)}
+                      onClick={() => hasDetail && setExpandedSteps(prev => {
+                        const next = new Set(prev);
+                        isExpanded ? next.delete(idx) : next.add(idx);
+                        return next;
+                      })}
                     >
                       <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
                         step.status === "passed"
