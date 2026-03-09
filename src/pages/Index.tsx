@@ -43,7 +43,7 @@ const Index = () => {
       return (
         <>
           <SimpleCard title="Agents" description="Create and manage AI agents for your integration workflows." />
-          <ToolsCard />
+          <ToolsCard tools={projectData.tools} />
           <SimpleCard title="Agent Patterns" description="Configure reusable patterns for agent behavior." />
           <SimpleCard title="Prompt Templates" description="Design and manage prompt templates for agent interactions." />
         </>
