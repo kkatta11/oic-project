@@ -292,7 +292,7 @@ const GatewayObserveDashboard = () => {
   const [selectedMetricsGateway, setSelectedMetricsGateway] = useState<string | null>(null);
   const [healthTimeRange, setHealthTimeRange] = useState<"current" | "24h" | "7d" | "30d">("current");
   const [selectedIncident, setSelectedIncident] = useState<{ gateway: string; segment: TimelineSegment } | null>(null);
-  const [expandedStep, setExpandedStep] = useState<number | null>(null);
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [payloadTab, setPayloadTab] = useState<"request" | "response">("request");
 
   return (
@@ -592,7 +592,7 @@ const GatewayObserveDashboard = () => {
       </Tabs>
 
       {/* Instance Detail Dialog */}
-      <Dialog open={!!selectedInstance} onOpenChange={(open) => { if (!open) { setSelectedInstance(null); setExpandedStep(null); } }}>
+      <Dialog open={!!selectedInstance} onOpenChange={(open) => { if (!open) { setSelectedInstance(null); setExpandedSteps(new Set()); } }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base">Instance Flow — {selectedInstance?.toolName}</DialogTitle>
@@ -601,10 +601,25 @@ const GatewayObserveDashboard = () => {
             </DialogDescription>
           </DialogHeader>
 
-          {selectedInstance && (
+          {selectedInstance && (() => {
+            const expandableIndices = selectedInstance.flow
+              .map((step, idx) => (step.payload || step.policyDetail) ? idx : -1)
+              .filter(i => i !== -1);
+            const allExpanded = expandableIndices.length > 0 && expandableIndices.every(i => expandedSteps.has(i));
+            return (
             <div className="space-y-0">
+              <div className="flex justify-end mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setExpandedSteps(allExpanded ? new Set() : new Set(expandableIndices))}
+                >
+                  {allExpanded ? "Collapse All" : "Expand All"}
+                </Button>
+              </div>
               {selectedInstance.flow.map((step, idx) => {
-                const isExpanded = expandedStep === idx;
+                const isExpanded = expandedSteps.has(idx);
                 const hasDetail = step.payload || step.policyDetail;
                 return (
                   <div key={idx} className="relative">
@@ -613,7 +628,11 @@ const GatewayObserveDashboard = () => {
                     )}
                     <div
                       className={`relative flex items-start gap-3 pb-1 cursor-pointer rounded-md px-1 py-1 transition-colors ${hasDetail ? "hover:bg-muted/40" : ""}`}
-                      onClick={() => hasDetail && setExpandedStep(isExpanded ? null : idx)}
+                      onClick={() => hasDetail && setExpandedSteps(prev => {
+                        const next = new Set(prev);
+                        isExpanded ? next.delete(idx) : next.add(idx);
+                        return next;
+                      })}
                     >
                       <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
                         step.status === "passed"
@@ -718,7 +737,8 @@ const GatewayObserveDashboard = () => {
                 <span className="text-sm font-semibold font-mono">{selectedInstance.duration}</span>
               </div>
             </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
