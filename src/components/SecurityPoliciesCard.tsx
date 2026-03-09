@@ -1303,7 +1303,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       };
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     }
     setToolsFilterOpen(false);
     setToolsFilterEditPolicy(null);
