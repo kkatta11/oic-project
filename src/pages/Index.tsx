@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal, ArrowLeft } from "lucide-react";
 import OracleHeader from "@/components/OracleHeader";
 import SidebarNav from "@/components/SidebarNav";
 import IntegrationsCard from "@/components/IntegrationsCard";
 import SimpleCard from "@/components/SimpleCard";
 import ToolsCard from "@/components/ToolsCard";
-import MCPServersCard, { type MCPServer, defaultServers as defaultMCPServers } from "@/components/MCPServersCard";
+import MCPServersCard, { type MCPServer } from "@/components/MCPServersCard";
 import SecurityPoliciesCard, { type SecurityPolicy, loadSecurityPolicies, saveSecurityPolicies } from "@/components/SecurityPoliciesCard";
 import BusinessPoliciesCard, { type BusinessPolicy, loadBusinessPolicies, saveBusinessPolicies } from "@/components/BusinessPoliciesCard";
 import MCPGatewayCard from "@/components/MCPGatewayCard";
 import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
-import { integrations, connections, sidebarItems } from "@/data/mockData";
+import { sidebarItems } from "@/data/mockData";
+import { getProjectData } from "@/data/projectsData";
 import ConnectionsCard from "@/components/ConnectionsCard";
 
 
@@ -18,9 +20,13 @@ const tabs = ["Design", "Deploy", "Observe"];
 
 
 const Index = () => {
+  const { projectId = "smart-invoice" } = useParams();
+  const navigate = useNavigate();
+  const projectData = getProjectData(projectId);
+
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
-  const [mcpServers, setMcpServers] = useState<MCPServer[]>(defaultMCPServers);
+  const [mcpServers, setMcpServers] = useState<MCPServer[]>(projectData.mcpServers);
   const [securityPolicies, setSecurityPolicies] = useState<SecurityPolicy[]>(loadSecurityPolicies);
   const [businessPolicies, setBusinessPolicies] = useState<BusinessPolicy[]>(loadBusinessPolicies);
 
@@ -89,8 +95,8 @@ const Index = () => {
     }
     return (
       <>
-        <IntegrationsCard integrations={integrations} />
-        <ConnectionsCard connections={connections} />
+        <IntegrationsCard integrations={projectData.integrations} />
+        <ConnectionsCard connections={projectData.connections} />
         <SimpleCard title="Lookups" description="Configure lookup tables for data mapping and transformation." />
         <SimpleCard title="Libraries" description="Manage reusable libraries and shared resources." />
       </>
@@ -103,7 +109,17 @@ const Index = () => {
       <div className="h-1.5 bg-gradient-to-r from-redwood-gold via-redwood-banner to-redwood-gold" />
 
       <div className="border-b border-border bg-card px-6 py-4">
-        <h1 className="text-xl font-bold text-foreground">Smart Invoice Validation AgAI</h1>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft size={16} />
+            <span>Projects</span>
+          </button>
+          <div className="h-5 w-px bg-border" />
+          <h1 className="text-xl font-bold text-foreground">{projectData.name}</h1>
+        </div>
       </div>
 
       <div className="flex items-center justify-between border-b border-border bg-card px-6">
