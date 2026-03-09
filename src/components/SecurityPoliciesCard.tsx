@@ -1191,7 +1191,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         p.id === configEditPolicy.id ? { ...p, name: finalName, config: { ...configValues } } : p
       );
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     } else if (configTemplate) {
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
