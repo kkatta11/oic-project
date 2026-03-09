@@ -30,7 +30,6 @@ export interface BusinessPolicy {
   action: string;
 }
 
-const STORAGE_KEY = "business-policies";
 const actions = [
   { value: "block", label: "Block Request" },
   { value: "log_warning", label: "Log Warning" },
@@ -82,16 +81,18 @@ const toolPayloadAttributes: Record<string, string[]> = {
   "Match PO": ["invoice_id", "po_number", "vendor_id", "tolerance"],
 };
 
-export function loadBusinessPolicies(): BusinessPolicy[] {
+export function loadBusinessPolicies(projectId?: string): BusinessPolicy[] {
+  const key = projectId ? `business-policies-${projectId}` : "business-policies";
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(key);
     if (stored) return JSON.parse(stored);
   } catch {}
   return [];
 }
 
-export function saveBusinessPolicies(policies: BusinessPolicy[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(policies));
+export function saveBusinessPolicies(policies: BusinessPolicy[], projectId?: string) {
+  const key = projectId ? `business-policies-${projectId}` : "business-policies";
+  localStorage.setItem(key, JSON.stringify(policies));
 }
 
 // --- Attribute Picker scoped to a single server ---
@@ -333,9 +334,11 @@ interface BusinessPoliciesCardProps {
   policies: BusinessPolicy[];
   onPoliciesChange: (policies: BusinessPolicy[]) => void;
   mcpServers?: MCPServer[];
+  projectId?: string;
 }
 
-const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: BusinessPoliciesCardProps) => {
+const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], projectId }: BusinessPoliciesCardProps) => {
+  const save = (p: BusinessPolicy[]) => saveBusinessPolicies(p, projectId);
   const [createOpen, setCreateOpen] = useState(false);
   const [editPolicy, setEditPolicy] = useState<BusinessPolicy | null>(null);
 
@@ -398,7 +401,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
     };
     const updated = [...policies, newPolicy];
     onPoliciesChange(updated);
-    saveBusinessPolicies(updated);
+    save(updated);
     resetForm();
     setCreateOpen(false);
   };
@@ -413,7 +416,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
         : p
     );
     onPoliciesChange(updated);
-    saveBusinessPolicies(updated);
+    save(updated);
     setEditPolicy(null);
     resetForm();
   };
@@ -421,13 +424,13 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: B
   const toggleActive = (id: string) => {
     const updated = policies.map((p) => p.id === id ? { ...p, active: !p.active } : p);
     onPoliciesChange(updated);
-    saveBusinessPolicies(updated);
+    save(updated);
   };
 
   const handleDelete = (id: string) => {
     const updated = policies.filter((p) => p.id !== id);
     onPoliciesChange(updated);
-    saveBusinessPolicies(updated);
+    save(updated);
   };
 
   const openEdit = (policy: BusinessPolicy) => {

@@ -27,8 +27,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
   const [mcpServers, setMcpServers] = useState<MCPServer[]>(projectData.mcpServers);
-  const [securityPolicies, setSecurityPolicies] = useState<SecurityPolicy[]>(loadSecurityPolicies);
-  const [businessPolicies, setBusinessPolicies] = useState<BusinessPolicy[]>(loadBusinessPolicies);
+  const [securityPolicies, setSecurityPolicies] = useState<SecurityPolicy[]>(() => loadSecurityPolicies(projectId));
+  const [businessPolicies, setBusinessPolicies] = useState<BusinessPolicy[]>(() => loadBusinessPolicies(projectId));
 
   const renderContent = () => {
     if (activeTab === "Observe" && activeSidebarItem === "gateway") {
@@ -52,10 +52,10 @@ const Index = () => {
     if (activeSidebarItem === "gateway") {
       return (
         <>
-          <MCPGatewayCard activeMCPServers={mcpServers} mcpServers={mcpServers} securityPolicies={securityPolicies} businessPolicies={businessPolicies} />
+          <MCPGatewayCard activeMCPServers={mcpServers} mcpServers={mcpServers} securityPolicies={securityPolicies} businessPolicies={businessPolicies} projectId={projectId} />
           <MCPServersCard servers={mcpServers} onServersChange={setMcpServers} />
-          <SecurityPoliciesCard policies={securityPolicies} onPoliciesChange={setSecurityPolicies} mcpServers={mcpServers} />
-          <BusinessPoliciesCard policies={businessPolicies} onPoliciesChange={setBusinessPolicies} mcpServers={mcpServers} />
+          <SecurityPoliciesCard policies={securityPolicies} onPoliciesChange={setSecurityPolicies} mcpServers={mcpServers} projectId={projectId} />
+          <BusinessPoliciesCard policies={businessPolicies} onPoliciesChange={setBusinessPolicies} mcpServers={mcpServers} projectId={projectId} />
         </>
       );
     }
@@ -162,7 +162,7 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1" key={projectId}>
         <SidebarNav
           activeItem={activeSidebarItem}
           onItemClick={setActiveSidebarItem}

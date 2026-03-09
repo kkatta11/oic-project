@@ -72,6 +72,7 @@ interface MCPGatewayCardProps {
   mcpServers?: MCPServer[];
   securityPolicies?: SecurityPolicy[];
   businessPolicies?: BusinessPolicy[];
+  projectId?: string;
 }
 
 const authLabel = (auth: string) => {
@@ -90,11 +91,12 @@ const getPolicyScope = (policy: SecurityPolicy): string => {
   return "Request";
 };
 
-const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [] }: MCPGatewayCardProps) => {
+const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [], projectId }: MCPGatewayCardProps) => {
+  const storageKey = projectId ? `mcp-gateways-${projectId}` : "mcp-gateways";
   const [open, setOpen] = useState(false);
   const [gateways, setGateways] = useState<SavedGateway[]>(() => {
     try {
-      const stored = localStorage.getItem("mcp-gateways");
+      const stored = localStorage.getItem(storageKey);
       if (!stored) return [];
       const parsed = JSON.parse(stored) as SavedGateway[];
       return parsed.map((gw) => ({ ...gw, active: gw.active !== false, policyOrder: gw.policyOrder || [] }));
@@ -226,7 +228,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   };
 
   const persistGateways = (updated: SavedGateway[]) => {
-    localStorage.setItem("mcp-gateways", JSON.stringify(updated));
+    localStorage.setItem(storageKey, JSON.stringify(updated));
   };
 
   const handleCreate = () => {

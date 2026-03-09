@@ -428,11 +428,10 @@ function getConfigSummary(templateId: string, config: Record<string, any>, mcpSe
 
 // --- Storage ---
 
-const STORAGE_KEY = "security-policies";
-
-function loadPolicies(): SecurityPolicy[] {
+function loadPolicies(projectId?: string): SecurityPolicy[] {
+  const key = projectId ? `security-policies-${projectId}` : "security-policies";
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(key);
     if (stored) {
       const parsed = JSON.parse(stored) as SecurityPolicy[];
       return parsed.map((p) => ({ ...p, config: p.config ?? {} }));
@@ -441,8 +440,9 @@ function loadPolicies(): SecurityPolicy[] {
   return [];
 }
 
-function savePolicies(policies: SecurityPolicy[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(policies));
+function savePolicies(policies: SecurityPolicy[], projectId?: string) {
+  const key = projectId ? `security-policies-${projectId}` : "security-policies";
+  localStorage.setItem(key, JSON.stringify(policies));
 }
 
 // --- PII Config Dialog Component ---
@@ -1057,9 +1057,11 @@ interface SecurityPoliciesCardProps {
   policies: SecurityPolicy[];
   onPoliciesChange: (policies: SecurityPolicy[]) => void;
   mcpServers?: MCPServer[];
+  projectId?: string;
 }
 
-const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: SecurityPoliciesCardProps) => {
+const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], projectId }: SecurityPoliciesCardProps) => {
+  const save = (p: SecurityPolicy[]) => savePolicies(p, projectId);
   const [addOpen, setAddOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [configTemplate, setConfigTemplate] = useState<typeof securityPolicyRepository[0] | null>(null);
@@ -1139,7 +1141,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       };
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
       if (availableTemplates.length <= 1) setAddOpen(false);
       return;
     }
@@ -1189,7 +1191,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         p.id === configEditPolicy.id ? { ...p, name: finalName, config: { ...configValues } } : p
       );
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     } else if (configTemplate) {
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
@@ -1202,7 +1204,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       };
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     }
     setConfigDialogOpen(false);
     setConfigTemplate(null);
@@ -1219,7 +1221,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         p.id === piiEditPolicy.id ? { ...p, name: finalName, config: configObj } : p
       );
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     } else {
       const template = securityPolicyRepository.find((t) => t.templateId === "t1")!;
       const newPolicy: SecurityPolicy = {
@@ -1233,7 +1235,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       };
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     }
     setPiiConfigOpen(false);
     setPiiEditPolicy(null);
@@ -1248,7 +1250,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
         p.id === idsEditPolicy.id ? { ...p, name: finalName, config: configObj } : p
       );
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     } else {
       const template = securityPolicyRepository.find((t) => t.templateId === "t4")!;
       const newPolicy: SecurityPolicy = {
@@ -1262,7 +1264,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       };
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     }
     setIdsConfigOpen(false);
     setIdsEditPolicy(null);
@@ -1288,7 +1290,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
           : p
       );
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     } else {
       const newPolicy: SecurityPolicy = {
         id: `sp-${Date.now()}`,
@@ -1301,7 +1303,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
       };
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
-      savePolicies(updated);
+      save(updated);
     }
     setToolsFilterOpen(false);
     setToolsFilterEditPolicy(null);
@@ -1333,13 +1335,13 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [] }: S
   const toggleActive = (id: string) => {
     const updated = policies.map((p) => p.id === id ? { ...p, active: !p.active } : p);
     onPoliciesChange(updated);
-    savePolicies(updated);
+    save(updated);
   };
 
   const handleDelete = (id: string) => {
     const updated = policies.filter((p) => p.id !== id);
     onPoliciesChange(updated);
-    savePolicies(updated);
+    save(updated);
   };
 
   return (
