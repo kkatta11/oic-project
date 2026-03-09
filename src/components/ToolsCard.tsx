@@ -41,7 +41,7 @@ const ToolsCard = ({ tools }: ToolsCardProps) => {
       </div>
 
       <div className="divide-y divide-border">
-        {nativeTools.map((tool) => {
+        {displayTools.map((tool) => {
           const Icon = tool.icon;
           return (
             <div key={tool.id} className="flex items-center gap-3 px-5 py-3">

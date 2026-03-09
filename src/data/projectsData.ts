@@ -95,6 +95,7 @@ export function getProjectData(projectId: string) {
       connections: travelConnections,
       mcpServers: travelMCPServers,
       sidebarItems: defaultSidebarItems,
+      tools: travelTools,
     };
   }
   // Default: smart-invoice
@@ -104,5 +105,6 @@ export function getProjectData(projectId: string) {
     connections: defaultConnections,
     mcpServers: defaultMCPServers,
     sidebarItems: defaultSidebarItems,
+    tools: nativeTools,
   };
 }
