@@ -193,7 +193,7 @@ function getEnforcementLevelLabel(templateId: string, config: Record<string, any
     const toolId = config?.targetToolId;
     const server = serverId === "native-tools" ? null : mcpServers.find(s => s.id === serverId);
     const toolName = serverId === "native-tools"
-      ? nativeTools.find(t => t.id === toolId)?.name
+      ? nativeTools.find(t => t.id === toolId)?.name  // uses global fallback for label lookup
       : server?.allTools?.find(t => t.id === toolId)?.name;
     const target = toolName ? `${serverName || "Server"} / ${toolName}` : serverName || "Server";
     return `Level: Tool (${target})`;

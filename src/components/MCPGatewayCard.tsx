@@ -319,7 +319,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     const tools: { serverName: string; toolName: string; description: string }[] = [];
     for (const gwServer of gw.servers) {
       if (gwServer.name === "Native Tools Server") {
-        for (const nt of nativeTools) {
+        for (const nt of activeTools) {
           tools.push({ serverName: "Native Tools", toolName: nt.name, description: "Built-in agent tool" });
         }
         continue;
