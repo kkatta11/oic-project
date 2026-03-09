@@ -441,7 +441,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   const openEdit = (policy: BusinessPolicy) => {
     setEditPolicy(policy);
-    const { serverId, toolId, toolSource: ts } = deriveServerAndTool(mcpServers, policy.selectedTools || []);
+    const { serverId, toolId, toolSource: ts } = deriveServerAndTool(mcpServers, policy.selectedTools || [], activeTools);
     setToolSource(ts);
     setSelectedServerId(serverId);
     setSelectedToolId(toolId);
