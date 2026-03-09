@@ -27,8 +27,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
   const [mcpServers, setMcpServers] = useState<MCPServer[]>(projectData.mcpServers);
-  const [securityPolicies, setSecurityPolicies] = useState<SecurityPolicy[]>(loadSecurityPolicies);
-  const [businessPolicies, setBusinessPolicies] = useState<BusinessPolicy[]>(loadBusinessPolicies);
+  const [securityPolicies, setSecurityPolicies] = useState<SecurityPolicy[]>(() => loadSecurityPolicies(projectId));
+  const [businessPolicies, setBusinessPolicies] = useState<BusinessPolicy[]>(() => loadBusinessPolicies(projectId));
 
   const renderContent = () => {
     if (activeTab === "Observe" && activeSidebarItem === "gateway") {
