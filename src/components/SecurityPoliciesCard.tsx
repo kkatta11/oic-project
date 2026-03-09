@@ -1100,7 +1100,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   const selectedServer = toolsFilterServerId === "native-tools" ? null : mcpServers.find((s) => s.id === toolsFilterServerId);
   const serverTools: MCPServerTool[] = toolsFilterServerId === "native-tools"
-    ? nativeTools.map((t) => ({ id: t.id, name: t.name, description: "" }))
+    ? activeTools.map((t) => ({ id: t.id, name: t.name, description: "" }))
     : selectedServer?.allTools ?? [];
 
   // Add flow
