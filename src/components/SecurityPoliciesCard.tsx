@@ -1335,7 +1335,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const toggleActive = (id: string) => {
     const updated = policies.map((p) => p.id === id ? { ...p, active: !p.active } : p);
     onPoliciesChange(updated);
-    savePolicies(updated);
+    save(updated);
   };
 
   const handleDelete = (id: string) => {
