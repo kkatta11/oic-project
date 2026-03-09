@@ -601,10 +601,25 @@ const GatewayObserveDashboard = () => {
             </DialogDescription>
           </DialogHeader>
 
-          {selectedInstance && (
+          {selectedInstance && (() => {
+            const expandableIndices = selectedInstance.flow
+              .map((step, idx) => (step.payload || step.policyDetail) ? idx : -1)
+              .filter(i => i !== -1);
+            const allExpanded = expandableIndices.length > 0 && expandableIndices.every(i => expandedSteps.has(i));
+            return (
             <div className="space-y-0">
+              <div className="flex justify-end mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setExpandedSteps(allExpanded ? new Set() : new Set(expandableIndices))}
+                >
+                  {allExpanded ? "Collapse All" : "Expand All"}
+                </Button>
+              </div>
               {selectedInstance.flow.map((step, idx) => {
-                const isExpanded = expandedStep === idx;
+                const isExpanded = expandedSteps.has(idx);
                 const hasDetail = step.payload || step.policyDetail;
                 return (
                   <div key={idx} className="relative">
