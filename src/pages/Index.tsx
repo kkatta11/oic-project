@@ -11,7 +11,8 @@ import SecurityPoliciesCard, { type SecurityPolicy, loadSecurityPolicies, saveSe
 import BusinessPoliciesCard, { type BusinessPolicy, loadBusinessPolicies, saveBusinessPolicies } from "@/components/BusinessPoliciesCard";
 import MCPGatewayCard from "@/components/MCPGatewayCard";
 import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
-import { integrations, connections, sidebarItems } from "@/data/mockData";
+import { sidebarItems } from "@/data/mockData";
+import { getProjectData } from "@/data/projectsData";
 import ConnectionsCard from "@/components/ConnectionsCard";
 
 
