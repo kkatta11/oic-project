@@ -72,6 +72,7 @@ interface MCPGatewayCardProps {
   mcpServers?: MCPServer[];
   securityPolicies?: SecurityPolicy[];
   businessPolicies?: BusinessPolicy[];
+  projectId?: string;
 }
 
 const authLabel = (auth: string) => {
