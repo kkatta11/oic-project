@@ -401,7 +401,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     };
     const updated = [...policies, newPolicy];
     onPoliciesChange(updated);
-    saveBusinessPolicies(updated);
+    save(updated);
     resetForm();
     setCreateOpen(false);
   };
