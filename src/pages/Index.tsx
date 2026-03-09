@@ -95,8 +95,8 @@ const Index = () => {
     }
     return (
       <>
-        <IntegrationsCard integrations={integrations} />
-        <ConnectionsCard connections={connections} />
+        <IntegrationsCard integrations={projectData.integrations} />
+        <ConnectionsCard connections={projectData.connections} />
         <SimpleCard title="Lookups" description="Configure lookup tables for data mapping and transformation." />
         <SimpleCard title="Libraries" description="Manage reusable libraries and shared resources." />
       </>
