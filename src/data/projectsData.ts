@@ -2,6 +2,7 @@ import type { Integration, Connection } from "./mockData";
 import { integrations as defaultIntegrations, connections as defaultConnections, sidebarItems as defaultSidebarItems } from "./mockData";
 import type { MCPServer } from "@/components/MCPServersCard";
 import { defaultServers as defaultMCPServers } from "@/components/MCPServersCard";
+import { nativeTools, travelTools, type NativeTool } from "@/components/ToolsCard";
 import { Ship, Globe } from "lucide-react";
 
 export interface Project {
