@@ -91,7 +91,6 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
     { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
       { value: "gateway", label: "MCP Gateway" },
       { value: "server", label: "MCP Server" },
-      { value: "native-tools", label: "Native Tools Server" },
     ], default: "gateway" },
     { key: "targetServerId", label: "Target Server", type: "select", options: [], default: "" },
     { key: "threshold", label: "Threshold (requests)", type: "number", default: 100 },
