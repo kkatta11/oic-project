@@ -184,7 +184,7 @@ function isEnforcementFieldVisible(templateId: string, fieldKey: string, configV
 function getEnforcementLevelLabel(templateId: string, config: Record<string, any>, mcpServers: MCPServer[]): string {
   const level = config?.enforcementLevel;
   if (!level || level === "gateway") return "";
-  if (templateId === "t5" && level === "native-tools") return "Level: Native Tools Server";
+  
   const serverId = config?.targetServerId;
   const serverName = serverId === "native-tools" ? "Native Tools" : mcpServers.find(s => s.id === serverId)?.name;
   if (level === "server") return serverName ? `Level: MCP Server (${serverName})` : "Level: MCP Server";
