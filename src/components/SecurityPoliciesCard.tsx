@@ -1138,9 +1138,9 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const getEnforcementSuffix = (config: Record<string, any>): string => {
     const level = config.enforcementLevel;
     if (!level || level === "gateway") return " — MCP Gateway";
-    if (level === "server" || level === "native-tools") {
+    if (level === "server") {
       const serverId = config.targetServerId;
-      if (level === "native-tools" || serverId === "native-tools") return " — Native Tools";
+      if (serverId === "native-tools") return " — Native Tools";
       const server = mcpServers.find((s) => s.id === serverId);
       return server ? ` — Server: ${server.name}` : " — MCP Server";
     }
