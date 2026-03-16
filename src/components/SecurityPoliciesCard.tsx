@@ -376,7 +376,9 @@ function getConfigSummary(templateId: string, config: Record<string, any>, mcpSe
     const actionLabel = { block: "Block", redact: "Redact", replace: "Replace", truncate: "Truncate", encrypt: "Encrypt", "log-warning": "Log Warning" }[action] || action;
     const severity = config?.severity || "medium";
     const sevLabel = severity.charAt(0).toUpperCase() + severity.slice(1);
-    const parts = [`Action: ${actionLabel}`, `${detectors} detectors`, `Severity: ${sevLabel}`];
+    const enfLevel = config?.enforcementLevel || "gateway";
+    const enfLabel = { gateway: "MCP Gateway", server: "MCP Server", tool: "Tool" }[enfLevel] || enfLevel;
+    const parts = [`${enfLabel}`, `Action: ${actionLabel}`, `${detectors} detectors`, `Severity: ${sevLabel}`];
     const tags = Array.isArray(config?.complianceTags) && config.complianceTags.length > 0
       ? config.complianceTags.map((t: string) => PII_COMPLIANCE_TAGS.find((c) => c.value === t)?.label || t).join(", ")
       : null;
