@@ -656,7 +656,10 @@ function PIIConfigDialog({
                 <Select value={config.targetToolId} onValueChange={(v) => update("targetToolId", v)}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select tool..." /></SelectTrigger>
                   <SelectContent>
-                    {(mcpServers.find((s) => s.id === config.targetServerId)?.allTools ?? []).map((t) => (
+                    {(config.targetServerId === "native-tools"
+                      ? tools.map((t) => ({ id: t.id, name: t.name }))
+                      : (mcpServers.find((s) => s.id === config.targetServerId)?.allTools ?? [])
+                    ).map((t) => (
                       <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                     ))}
                   </SelectContent>
