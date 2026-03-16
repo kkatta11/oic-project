@@ -91,7 +91,6 @@ const policyConfigSchemas: Record<string, PolicyFieldDef[]> = {
     { key: "enforcementLevel", label: "Enforcement Level", type: "select", options: [
       { value: "gateway", label: "MCP Gateway" },
       { value: "server", label: "MCP Server" },
-      { value: "native-tools", label: "Native Tools Server" },
     ], default: "gateway" },
     { key: "targetServerId", label: "Target Server", type: "select", options: [], default: "" },
     { key: "threshold", label: "Threshold (requests)", type: "number", default: 100 },
@@ -185,7 +184,7 @@ function isEnforcementFieldVisible(templateId: string, fieldKey: string, configV
 function getEnforcementLevelLabel(templateId: string, config: Record<string, any>, mcpServers: MCPServer[]): string {
   const level = config?.enforcementLevel;
   if (!level || level === "gateway") return "";
-  if (templateId === "t5" && level === "native-tools") return "Level: Native Tools Server";
+  
   const serverId = config?.targetServerId;
   const serverName = serverId === "native-tools" ? "Native Tools" : mcpServers.find(s => s.id === serverId)?.name;
   if (level === "server") return serverName ? `Level: MCP Server (${serverName})` : "Level: MCP Server";
@@ -1139,9 +1138,9 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const getEnforcementSuffix = (config: Record<string, any>): string => {
     const level = config.enforcementLevel;
     if (!level || level === "gateway") return " — MCP Gateway";
-    if (level === "server" || level === "native-tools") {
+    if (level === "server") {
       const serverId = config.targetServerId;
-      if (level === "native-tools" || serverId === "native-tools") return " — Native Tools";
+      if (serverId === "native-tools") return " — Native Tools";
       const server = mcpServers.find((s) => s.id === serverId);
       return server ? ` — Server: ${server.name}` : " — MCP Server";
     }
