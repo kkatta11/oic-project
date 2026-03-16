@@ -265,7 +265,9 @@ interface PIIConfig {
   alertRecipients: string;
   appliesTo: string;
   scanTargets: string[];
-  granularity: string;
+  enforcementLevel: string;
+  targetServerId: string;
+  targetToolId: string;
   piiCountThreshold: number;
   timeBased: boolean;
   timeStart: string;
@@ -291,7 +293,9 @@ function getDefaultPIIConfig(): PIIConfig {
     alertRecipients: "",
     appliesTo: "both",
     scanTargets: ["body"],
-    granularity: "global",
+    enforcementLevel: "gateway",
+    targetServerId: "",
+    targetToolId: "",
     piiCountThreshold: 1,
     timeBased: false,
     timeStart: "09:00",
@@ -372,7 +376,9 @@ function getConfigSummary(templateId: string, config: Record<string, any>, mcpSe
     const actionLabel = { block: "Block", redact: "Redact", replace: "Replace", truncate: "Truncate", encrypt: "Encrypt", "log-warning": "Log Warning" }[action] || action;
     const severity = config?.severity || "medium";
     const sevLabel = severity.charAt(0).toUpperCase() + severity.slice(1);
-    const parts = [`Action: ${actionLabel}`, `${detectors} detectors`, `Severity: ${sevLabel}`];
+    const enfLevel = config?.enforcementLevel || "gateway";
+    const enfLabel = { gateway: "MCP Gateway", server: "MCP Server", tool: "Tool" }[enfLevel] || enfLevel;
+    const parts = [`${enfLabel}`, `Action: ${actionLabel}`, `${detectors} detectors`, `Severity: ${sevLabel}`];
     const tags = Array.isArray(config?.complianceTags) && config.complianceTags.length > 0
       ? config.complianceTags.map((t: string) => PII_COMPLIANCE_TAGS.find((c) => c.value === t)?.label || t).join(", ")
       : null;
@@ -456,6 +462,8 @@ function PIIConfigDialog({
   isEdit,
   policyName,
   onPolicyNameChange,
+  mcpServers = [],
+  tools = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -465,6 +473,8 @@ function PIIConfigDialog({
   isEdit: boolean;
   policyName: string;
   onPolicyNameChange: (name: string) => void;
+  mcpServers?: MCPServer[];
+  tools?: NativeTool[];
 }) {
   const update = <K extends keyof PIIConfig>(key: K, value: PIIConfig[K]) => {
     onConfigChange({ ...config, [key]: value });
@@ -610,6 +620,51 @@ function PIIConfigDialog({
           {/* Enforcement Tab */}
           <TabsContent value="enforcement" className="space-y-4 py-2">
             <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Enforcement Level</Label>
+              <Select value={config.enforcementLevel} onValueChange={(v) => {
+                const updates: Partial<PIIConfig> = { enforcementLevel: v };
+                if (v === "gateway") { updates.targetServerId = ""; updates.targetToolId = ""; }
+                if (v === "server") { updates.targetToolId = ""; }
+                onConfigChange({ ...config, ...updates });
+              }}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gateway">MCP Gateway</SelectItem>
+                  <SelectItem value="server">MCP Server</SelectItem>
+                  <SelectItem value="tool">Tool</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(config.enforcementLevel === "server" || config.enforcementLevel === "tool") && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Target Server</Label>
+                <Select value={config.targetServerId} onValueChange={(v) => update("targetServerId", v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select server..." /></SelectTrigger>
+                  <SelectContent>
+                    {mcpServers.filter((s) => s.status === "Active").map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {config.enforcementLevel === "tool" && config.targetServerId && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Target Tool</Label>
+                <Select value={config.targetToolId} onValueChange={(v) => update("targetToolId", v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select tool..." /></SelectTrigger>
+                  <SelectContent>
+                    {(mcpServers.find((s) => s.id === config.targetServerId)?.allTools ?? []).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
               <Label className="text-xs font-medium">Primary Action</Label>
               <Select value={config.action} onValueChange={(v) => update("action", v)}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -710,18 +765,6 @@ function PIIConfigDialog({
                   </label>
                 ))}
               </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Policy Granularity</Label>
-              <Select value={config.granularity} onValueChange={(v) => update("granularity", v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="global">Global</SelectItem>
-                  <SelectItem value="per-server">Per-Server</SelectItem>
-                  <SelectItem value="per-request-type">Per-Request-Type</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-1.5">
@@ -1562,6 +1605,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         isEdit={!!piiEditPolicy}
         policyName={policyName}
         onPolicyNameChange={setPolicyName}
+        mcpServers={mcpServers}
+        tools={activeTools}
       />
 
       {/* Tools Filter dialog */}
