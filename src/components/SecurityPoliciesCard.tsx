@@ -265,7 +265,9 @@ interface PIIConfig {
   alertRecipients: string;
   appliesTo: string;
   scanTargets: string[];
-  granularity: string;
+  enforcementLevel: string;
+  targetServerId: string;
+  targetToolId: string;
   piiCountThreshold: number;
   timeBased: boolean;
   timeStart: string;
