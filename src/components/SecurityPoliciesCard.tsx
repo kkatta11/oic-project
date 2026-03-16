@@ -764,18 +764,6 @@ function PIIConfigDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Policy Granularity</Label>
-              <Select value={config.granularity} onValueChange={(v) => update("granularity", v)}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="global">Global</SelectItem>
-                  <SelectItem value="per-server">Per-Server</SelectItem>
-                  <SelectItem value="per-request-type">Per-Request-Type</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
               <Label className="text-xs font-medium">PII Count Threshold</Label>
               <Input type="number" className="h-8 text-xs w-24" min={1} value={config.piiCountThreshold} onChange={(e) => update("piiCountThreshold", Number(e.target.value))} />
               <p className="text-[10px] text-muted-foreground">Only trigger if this many PII fields are detected</p>
