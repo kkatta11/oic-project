@@ -616,6 +616,51 @@ function PIIConfigDialog({
           {/* Enforcement Tab */}
           <TabsContent value="enforcement" className="space-y-4 py-2">
             <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Enforcement Level</Label>
+              <Select value={config.enforcementLevel} onValueChange={(v) => {
+                const updates: Partial<PIIConfig> = { enforcementLevel: v };
+                if (v === "gateway") { updates.targetServerId = ""; updates.targetToolId = ""; }
+                if (v === "server") { updates.targetToolId = ""; }
+                onConfigChange({ ...config, ...updates });
+              }}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gateway">MCP Gateway</SelectItem>
+                  <SelectItem value="server">MCP Server</SelectItem>
+                  <SelectItem value="tool">Tool</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(config.enforcementLevel === "server" || config.enforcementLevel === "tool") && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Target Server</Label>
+                <Select value={config.targetServerId} onValueChange={(v) => update("targetServerId", v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select server..." /></SelectTrigger>
+                  <SelectContent>
+                    {mcpServers.filter((s) => s.status === "Active").map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {config.enforcementLevel === "tool" && config.targetServerId && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Target Tool</Label>
+                <Select value={config.targetToolId} onValueChange={(v) => update("targetToolId", v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select tool..." /></SelectTrigger>
+                  <SelectContent>
+                    {(mcpServers.find((s) => s.id === config.targetServerId)?.allTools ?? []).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
               <Label className="text-xs font-medium">Primary Action</Label>
               <Select value={config.action} onValueChange={(v) => update("action", v)}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
