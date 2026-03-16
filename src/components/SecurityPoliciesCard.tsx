@@ -1285,7 +1285,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   // Save PII config
   const handlePiiSave = () => {
     const configObj = { ...piiConfigValues } as Record<string, any>;
-    const finalName = policyName.trim() || "PII Detection";
+    const baseName = policyName.trim() || "PII Detection";
+    const finalName = !piiEditPolicy ? baseName + getEnforcementSuffix(configObj) : baseName;
     if (piiEditPolicy) {
       const updated = policies.map((p) =>
         p.id === piiEditPolicy.id ? { ...p, name: finalName, config: configObj } : p
