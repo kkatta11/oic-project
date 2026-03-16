@@ -462,6 +462,8 @@ function PIIConfigDialog({
   isEdit,
   policyName,
   onPolicyNameChange,
+  mcpServers = [],
+  tools = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -471,6 +473,8 @@ function PIIConfigDialog({
   isEdit: boolean;
   policyName: string;
   onPolicyNameChange: (name: string) => void;
+  mcpServers?: MCPServer[];
+  tools?: NativeTool[];
 }) {
   const update = <K extends keyof PIIConfig>(key: K, value: PIIConfig[K]) => {
     onConfigChange({ ...config, [key]: value });
