@@ -1131,8 +1131,30 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const [idsEditPolicy, setIdsEditPolicy] = useState<SecurityPolicy | null>(null);
 
   const usedTemplateIds = new Set(policies.map((p) => p.templateId));
-  // Tools Filter (t9) can be added multiple times (one per server), so don't exclude it
-  const availableTemplates = securityPolicyRepository.filter((t) => t.templateId === "t9" || !usedTemplateIds.has(t.templateId));
+  // Multi-instance policies (those with enforcement levels) can be added multiple times
+  const multiInstanceTemplateIds = new Set(["t1", "t2", "t5", "t6", "t8", "t9"]);
+  const availableTemplates = securityPolicyRepository.filter((t) => multiInstanceTemplateIds.has(t.templateId) || !usedTemplateIds.has(t.templateId));
+
+  // Helper: build enforcement-level suffix for multi-instance policy names
+  const getEnforcementSuffix = (config: Record<string, any>): string => {
+    const level = config.enforcementLevel;
+    if (!level || level === "gateway") return " — MCP Gateway";
+    if (level === "server" || level === "native-tools") {
+      const serverId = config.targetServerId;
+      if (level === "native-tools" || serverId === "native-tools") return " — Native Tools";
+      const server = mcpServers.find((s) => s.id === serverId);
+      return server ? ` — Server: ${server.name}` : " — MCP Server";
+    }
+    if (level === "tool") {
+      const serverId = config.targetServerId;
+      const toolId = config.targetToolId;
+      const server = mcpServers.find((s) => s.id === serverId);
+      const tool = server?.allTools?.find((t: any) => t.id === toolId) ?? activeTools.find((t) => t.id === toolId);
+      const toolName = tool?.name || toolId;
+      return toolName ? ` — Tool: ${toolName}` : " — Tool";
+    }
+    return "";
+  };
 
   const currentTemplateId = configEditPolicy?.templateId ?? configTemplate?.templateId ?? "";
   const schema = policyConfigSchemas[currentTemplateId] ?? [];
@@ -1230,7 +1252,10 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   // Save config (add or edit) for standard policies
   const handleConfigSave = () => {
-    const finalName = policyName.trim() || configTemplate?.name || configEditPolicy?.name || "";
+    const templateId = configTemplate?.templateId ?? configEditPolicy?.templateId ?? "";
+    const baseName = policyName.trim() || configTemplate?.name || configEditPolicy?.name || "";
+    const isMulti = multiInstanceTemplateIds.has(templateId) && templateId !== "t9";
+    const finalName = isMulti && !configEditPolicy ? baseName + getEnforcementSuffix(configValues) : baseName;
     if (configEditPolicy) {
       const updated = policies.map((p) =>
         p.id === configEditPolicy.id ? { ...p, name: finalName, config: { ...configValues } } : p
@@ -1260,7 +1285,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   // Save PII config
   const handlePiiSave = () => {
     const configObj = { ...piiConfigValues } as Record<string, any>;
-    const finalName = policyName.trim() || "PII Detection";
+    const baseName = policyName.trim() || "PII Detection";
+    const finalName = !piiEditPolicy ? baseName + getEnforcementSuffix(configObj) : baseName;
     if (piiEditPolicy) {
       const updated = policies.map((p) =>
         p.id === piiEditPolicy.id ? { ...p, name: finalName, config: configObj } : p
