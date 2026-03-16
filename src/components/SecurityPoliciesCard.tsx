@@ -1601,6 +1601,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         isEdit={!!piiEditPolicy}
         policyName={policyName}
         onPolicyNameChange={setPolicyName}
+        mcpServers={mcpServers}
+        tools={activeTools}
       />
 
       {/* Tools Filter dialog */}
