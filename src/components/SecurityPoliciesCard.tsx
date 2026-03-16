@@ -1252,7 +1252,10 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   // Save config (add or edit) for standard policies
   const handleConfigSave = () => {
-    const finalName = policyName.trim() || configTemplate?.name || configEditPolicy?.name || "";
+    const templateId = configTemplate?.templateId ?? configEditPolicy?.templateId ?? "";
+    const baseName = policyName.trim() || configTemplate?.name || configEditPolicy?.name || "";
+    const isMulti = multiInstanceTemplateIds.has(templateId) && templateId !== "t9";
+    const finalName = isMulti && !configEditPolicy ? baseName + getEnforcementSuffix(configValues) : baseName;
     if (configEditPolicy) {
       const updated = policies.map((p) =>
         p.id === configEditPolicy.id ? { ...p, name: finalName, config: { ...configValues } } : p
