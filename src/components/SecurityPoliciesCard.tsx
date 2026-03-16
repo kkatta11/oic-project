@@ -641,6 +641,7 @@ function PIIConfigDialog({
                 <Select value={config.targetServerId} onValueChange={(v) => update("targetServerId", v)}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select server..." /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="native-tools">Native Tools</SelectItem>
                     {mcpServers.filter((s) => s.status === "Active").map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
