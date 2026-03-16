@@ -1,126 +1,37 @@
 
 
-# Standardize Status Badges and Dropdown Action Menus Across All Cards
+# Move PII Policy Granularity to Enforcement Tab with Schema Validation Enforcement Levels
 
-## Overview
-
-Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
+## Problem
+The PII Detection policy has a "Policy Granularity" dropdown in the Scope tab with values Global/Per-Server/Per-Request-Type. This should instead use the same enforcement level pattern as Schema Validation (t2): **MCP Gateway / MCP Server / Tool** — and live in the Enforcement tab.
 
 ## Changes
 
-### 1. `src/components/MCPServersCard.tsx`
+### 1. `src/components/SecurityPoliciesCard.tsx`
 
-**Add Activate/Deactivate to dropdown menu:**
+**PIIConfig interface (~line 268)**
+- Replace `granularity: string` with `enforcementLevel: string` (values: `"gateway"`, `"server"`, `"tool"`)
+- Add `targetServerId: string` and `targetToolId: string` fields for server/tool selection
 
-The MCP Servers card already has the dropdown menu pattern. Changes needed:
-- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
-- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
-- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
+**getDefaultPIIConfig (~line 294)**
+- Replace `granularity: "global"` with `enforcementLevel: "gateway"`, `targetServerId: ""`, `targetToolId: ""`
 
-Updated dropdown items:
-- Edit
-- Refresh Metadata
-- Separator
-- Activate / Deactivate (dynamic label based on current status)
-- Separator
-- Remove (destructive)
+**PIIConfigDialog — Enforcement tab (~lines 611-687)**
+- Add an "Enforcement Level" select at the top with options: MCP Gateway, MCP Server, Tool (matching Schema Validation t2 pattern)
+- When "MCP Server" is selected, show a Target Server dropdown (populated from `mcpServers` prop — needs to be passed in)
+- When "Tool" is selected, show both Target Server and Target Tool dropdowns
+- This replaces the granularity concept with the standard enforcement level pattern
 
-**Add toggle handler:**
-```typescript
-const handleToggleStatus = (serverId: string) => {
-  const updated = servers.map((s) =>
-    s.id === serverId
-      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
-      : s
-  );
-  updateServers(updated);
-};
-```
+**PIIConfigDialog — Scope tab (~lines 690-749)**
+- Remove the "Policy Granularity" select (lines 715-725) entirely
+- Keep the remaining Scope tab fields: Applies To, Scan Targets, PII Count Threshold, Time-Based Restriction
 
-### 2. `src/components/MCPGatewayCard.tsx`
+**PIIConfigDialog props**
+- Add `mcpServers` and `tools` props to populate the server/tool dropdowns
 
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
+**Callers of PIIConfigDialog (~line 1054+)**
+- Pass `mcpServers` and `tools` props through from the parent `SecurityPoliciesCard`
 
-**Replace gateway row controls (lines 700-712):**
-
-Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
-- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
-- A three-dots `DropdownMenu` with:
-  - Edit
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
-
-**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
-
-### 3. `src/components/SecurityPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 474-482):**
-
-Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (only if `hasEditableConfig`)
-  - Separator (only if edit shown)
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Add StatusBadge component** (same green/olive pattern).
-
-### 4. `src/components/BusinessPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 484-488):**
-
-Remove the `Switch` and `Trash2` button. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (calls existing `openEdit(policy)`)
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-Keep the existing `Eye` popover for viewing details -- it stays as-is.
-
-**Add StatusBadge component** (same pattern).
-
-## Consistent StatusBadge Pattern
-
-All four components will use the same styling:
-
-```typescript
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === "Active";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-      isActive
-        ? "bg-redwood-green-light text-redwood-green"
-        : "bg-redwood-olive-light text-redwood-olive"
-    }`}>
-      {status}
-    </span>
-  );
-};
-```
-
-## Consistent Row Layout
-
-All card item rows follow:
-```text
-[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
-```
-
-## Summary of Removals
-- All `Switch` toggle components from item rows (and import cleanup where no longer used)
-- All standalone `Trash2` icon buttons from item rows
-- All standalone `Pencil` icon buttons from item rows
-- Status toggle section from MCP Servers edit dialog
+**getConfigSummary (~line 360+)**
+- Update PII summary to show enforcement level instead of granularity
 
