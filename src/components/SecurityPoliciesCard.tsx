@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { MCPServer, MCPServerTool } from "@/components/MCPServersCard";
-import { nativeTools, type NativeTool } from "@/components/ToolsCard";
 
 const iconMap: Record<string, LucideIcon> = {
   ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock, Filter,
@@ -169,7 +168,6 @@ function isEnforcementFieldVisible(templateId: string, fieldKey: string, configV
   if (!ENFORCEMENT_LEVEL_TEMPLATES.includes(templateId)) return true;
   const level = configValues.enforcementLevel || "gateway";
   if (fieldKey === "targetServerId") {
-    // For t5, "server" level means MCP server; "native-tools" is a separate level with no picker
     if (templateId === "t5") return level === "server";
     return level === "server" || level === "tool";
   }
@@ -186,14 +184,12 @@ function getEnforcementLevelLabel(templateId: string, config: Record<string, any
   if (!level || level === "gateway") return "";
   
   const serverId = config?.targetServerId;
-  const serverName = serverId === "native-tools" ? "Native Tools" : mcpServers.find(s => s.id === serverId)?.name;
+  const serverName = mcpServers.find(s => s.id === serverId)?.name;
   if (level === "server") return serverName ? `Level: MCP Server (${serverName})` : "Level: MCP Server";
   if (level === "tool") {
     const toolId = config?.targetToolId;
-    const server = serverId === "native-tools" ? null : mcpServers.find(s => s.id === serverId);
-    const toolName = serverId === "native-tools"
-      ? nativeTools.find(t => t.id === toolId)?.name  // uses global fallback for label lookup
-      : server?.allTools?.find(t => t.id === toolId)?.name;
+    const server = mcpServers.find(s => s.id === serverId);
+    const toolName = server?.allTools?.find(t => t.id === toolId)?.name;
     const target = toolName ? `${serverName || "Server"} / ${toolName}` : serverName || "Server";
     return `Level: Tool (${target})`;
   }
@@ -473,7 +469,7 @@ function PIIConfigDialog({
   policyName: string;
   onPolicyNameChange: (name: string) => void;
   mcpServers?: MCPServer[];
-  tools?: NativeTool[];
+  tools?: { id: string; name: string; icon: any }[];
 }) {
   const update = <K extends keyof PIIConfig>(key: K, value: PIIConfig[K]) => {
     onConfigChange({ ...config, [key]: value });
@@ -641,7 +637,6 @@ function PIIConfigDialog({
                 <Select value={config.targetServerId} onValueChange={(v) => update("targetServerId", v)}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select server..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="native-tools">Native Tools</SelectItem>
                     {mcpServers.filter((s) => s.status === "Active").map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
@@ -656,10 +651,7 @@ function PIIConfigDialog({
                 <Select value={config.targetToolId} onValueChange={(v) => update("targetToolId", v)}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select tool..." /></SelectTrigger>
                   <SelectContent>
-                    {(config.targetServerId === "native-tools"
-                      ? tools.map((t) => ({ id: t.id, name: t.name }))
-                      : (mcpServers.find((s) => s.id === config.targetServerId)?.allTools ?? [])
-                    ).map((t) => (
+                    {(mcpServers.find((s) => s.id === config.targetServerId)?.allTools ?? []).map((t) => (
                       <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1104,11 +1096,9 @@ interface SecurityPoliciesCardProps {
   onPoliciesChange: (policies: SecurityPolicy[]) => void;
   mcpServers?: MCPServer[];
   projectId?: string;
-  tools?: NativeTool[];
 }
 
-const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], projectId, tools: projectTools }: SecurityPoliciesCardProps) => {
-  const activeTools = projectTools || nativeTools;
+const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], projectId }: SecurityPoliciesCardProps) => {
   const save = (p: SecurityPolicy[]) => savePolicies(p, projectId);
   const [addOpen, setAddOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -1144,7 +1134,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     if (!level || level === "gateway") return " — MCP Gateway";
     if (level === "server") {
       const serverId = config.targetServerId;
-      if (serverId === "native-tools") return " — Native Tools";
       const server = mcpServers.find((s) => s.id === serverId);
       return server ? ` — Server: ${server.name}` : " — MCP Server";
     }
@@ -1152,7 +1141,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const serverId = config.targetServerId;
       const toolId = config.targetToolId;
       const server = mcpServers.find((s) => s.id === serverId);
-      const tool = server?.allTools?.find((t: any) => t.id === toolId) ?? activeTools.find((t) => t.id === toolId);
+      const tool = server?.allTools?.find((t: any) => t.id === toolId);
       const toolName = tool?.name || toolId;
       return toolName ? ` — Tool: ${toolName}` : " — Tool";
     }
@@ -1166,10 +1155,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   const activeServers = mcpServers.filter((s) => s.status === "Active");
 
-  const selectedServer = toolsFilterServerId === "native-tools" ? null : mcpServers.find((s) => s.id === toolsFilterServerId);
-  const serverTools: MCPServerTool[] = toolsFilterServerId === "native-tools"
-    ? activeTools.map((t) => ({ id: t.id, name: t.name, description: "" }))
-    : selectedServer?.allTools ?? [];
+  const selectedServer = mcpServers.find((s) => s.id === toolsFilterServerId);
+  const serverTools: MCPServerTool[] = selectedServer?.allTools ?? [];
 
   // Add flow
   const handleAddFromRepo = (template: typeof securityPolicyRepository[0]) => {
@@ -1346,10 +1333,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   // Save Tools Filter
   const handleToolsFilterSave = () => {
-    if (!toolsFilterServerId) return;
-    const isNative = toolsFilterServerId === "native-tools";
-    if (!isNative && !selectedServer) return;
-    const displayName = isNative ? "Native Tools" : selectedServer!.name;
+    if (!toolsFilterServerId || !selectedServer) return;
+    const displayName = selectedServer.name;
     const config = {
       serverId: toolsFilterServerId,
       serverName: displayName,
@@ -1489,10 +1474,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
                 // Dynamic options for targetServerId
                 if (field.key === "targetServerId") {
-                  const serverOptions = [
-                    { value: "native-tools", label: "Native Tools" },
-                    ...activeServers.map((s) => ({ value: s.id, label: s.name })),
-                  ];
+                  const serverOptions = activeServers.map((s) => ({ value: s.id, label: s.name }));
                   return (
                     <div key={field.key} className="grid gap-1.5">
                       <Label className="text-xs font-medium">{field.label}</Label>
@@ -1511,9 +1493,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
                 // Dynamic options for targetToolId
                 if (field.key === "targetToolId") {
                   const selectedServerId = configValues.targetServerId;
-                  const toolOptions = selectedServerId === "native-tools"
-                    ? activeTools.map((t) => ({ value: t.id, label: t.name }))
-                    : (mcpServers.find((s) => s.id === selectedServerId)?.allTools ?? []).map((t) => ({ value: t.id, label: t.name }));
+                  const toolOptions = (mcpServers.find((s) => s.id === selectedServerId)?.allTools ?? []).map((t) => ({ value: t.id, label: t.name }));
                   return (
                     <div key={field.key} className="grid gap-1.5">
                       <Label className="text-xs font-medium">{field.label}</Label>
@@ -1635,7 +1615,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         policyName={policyName}
         onPolicyNameChange={setPolicyName}
         mcpServers={mcpServers}
-        tools={activeTools}
+        
       />
 
       {/* Tools Filter dialog */}
@@ -1664,7 +1644,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
                   <SelectValue placeholder="Select a source" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="native-tools">Native Tools</SelectItem>
                   {activeServers.map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
@@ -1717,7 +1696,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setToolsFilterOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterIncluded.size === 0 || (toolsFilterServerId !== "native-tools" && !selectedServer)}>
+            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterIncluded.size === 0 || !selectedServer}>
               {toolsFilterEditPolicy ? "Save Changes" : "Add Policy"}
             </Button>
           </DialogFooter>

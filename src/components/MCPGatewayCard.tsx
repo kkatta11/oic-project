@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Plus, Server, Database, Globe, MessageSquare, FileJson, Mail,
   ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Lock, Filter,
-  ChevronRight, ListChecks, Wrench, AlertTriangle, MoreHorizontal,
+  ChevronRight, ListChecks, AlertTriangle, MoreHorizontal,
   ArrowUp, ArrowDown,
   type LucideIcon,
 } from "lucide-react";
@@ -28,7 +28,7 @@ import {
 import type { SecurityPolicy } from "@/components/SecurityPoliciesCard";
 import type { BusinessPolicy } from "@/components/BusinessPoliciesCard";
 import type { MCPServer } from "@/components/MCPServersCard";
-import { nativeTools, type NativeTool } from "@/components/ToolsCard";
+
 
 const iconMap: Record<string, LucideIcon> = {
   ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock, Filter,
@@ -73,7 +73,6 @@ interface MCPGatewayCardProps {
   securityPolicies?: SecurityPolicy[];
   businessPolicies?: BusinessPolicy[];
   projectId?: string;
-  tools?: NativeTool[];
 }
 
 const authLabel = (auth: string) => {
@@ -92,8 +91,7 @@ const getPolicyScope = (policy: SecurityPolicy): string => {
   return "Request";
 };
 
-const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [], projectId, tools: projectTools }: MCPGatewayCardProps) => {
-  const activeTools = projectTools || nativeTools;
+const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [], projectId }: MCPGatewayCardProps) => {
   const storageKey = projectId ? `mcp-gateways-${projectId}` : "mcp-gateways";
   const [open, setOpen] = useState(false);
   const [gateways, setGateways] = useState<SavedGateway[]>(() => {
@@ -285,9 +283,9 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setEditGateway(gw);
     setGatewayName(gw.name);
     const restoredServers = gw.servers.map((srv) => {
-      if (srv.name === "Native Tools Server") return { ...srv, icon: Wrench };
       const catalogMatch = catalogServers.find((c) => c.name === srv.name);
-      return { ...srv, icon: catalogMatch?.icon || Server };
+      const mcpMatch = mcpServers.find((ms) => ms.name === srv.name);
+      return { ...srv, icon: catalogMatch?.icon || mcpMatch?.icon || Server };
     });
     setRegisteredServers(restoredServers);
     setSelectedSecurityPolicies([...gw.securityPolicies]);
@@ -318,12 +316,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     }
     const tools: { serverName: string; toolName: string; description: string }[] = [];
     for (const gwServer of gw.servers) {
-      if (gwServer.name === "Native Tools Server") {
-        for (const nt of activeTools) {
-          tools.push({ serverName: "Native Tools", toolName: nt.name, description: "Built-in agent tool" });
-        }
-        continue;
-      }
       const fullServer = mcpServers.find((s) => s.name === gwServer.name);
       if (fullServer) {
         for (const tool of fullServer.tools) {
@@ -438,35 +430,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                       </div>
                     )}
 
-                    {/* Native Tools Server entry */}
-                    <div className="mt-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Native</p>
-                      <div className="rounded-md border border-border">
-                        <div className="flex items-center gap-3 px-3 py-2.5">
-                          <div className="flex h-7 w-7 items-center justify-center rounded bg-muted text-muted-foreground"><Wrench size={14} /></div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-foreground">Native Tools Server</p>
-                            <p className="text-[10px] text-muted-foreground">Built-in agent capabilities</p>
-                          </div>
-                          {(() => {
-                            const added = registeredServers.some((r) => r.name === "Native Tools Server");
-                            return (
-                              <Button variant={added ? "ghost" : "outline"} size="sm" disabled={added} onClick={() => {
-                                if (added) return;
-                                setRegisteredServers((prev) => [...prev, {
-                                  id: `native-${Date.now()}`,
-                                  name: "Native Tools Server",
-                                  url: "",
-                                  transport: "native",
-                                  auth: "none",
-                                  icon: Wrench,
-                                }]);
-                              }} className="h-7 text-xs">{added ? "Added" : "Add"}</Button>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
                   </TabsContent>
                   <TabsContent value="register" className="space-y-3 pt-3">
                     <div className="grid grid-cols-2 gap-3">
@@ -781,7 +744,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 return (
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                      <Wrench size={14} className="text-muted-foreground" />
+                      <Filter size={14} className="text-muted-foreground" />
                       Namespaced Tools ({nsTools.length})
                     </h4>
                     {nsTools.length === 0 ? (

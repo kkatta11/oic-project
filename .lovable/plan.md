@@ -1,41 +1,126 @@
 
 
-# Remove "Native Tools Server" Concept Across the Codebase
+# Standardize Status Badges and Dropdown Action Menus Across All Cards
 
-## Rationale
-The user has streamlined the approach: instead of a separate "Native Tools Server" concept, the project itself is now added as an MCP server (with its tools) when enabled via the Edit dialog. The "Native Tools" toggle, proxy server, and special-case handling should all be removed since these tools now appear as a regular MCP server entry.
+## Overview
+
+Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
 
 ## Changes
 
-### 1. `src/components/MCPGatewayCard.tsx`
-- **Remove the "Native Tools Server" section** (lines 441-469) from the gateway create/edit dialog's "Active" tab — the entire "Native" subsection with the hardcoded Wrench icon entry and "Add" button.
-- **Remove special-case in `getNamespacedTools`** (lines 321-325): Remove the `if (gwServer.name === "Native Tools Server")` branch that bypasses Tools Filter for native tools. All servers now follow the same tool resolution path.
-- **Remove special-case in `handleEditClick`** (line 288): Remove the `if (srv.name === "Native Tools Server") return { ...srv, icon: Wrench }` icon restoration logic.
-- **Clean up imports**: Remove `Wrench` from lucide-react if no longer used elsewhere.
+### 1. `src/components/MCPServersCard.tsx`
 
-### 2. `src/components/BusinessPoliciesCard.tsx`
-- **Remove the `ServerToolSelector` component** (lines 200-290) and the "Native Tools" / "MCP Server" toggle UI. Replace with a simplified selector that only shows MCP servers (which now includes the project server when enabled).
-- **Remove `ToolSource` type** and all `toolSource` state references.
-- **Remove `nativeServerProxy`** construction (lines 379-381).
-- **Update `buildSelectedToolKey`**: Remove the `NativeTools.` prefix logic. All tools are now keyed by their MCP server name.
-- **Update `deriveServerAndTool`**: Remove the `NativeTools.` prefix parsing branch.
-- **Update `formatToolLabel`**: Remove the `NativeTools.` prefix formatting branch — use the standard `ServerName → ToolName` format.
-- **Clean up imports**: Remove `Cpu` from lucide-react, remove `nativeTools` import from ToolsCard if no longer needed.
+**Add Activate/Deactivate to dropdown menu:**
+
+The MCP Servers card already has the dropdown menu pattern. Changes needed:
+- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
+- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
+- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
+
+Updated dropdown items:
+- Edit
+- Refresh Metadata
+- Separator
+- Activate / Deactivate (dynamic label based on current status)
+- Separator
+- Remove (destructive)
+
+**Add toggle handler:**
+```typescript
+const handleToggleStatus = (serverId: string) => {
+  const updated = servers.map((s) =>
+    s.id === serverId
+      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
+      : s
+  );
+  updateServers(updated);
+};
+```
+
+### 2. `src/components/MCPGatewayCard.tsx`
+
+**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
+
+**Replace gateway row controls (lines 700-712):**
+
+Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
+- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
+- A three-dots `DropdownMenu` with:
+  - Edit
+  - Separator
+  - Activate / Deactivate (dynamic)
+  - Separator
+  - Delete (destructive)
+
+**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
+
+**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
 
 ### 3. `src/components/SecurityPoliciesCard.tsx`
-- **Remove all `"native-tools"` special-case handling**:
-  - PII config dialog (lines 644, 659): Remove the `<SelectItem value="native-tools">Native Tools</SelectItem>` option and the conditional tool resolution for native-tools.
-  - Generic config dialog (line 1493): Remove the `native-tools` entry from server options.
-  - Tools Filter dialog (lines 1350-1351, 1667, 1720): Remove `native-tools` option and its tool resolution.
-  - `getEnforcementLevelLabel` (lines 1147, 1189-195): Remove native-tools label mapping.
-  - `isEnforcementFieldVisible` (line 172): Remove native-tools comment.
-- All server dropdowns will now simply list active MCP servers (which includes the project server when enabled).
-- **Clean up imports**: Remove `nativeTools` import from ToolsCard if no longer used.
 
-### 4. `src/components/ToolsCard.tsx`
-- Keep the `nativeTools` export and `NativeTool` type — they are still used by `projectsData.ts` to define project tools and by `ToolsCard` for rendering the agent tools card.
+**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
 
-## What stays the same
-- The Edit dialog's "Enable MCP server" checkbox and auto-add to Gateway (implemented in previous step) remains unchanged.
-- The `tools` prop passed from Index.tsx to policy cards continues to work — it feeds into the MCP server's tool list when the project is enabled as a server.
+**Replace policy row controls (lines 474-482):**
+
+Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
+- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
+- A three-dots `DropdownMenu` with:
+  - Edit (only if `hasEditableConfig`)
+  - Separator (only if edit shown)
+  - Activate / Deactivate (dynamic)
+  - Separator
+  - Delete (destructive)
+
+**Add StatusBadge component** (same green/olive pattern).
+
+### 4. `src/components/BusinessPoliciesCard.tsx`
+
+**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
+
+**Replace policy row controls (lines 484-488):**
+
+Remove the `Switch` and `Trash2` button. Replace with:
+- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
+- A three-dots `DropdownMenu` with:
+  - Edit (calls existing `openEdit(policy)`)
+  - Separator
+  - Activate / Deactivate (dynamic)
+  - Separator
+  - Delete (destructive)
+
+Keep the existing `Eye` popover for viewing details -- it stays as-is.
+
+**Add StatusBadge component** (same pattern).
+
+## Consistent StatusBadge Pattern
+
+All four components will use the same styling:
+
+```typescript
+const StatusBadge = ({ status }: { status: string }) => {
+  const isActive = status === "Active";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+      isActive
+        ? "bg-redwood-green-light text-redwood-green"
+        : "bg-redwood-olive-light text-redwood-olive"
+    }`}>
+      {status}
+    </span>
+  );
+};
+```
+
+## Consistent Row Layout
+
+All card item rows follow:
+```text
+[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
+```
+
+## Summary of Removals
+- All `Switch` toggle components from item rows (and import cleanup where no longer used)
+- All standalone `Trash2` icon buttons from item rows
+- All standalone `Pencil` icon buttons from item rows
+- Status toggle section from MCP Servers edit dialog
 
