@@ -1135,7 +1135,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     if (level === "server") {
       const serverId = config.targetServerId;
       const server = mcpServers.find((s) => s.id === serverId);
-      const server = mcpServers.find((s) => s.id === serverId);
       return server ? ` — Server: ${server.name}` : " — MCP Server";
     }
     if (level === "tool") {
