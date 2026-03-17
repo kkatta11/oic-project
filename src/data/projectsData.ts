@@ -11,6 +11,13 @@ export interface Project {
   type: string;
   lastUpdated: string;
   subtitle?: string;
+  identifier: string;
+  description: string;
+  keywords: string;
+  mcpServerEnabled: boolean;
+  mcpServerUrl: string;
+  createdBy: string;
+  createdOn: string;
 }
 
 export const projects: Project[] = [
