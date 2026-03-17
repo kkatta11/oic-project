@@ -268,19 +268,12 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     setConditions((prev) => prev.filter((c) => c.id !== id));
   };
 
-  const nativeServerProxy: MCPServer[] = toolSource === "native"
-    ? [{ id: "native-tools", name: "Native Tools", status: "Active" as const, icon: Cpu, tools: activeTools.map(t => ({ id: t.id, name: t.name, description: "" })), allTools: activeTools.map(t => ({ id: t.id, name: t.name, description: "" })), url: "", transport: "", authType: "" } as MCPServer]
-    : [];
-  const scopedServers = toolSource === "native" ? nativeServerProxy : mcpServers.filter((s) => s.id === selectedServerId);
+  const scopedServers = mcpServers.filter((s) => s.id === selectedServerId);
 
   const selectedServer = mcpServers.find((s) => s.id === selectedServerId);
-  const canSave = policyName.trim() && selectedToolId && conditions.length > 0 && (toolSource === "native" || selectedServerId);
+  const canSave = policyName.trim() && selectedToolId && conditions.length > 0 && selectedServerId;
 
   const buildToolKey = (): string => {
-    if (toolSource === "native") {
-      const nt = activeTools.find((t) => t.id === selectedToolId);
-      return nt ? `NativeTools.${nt.name.replace(/\s+/g, "")}` : "";
-    }
     if (!selectedServer) return "";
     return buildSelectedToolKey(selectedServer, selectedToolId);
   };
