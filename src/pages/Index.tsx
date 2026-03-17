@@ -125,24 +125,25 @@ const Index = () => {
   });
   const openEditDialog = () => {
     setEditForm({
-      name: currentProject.name,
-      identifier: currentProject.identifier,
-      description: currentProject.description,
-      keywords: currentProject.keywords,
-      mcpServerEnabled: currentProject.mcpServerEnabled,
+      name: mergedProject.name,
+      identifier: mergedProject.identifier,
+      description: mergedProject.description,
+      keywords: mergedProject.keywords,
+      mcpServerEnabled: mergedProject.mcpServerEnabled,
     });
     setEditOpen(true);
   };
 
   const handleSaveEdit = () => {
-    // Update in-memory project data
-    Object.assign(currentProject, {
+    // Persist overrides to localStorage instead of mutating imported data
+    const newOverrides: ProjectOverrides = {
       name: editForm.name,
       identifier: editForm.identifier,
       description: editForm.description,
       keywords: editForm.keywords,
       mcpServerEnabled: editForm.mcpServerEnabled,
-    });
+    };
+    saveProjectOverrides(projectId, newOverrides);
 
     // Sync MCP server entry in Gateway tab
     const projectServerId = `project-${projectId}`;
@@ -159,7 +160,7 @@ const Index = () => {
         icon: Server,
         tools: toolsMapped,
         allTools: toolsMapped,
-        url: currentProject.mcpServerUrl,
+        url: mergedProject.mcpServerUrl,
         transport: "SSE",
         auth: "oauth2",
       };
