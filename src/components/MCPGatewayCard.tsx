@@ -745,7 +745,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 return (
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                      <Wrench size={14} className="text-muted-foreground" />
+                      <Filter size={14} className="text-muted-foreground" />
                       Namespaced Tools ({nsTools.length})
                     </h4>
                     {nsTools.length === 0 ? (
