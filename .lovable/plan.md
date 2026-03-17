@@ -1,126 +1,32 @@
 
 
-# Standardize Status Badges and Dropdown Action Menus Across All Cards
+# Add Project "Edit Details" Dialog with MCP Server Toggle
 
-## Overview
+## Summary
+Add an "Edit details" dialog triggered by the Pencil icon on the project page, matching the screenshot reference. The dialog includes project metadata fields and an "Enable MCP server" checkbox that reveals the server URL.
 
-Replace the toggle switches, standalone edit buttons, and delete icon buttons across all four card components with a consistent pattern: a `StatusBadge` (Active/Configured or Active/Inactive) and a three-dots `DropdownMenu` for all actions.
+## Data Model Changes (`src/data/projectsData.ts`)
+- Extend the `Project` interface with: `identifier`, `description`, `keywords`, `mcpServerEnabled`, `mcpServerUrl`, `createdBy`, `createdOn`
+- Populate these fields for both existing projects with realistic mock data
 
-## Changes
+## UI Changes (`src/pages/Index.tsx`)
+1. **Wire Pencil button** to open a Dialog containing the edit form
+2. **Dialog content** (matching the screenshot):
+   - **Name** — editable text input
+   - **Identifier** — editable text input (auto-generated uppercase snake_case from name)
+   - **Description** — editable textarea
+   - **Generate** button (placeholder, no-op for now)
+   - **Keywords** — editable text input
+   - **Enable MCP server** — Checkbox; when checked, displays the MCP server URL with a copy-to-clipboard button
+   - **Created by** — read-only text
+   - **Created on** — read-only text
+   - **Last updated** — read-only text
+   - **Cancel / Save changes** buttons in footer
+3. **State**: Local component state for the dialog form fields. "Save changes" updates the in-memory project data (no persistence beyond session).
+4. **Styling**: Oracle Redwood theme — gold/brown label colors for field labels like "Name:", "Identifier:", "Description:", matching the screenshot's aesthetic with bordered input groups.
 
-### 1. `src/components/MCPServersCard.tsx`
-
-**Add Activate/Deactivate to dropdown menu:**
-
-The MCP Servers card already has the dropdown menu pattern. Changes needed:
-- Add "Activate" / "Deactivate" menu item to the existing dropdown (calls a toggle on `server.status` between "Active" and "Configured")
-- Remove the `Switch` from the Edit dialog's status section (lines 605-617), replacing it with a simpler display or removing the status toggle entirely from the edit dialog since activation is now in the dropdown
-- The `StatusBadge` component already exists and renders Active/Configured states -- no change needed there
-
-Updated dropdown items:
-- Edit
-- Refresh Metadata
-- Separator
-- Activate / Deactivate (dynamic label based on current status)
-- Separator
-- Remove (destructive)
-
-**Add toggle handler:**
-```typescript
-const handleToggleStatus = (serverId: string) => {
-  const updated = servers.map((s) =>
-    s.id === serverId
-      ? { ...s, status: s.status === "Active" ? "Configured" : "Active" }
-      : s
-  );
-  updateServers(updated);
-};
-```
-
-### 2. `src/components/MCPGatewayCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from the dropdown-menu component.
-
-**Replace gateway row controls (lines 700-712):**
-
-Remove the `Switch`, `Pencil` button, `Trash2` button, and replace with:
-- A `StatusBadge` showing "Active" or "Inactive" (already has the `Badge` but switch to the same `StatusBadge` pattern from MCPServersCard for consistency)
-- A three-dots `DropdownMenu` with:
-  - Edit
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Refactor handlers:** Remove `e.stopPropagation()` dependency from `handleToggleActive` and `handleDeleteGateway` -- instead call `e.stopPropagation()` within the dropdown item `onClick` or on the trigger.
-
-**Add StatusBadge component** (same pattern as MCPServersCard, using "Active"/"Inactive" labels with green/olive colors).
-
-### 3. `src/components/SecurityPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 474-482):**
-
-Remove the `Switch` and standalone `Pencil`/`Trash2` buttons. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (only if `hasEditableConfig`)
-  - Separator (only if edit shown)
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-**Add StatusBadge component** (same green/olive pattern).
-
-### 4. `src/components/BusinessPoliciesCard.tsx`
-
-**Import changes:** Add `MoreHorizontal, Pencil` from lucide-react. Add `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger`.
-
-**Replace policy row controls (lines 484-488):**
-
-Remove the `Switch` and `Trash2` button. Replace with:
-- A `StatusBadge` showing "Active" or "Configured" based on `policy.active`
-- A three-dots `DropdownMenu` with:
-  - Edit (calls existing `openEdit(policy)`)
-  - Separator
-  - Activate / Deactivate (dynamic)
-  - Separator
-  - Delete (destructive)
-
-Keep the existing `Eye` popover for viewing details -- it stays as-is.
-
-**Add StatusBadge component** (same pattern).
-
-## Consistent StatusBadge Pattern
-
-All four components will use the same styling:
-
-```typescript
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === "Active";
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-      isActive
-        ? "bg-redwood-green-light text-redwood-green"
-        : "bg-redwood-olive-light text-redwood-olive"
-    }`}>
-      {status}
-    </span>
-  );
-};
-```
-
-## Consistent Row Layout
-
-All card item rows follow:
-```text
-[Icon] Name + description    [StatusBadge]  [⋯ dropdown]
-```
-
-## Summary of Removals
-- All `Switch` toggle components from item rows (and import cleanup where no longer used)
-- All standalone `Trash2` icon buttons from item rows
-- All standalone `Pencil` icon buttons from item rows
-- Status toggle section from MCP Servers edit dialog
+## Components Used
+- `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogFooter` from existing UI library
+- `Input`, `Textarea`, `Checkbox`, `Button` from existing UI library
+- Copy icon button for the MCP server URL
 
