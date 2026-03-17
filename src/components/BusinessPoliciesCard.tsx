@@ -242,7 +242,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const [editPolicy, setEditPolicy] = useState<BusinessPolicy | null>(null);
 
   const [policyName, setPolicyName] = useState("");
-  const [toolSource, setToolSource] = useState<ToolSource>("mcp");
+  const [selectedServerId, setSelectedServerId] = useState("");
   const [selectedServerId, setSelectedServerId] = useState("");
   const [selectedToolId, setSelectedToolId] = useState("");
   const [conditions, setConditions] = useState<PolicyCondition[]>([]);
