@@ -1621,7 +1621,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         policyName={policyName}
         onPolicyNameChange={setPolicyName}
         mcpServers={mcpServers}
-        tools={activeTools}
+        
       />
 
       {/* Tools Filter dialog */}
