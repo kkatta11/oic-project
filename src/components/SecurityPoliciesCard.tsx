@@ -1474,10 +1474,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
                 // Dynamic options for targetServerId
                 if (field.key === "targetServerId") {
-                  const serverOptions = [
-                    { value: "native-tools", label: "Native Tools" },
-                    ...activeServers.map((s) => ({ value: s.id, label: s.name })),
-                  ];
+                  const serverOptions = activeServers.map((s) => ({ value: s.id, label: s.name }));
                   return (
                     <div key={field.key} className="grid gap-1.5">
                       <Label className="text-xs font-medium">{field.label}</Label>
