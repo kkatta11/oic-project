@@ -196,97 +196,6 @@ const ConditionRow = ({ condition, mcpServers, onUpdate, onRemove }: ConditionRo
   </div>
 );
 
-// --- Server/Tool Selector with Native Tools toggle ---
-type ToolSource = "mcp" | "native";
-
-interface ServerToolSelectorProps {
-  mcpServers: MCPServer[];
-  toolSource: ToolSource;
-  onToolSourceChange: (source: ToolSource) => void;
-  selectedServerId: string;
-  selectedToolId: string;
-  onServerChange: (serverId: string) => void;
-  onToolChange: (toolId: string) => void;
-  projectTools?: NativeTool[];
-}
-
-const ServerToolSelector = ({ mcpServers, toolSource, onToolSourceChange, selectedServerId, selectedToolId, onServerChange, onToolChange, projectTools }: ServerToolSelectorProps) => {
-  const toolsList = projectTools || nativeTools;
-  const activeServers = mcpServers.filter((s) => s.status === "Active");
-  const selectedServer = activeServers.find((s) => s.id === selectedServerId);
-  const tools = selectedServer?.tools || [];
-
-  return (
-    <div className="space-y-3">
-      {/* Toggle */}
-      <div className="flex gap-1 rounded-md border border-border p-0.5 bg-muted/50">
-        <button
-          type="button"
-          className={`flex-1 flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${toolSource === "native" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          onClick={() => { onToolSourceChange("native"); onServerChange(""); onToolChange(""); }}
-        >
-          <Cpu size={12} /> Native Tools
-        </button>
-        <button
-          type="button"
-          className={`flex-1 flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${toolSource === "mcp" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          onClick={() => { onToolSourceChange("mcp"); onToolChange(""); }}
-        >
-          <Server size={12} /> MCP Server
-        </button>
-      </div>
-
-      {toolSource === "native" ? (
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium flex items-center gap-1.5"><Cpu size={12} /> Native Tool</Label>
-          <Select value={selectedToolId} onValueChange={onToolChange}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a native tool…" /></SelectTrigger>
-            <SelectContent>
-              {toolsList.map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : (
-        <>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium flex items-center gap-1.5"><Server size={12} /> MCP Server</Label>
-            {activeServers.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-1">No active MCP servers available.</p>
-            ) : (
-              <Select value={selectedServerId} onValueChange={(v) => { onServerChange(v); onToolChange(""); }}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select an active server…" /></SelectTrigger>
-                <SelectContent>
-                  {activeServers.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-          {selectedServerId && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Tool</Label>
-              {tools.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-1">No tools on this server.</p>
-              ) : (
-                <Select value={selectedToolId} onValueChange={onToolChange}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a tool…" /></SelectTrigger>
-                  <SelectContent>
-                    {tools.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-};
 // --- Helper: derive selectedTools string from server + tool ---
 function buildSelectedToolKey(server: MCPServer, toolId: string): string {
   const tool = server.tools.find((t) => t.id === toolId);
@@ -294,38 +203,25 @@ function buildSelectedToolKey(server: MCPServer, toolId: string): string {
   return `${server.name.replace(/\s+/g, "")}.${tool.name.replace(/\s+/g, "")}`;
 }
 
-function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[], projectTools?: NativeTool[]): { serverId: string; toolId: string; toolSource: ToolSource } {
-  const toolsList = projectTools || nativeTools;
-  if (!selectedTools.length) return { serverId: "", toolId: "", toolSource: "mcp" };
+function deriveServerAndTool(mcpServers: MCPServer[], selectedTools: string[]): { serverId: string; toolId: string } {
+  if (!selectedTools.length) return { serverId: "", toolId: "" };
   const key = selectedTools[0];
-  if (key.startsWith("NativeTools.")) {
-    const toolName = key.substring("NativeTools.".length);
-    const nt = toolsList.find((t) => t.name.replace(/\s+/g, "") === toolName);
-    return { serverId: "", toolId: nt?.id || "", toolSource: "native" };
-  }
   const dotIdx = key.indexOf(".");
-  if (dotIdx < 0) return { serverId: "", toolId: "", toolSource: "mcp" };
+  if (dotIdx < 0) return { serverId: "", toolId: "" };
   const serverPart = key.substring(0, dotIdx);
   const toolPart = key.substring(dotIdx + 1);
   for (const s of mcpServers) {
     if (s.name.replace(/\s+/g, "") === serverPart) {
       const tool = s.tools.find((t) => t.name.replace(/\s+/g, "") === toolPart);
-      if (tool) return { serverId: s.id, toolId: tool.id, toolSource: "mcp" };
+      if (tool) return { serverId: s.id, toolId: tool.id };
     }
   }
-  return { serverId: "", toolId: "", toolSource: "mcp" };
+  return { serverId: "", toolId: "" };
 }
 
-function formatToolLabel(mcpServers: MCPServer[], selectedTools: string[], projectTools?: NativeTool[]): string {
-  const toolsList = projectTools || nativeTools;
+function formatToolLabel(mcpServers: MCPServer[], selectedTools: string[]): string {
   if (!selectedTools.length) return "";
-  const key = selectedTools[0];
-  if (key.startsWith("NativeTools.")) {
-    const toolName = key.substring("NativeTools.".length);
-    const nt = toolsList.find((t) => t.name.replace(/\s+/g, "") === toolName);
-    return `Native Tools → ${nt?.name || toolName}`;
-  }
-  const { serverId, toolId } = deriveServerAndTool(mcpServers, selectedTools, projectTools);
+  const { serverId, toolId } = deriveServerAndTool(mcpServers, selectedTools);
   const server = mcpServers.find((s) => s.id === serverId);
   const tool = server?.tools.find((t) => t.id === toolId);
   if (server && tool) return `${server.name} → ${tool.name}`;
