@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal, ArrowLeft, Copy, Sparkles } from "lucide-react";
+import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal, ArrowLeft, Copy, Sparkles, Server } from "lucide-react";
 import OracleHeader from "@/components/OracleHeader";
 import SidebarNav from "@/components/SidebarNav";
 import IntegrationsCard from "@/components/IntegrationsCard";
