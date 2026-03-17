@@ -346,16 +346,40 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         </div>
       )}
       {/* Server & Tool selector */}
-      <ServerToolSelector
-        mcpServers={mcpServers}
-        toolSource={toolSource}
-        onToolSourceChange={setToolSource}
-        selectedServerId={selectedServerId}
-        selectedToolId={selectedToolId}
-        onServerChange={setSelectedServerId}
-        onToolChange={setSelectedToolId}
-        projectTools={activeTools}
-      />
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium flex items-center gap-1.5"><Server size={12} /> MCP Server</Label>
+          {mcpServers.filter((s) => s.status === "Active").length === 0 ? (
+            <p className="text-xs text-muted-foreground py-1">No active MCP servers available.</p>
+          ) : (
+            <Select value={selectedServerId} onValueChange={(v) => { setSelectedServerId(v); setSelectedToolId(""); }}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select an active server…" /></SelectTrigger>
+              <SelectContent>
+                {mcpServers.filter((s) => s.status === "Active").map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        {selectedServerId && (
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium flex items-center gap-1.5"><Wrench size={12} /> Tool</Label>
+            {(selectedServer?.tools || []).length === 0 ? (
+              <p className="text-xs text-muted-foreground py-1">No tools on this server.</p>
+            ) : (
+              <Select value={selectedToolId} onValueChange={setSelectedToolId}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a tool…" /></SelectTrigger>
+                <SelectContent>
+                  {(selectedServer?.tools || []).map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+      </div>
       {/* Condition builder */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
