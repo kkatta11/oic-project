@@ -47,11 +47,6 @@ export const projects: Project[] = [
     createdBy: "jane.smith@oracle.com",
     createdOn: "Jan 20, 2026 09:15:00 AM IST",
   },
-    id: "travel-supply-chain",
-    name: "Travel Industry Supply Chain",
-    type: "Developed",
-    lastUpdated: "Mar 7, 2026 08:41:17 AM IST",
-  },
 ];
 
 // --- Project 2: Travel Industry Supply Chain data ---
