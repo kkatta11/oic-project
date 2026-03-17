@@ -1142,7 +1142,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const serverId = config.targetServerId;
       const toolId = config.targetToolId;
       const server = mcpServers.find((s) => s.id === serverId);
-      const tool = server?.allTools?.find((t: any) => t.id === toolId) ?? activeTools.find((t) => t.id === toolId);
+      const tool = server?.allTools?.find((t: any) => t.id === toolId);
       const toolName = tool?.name || toolId;
       return toolName ? ` — Tool: ${toolName}` : " — Tool";
     }
