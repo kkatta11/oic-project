@@ -194,7 +194,7 @@ const Index = () => {
             <List size={16} />
           </button>
           <div className="mx-1 h-5 w-px bg-border" />
-          <button className="rounded p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
+          <button onClick={openEditDialog} className="rounded p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
             <Pencil size={16} />
           </button>
           <button className="rounded p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
