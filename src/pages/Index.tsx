@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal, ArrowLeft, Copy, Sparkles } from "lucide-react";
+import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal, ArrowLeft, Copy, Sparkles, Server } from "lucide-react";
 import OracleHeader from "@/components/OracleHeader";
 import SidebarNav from "@/components/SidebarNav";
 import IntegrationsCard from "@/components/IntegrationsCard";
@@ -66,6 +66,34 @@ const Index = () => {
       keywords: editForm.keywords,
       mcpServerEnabled: editForm.mcpServerEnabled,
     });
+
+    // Sync MCP server entry in Gateway tab
+    const projectServerId = `project-${projectId}`;
+    if (editForm.mcpServerEnabled) {
+      const toolsMapped = projectData.tools.map((t) => ({
+        id: t.id,
+        name: t.name,
+        description: `${t.name} tool`,
+      }));
+      const newServer: MCPServer = {
+        id: projectServerId,
+        name: editForm.name,
+        status: "Active",
+        icon: Server,
+        tools: toolsMapped,
+        allTools: toolsMapped,
+        url: currentProject.mcpServerUrl,
+        transport: "SSE",
+        auth: "oauth2",
+      };
+      setMcpServers((prev) => [
+        ...prev.filter((s) => s.id !== projectServerId),
+        newServer,
+      ]);
+    } else {
+      setMcpServers((prev) => prev.filter((s) => s.id !== projectServerId));
+    }
+
     setEditOpen(false);
     toast({ title: "Project updated", description: "Project details have been saved." });
   };
