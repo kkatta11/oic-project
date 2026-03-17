@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, ListChecks, Eye, FolderSearch, Wrench, MoreHorizontal, Pencil, Server, Cpu } from "lucide-react";
+import { Plus, X, ListChecks, Eye, FolderSearch, Wrench, MoreHorizontal, Pencil, Server } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { MCPServer } from "@/components/MCPServersCard";
-import { nativeTools, type NativeTool } from "@/components/ToolsCard";
 
 export interface PolicyCondition {
   id: string;
