@@ -469,7 +469,7 @@ function PIIConfigDialog({
   policyName: string;
   onPolicyNameChange: (name: string) => void;
   mcpServers?: MCPServer[];
-  tools?: NativeTool[];
+  tools?: { id: string; name: string; icon: any }[];
 }) {
   const update = <K extends keyof PIIConfig>(key: K, value: PIIConfig[K]) => {
     onConfigChange({ ...config, [key]: value });
