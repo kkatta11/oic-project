@@ -177,7 +177,7 @@ const Index = () => {
   };
 
   const handleCopyUrl = () => {
-    navigator.clipboard.writeText(currentProject.mcpServerUrl);
+    navigator.clipboard.writeText(mergedProject.mcpServerUrl);
     toast({ title: "Copied", description: "MCP server URL copied to clipboard." });
   };
   const renderContent = () => {
