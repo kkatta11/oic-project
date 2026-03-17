@@ -1696,7 +1696,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setToolsFilterOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterIncluded.size === 0 || (toolsFilterServerId !== "native-tools" && !selectedServer)}>
+            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterIncluded.size === 0 || !selectedServer}>
               {toolsFilterEditPolicy ? "Save Changes" : "Add Policy"}
             </Button>
           </DialogFooter>
