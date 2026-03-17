@@ -423,7 +423,7 @@ const Index = () => {
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Last updated</span>
-                <span className="text-foreground">{currentProject.lastUpdated}</span>
+                <span className="text-foreground">{mergedProject.lastUpdated}</span>
               </div>
             </div>
           </div>
