@@ -1499,9 +1499,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
                 // Dynamic options for targetToolId
                 if (field.key === "targetToolId") {
                   const selectedServerId = configValues.targetServerId;
-                  const toolOptions = selectedServerId === "native-tools"
-                    ? activeTools.map((t) => ({ value: t.id, label: t.name }))
-                    : (mcpServers.find((s) => s.id === selectedServerId)?.allTools ?? []).map((t) => ({ value: t.id, label: t.name }));
+                  const toolOptions = (mcpServers.find((s) => s.id === selectedServerId)?.allTools ?? []).map((t) => ({ value: t.id, label: t.name }));
                   return (
                     <div key={field.key} className="grid gap-1.5">
                       <Label className="text-xs font-medium">{field.label}</Label>
