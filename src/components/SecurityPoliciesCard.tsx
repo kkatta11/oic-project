@@ -1333,10 +1333,8 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   // Save Tools Filter
   const handleToolsFilterSave = () => {
-    if (!toolsFilterServerId) return;
-    const isNative = toolsFilterServerId === "native-tools";
-    if (!isNative && !selectedServer) return;
-    const displayName = isNative ? "Native Tools" : selectedServer!.name;
+    if (!toolsFilterServerId || !selectedServer) return;
+    const displayName = selectedServer.name;
     const config = {
       serverId: toolsFilterServerId,
       serverName: displayName,
