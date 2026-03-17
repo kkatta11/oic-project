@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal, ArrowLeft } from "lucide-react";
+import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal, ArrowLeft, Copy, Sparkles } from "lucide-react";
 import OracleHeader from "@/components/OracleHeader";
 import SidebarNav from "@/components/SidebarNav";
 import IntegrationsCard from "@/components/IntegrationsCard";
@@ -12,8 +12,14 @@ import BusinessPoliciesCard, { type BusinessPolicy, loadBusinessPolicies, saveBu
 import MCPGatewayCard from "@/components/MCPGatewayCard";
 import GatewayObserveDashboard from "@/components/GatewayObserveDashboard";
 import { sidebarItems } from "@/data/mockData";
-import { getProjectData } from "@/data/projectsData";
+import { getProjectData, projects } from "@/data/projectsData";
 import ConnectionsCard from "@/components/ConnectionsCard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 
 const tabs = ["Design", "Deploy", "Observe"];
