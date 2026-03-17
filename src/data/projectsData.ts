@@ -30,7 +30,7 @@ export const projects: Project[] = [
     description: "AI-powered invoice validation agent that automates invoice processing, matching, and approval workflows using Oracle Integration Cloud.",
     keywords: "invoice, validation, AI, automation, ERP",
     mcpServerEnabled: false,
-    mcpServerUrl: "https://oic-mcp.oracle.com/smart-invoice/sse",
+    mcpServerUrl: "https://oic-mcp.oracle.com/smart-invoice/mcp",
     createdBy: "john.doe@oracle.com",
     createdOn: "Feb 15, 2026 10:30:00 AM IST",
   },
