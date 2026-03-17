@@ -29,6 +29,7 @@ const Index = () => {
   const { projectId = "smart-invoice" } = useParams();
   const navigate = useNavigate();
   const projectData = getProjectData(projectId);
+  const currentProject = projects.find((p) => p.id === projectId) ?? projects[0];
 
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
@@ -36,6 +37,43 @@ const Index = () => {
   const [securityPolicies, setSecurityPolicies] = useState<SecurityPolicy[]>(() => loadSecurityPolicies(projectId));
   const [businessPolicies, setBusinessPolicies] = useState<BusinessPolicy[]>(() => loadBusinessPolicies(projectId));
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: currentProject.name,
+    identifier: currentProject.identifier,
+    description: currentProject.description,
+    keywords: currentProject.keywords,
+    mcpServerEnabled: currentProject.mcpServerEnabled,
+  });
+
+  const openEditDialog = () => {
+    setEditForm({
+      name: currentProject.name,
+      identifier: currentProject.identifier,
+      description: currentProject.description,
+      keywords: currentProject.keywords,
+      mcpServerEnabled: currentProject.mcpServerEnabled,
+    });
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    // Update in-memory project data
+    Object.assign(currentProject, {
+      name: editForm.name,
+      identifier: editForm.identifier,
+      description: editForm.description,
+      keywords: editForm.keywords,
+      mcpServerEnabled: editForm.mcpServerEnabled,
+    });
+    setEditOpen(false);
+    toast({ title: "Project updated", description: "Project details have been saved." });
+  };
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(currentProject.mcpServerUrl);
+    toast({ title: "Copied", description: "MCP server URL copied to clipboard." });
+  };
   const renderContent = () => {
     if (activeTab === "Observe" && activeSidebarItem === "gateway") {
       return <GatewayObserveDashboard />;
