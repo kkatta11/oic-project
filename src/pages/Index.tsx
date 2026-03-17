@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Search, LayoutGrid, List, Pencil, Save, MoreHorizontal, ArrowLeft, Copy, Sparkles, Server } from "lucide-react";
 import OracleHeader from "@/components/OracleHeader";
@@ -21,6 +21,46 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
+// --- localStorage helpers for MCP servers & project overrides ---
+function loadMcpServers(projectId: string, fallback: MCPServer[]): MCPServer[] {
+  try {
+    const raw = localStorage.getItem(`mcp-servers-${projectId}`);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as MCPServer[];
+    // Restore icon (not serializable)
+    return parsed.map((s) => ({ ...s, icon: Server }));
+  } catch {
+    return fallback;
+  }
+}
+
+function saveMcpServers(projectId: string, servers: MCPServer[]) {
+  // Strip icon before saving (functions can't be serialized)
+  const serializable = servers.map(({ icon, ...rest }) => rest);
+  localStorage.setItem(`mcp-servers-${projectId}`, JSON.stringify(serializable));
+}
+
+interface ProjectOverrides {
+  name?: string;
+  identifier?: string;
+  description?: string;
+  keywords?: string;
+  mcpServerEnabled?: boolean;
+}
+
+function loadProjectOverrides(projectId: string): ProjectOverrides {
+  try {
+    const raw = localStorage.getItem(`project-overrides-${projectId}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveProjectOverrides(projectId: string, overrides: ProjectOverrides) {
+  localStorage.setItem(`project-overrides-${projectId}`, JSON.stringify(overrides));
+}
+
 
 const tabs = ["Design", "Deploy", "Observe"];
 
@@ -31,21 +71,58 @@ const Index = () => {
   const projectData = getProjectData(projectId);
   const currentProject = projects.find((p) => p.id === projectId) ?? projects[0];
 
+  // Merge persisted overrides into currentProject for display
+  const overrides = loadProjectOverrides(projectId);
+  const mergedProject = { ...currentProject, ...overrides };
+
   const [activeTab, setActiveTab] = useState("Design");
   const [activeSidebarItem, setActiveSidebarItem] = useState("integrations");
-  const [mcpServers, setMcpServers] = useState<MCPServer[]>(projectData.mcpServers);
+  const [mcpServers, setMcpServersRaw] = useState<MCPServer[]>(() => {
+    const saved = loadMcpServers(projectId, projectData.mcpServers);
+    // If mcpServerEnabled, ensure the project server entry exists
+    if (mergedProject.mcpServerEnabled) {
+      const projectServerId = `project-${projectId}`;
+      if (!saved.some((s) => s.id === projectServerId)) {
+        const toolsMapped = projectData.tools.map((t) => ({
+          id: t.id,
+          name: t.name,
+          description: `${t.name} tool`,
+        }));
+        saved.push({
+          id: projectServerId,
+          name: mergedProject.name,
+          status: "Active",
+          icon: Server,
+          tools: toolsMapped,
+          allTools: toolsMapped,
+          url: mergedProject.mcpServerUrl,
+          transport: "SSE",
+          auth: "oauth2",
+        });
+      }
+    }
+    return saved;
+  });
   const [securityPolicies, setSecurityPolicies] = useState<SecurityPolicy[]>(() => loadSecurityPolicies(projectId));
   const [businessPolicies, setBusinessPolicies] = useState<BusinessPolicy[]>(() => loadBusinessPolicies(projectId));
 
+  // Wrapper that persists mcpServers on every change
+  const setMcpServers = useCallback((updater: MCPServer[] | ((prev: MCPServer[]) => MCPServer[])) => {
+    setMcpServersRaw((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      saveMcpServers(projectId, next);
+      return next;
+    });
+  }, [projectId]);
+
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({
-    name: currentProject.name,
-    identifier: currentProject.identifier,
-    description: currentProject.description,
-    keywords: currentProject.keywords,
-    mcpServerEnabled: currentProject.mcpServerEnabled,
+    name: mergedProject.name,
+    identifier: mergedProject.identifier,
+    description: mergedProject.description,
+    keywords: mergedProject.keywords,
+    mcpServerEnabled: mergedProject.mcpServerEnabled,
   });
-
   const openEditDialog = () => {
     setEditForm({
       name: currentProject.name,
