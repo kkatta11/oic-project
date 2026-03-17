@@ -1644,7 +1644,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
                   <SelectValue placeholder="Select a source" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="native-tools">Native Tools</SelectItem>
                   {activeServers.map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
