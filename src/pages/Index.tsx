@@ -404,7 +404,7 @@ const Index = () => {
               </div>
               {editForm.mcpServerEnabled && (
                 <div className="flex items-center gap-2 rounded-md border border-input bg-muted/50 px-3 py-2">
-                  <code className="flex-1 text-xs text-foreground truncate">{currentProject.mcpServerUrl}</code>
+                  <code className="flex-1 text-xs text-foreground truncate">{mergedProject.mcpServerUrl}</code>
                   <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleCopyUrl}>
                     <Copy size={14} />
                   </Button>
