@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { MCPServer, MCPServerTool } from "@/components/MCPServersCard";
-import { nativeTools, type NativeTool } from "@/components/ToolsCard";
 
 const iconMap: Record<string, LucideIcon> = {
   ShieldAlert, FileCheck, Bug, ShieldCheck, Gauge, Package, Database, Lock, Filter,
