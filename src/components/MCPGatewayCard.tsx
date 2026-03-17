@@ -92,8 +92,7 @@ const getPolicyScope = (policy: SecurityPolicy): string => {
   return "Request";
 };
 
-const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [], projectId, tools: projectTools }: MCPGatewayCardProps) => {
-  const activeTools = projectTools || nativeTools;
+const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolicies = [], businessPolicies = [], projectId }: MCPGatewayCardProps) => {
   const storageKey = projectId ? `mcp-gateways-${projectId}` : "mcp-gateways";
   const [open, setOpen] = useState(false);
   const [gateways, setGateways] = useState<SavedGateway[]>(() => {
