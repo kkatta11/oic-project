@@ -284,9 +284,9 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setEditGateway(gw);
     setGatewayName(gw.name);
     const restoredServers = gw.servers.map((srv) => {
-      if (srv.name === "Native Tools Server") return { ...srv, icon: Wrench };
       const catalogMatch = catalogServers.find((c) => c.name === srv.name);
-      return { ...srv, icon: catalogMatch?.icon || Server };
+      const mcpMatch = mcpServers.find((ms) => ms.name === srv.name);
+      return { ...srv, icon: catalogMatch?.icon || mcpMatch?.icon || Server };
     });
     setRegisteredServers(restoredServers);
     setSelectedSecurityPolicies([...gw.securityPolicies]);
