@@ -168,7 +168,6 @@ function isEnforcementFieldVisible(templateId: string, fieldKey: string, configV
   if (!ENFORCEMENT_LEVEL_TEMPLATES.includes(templateId)) return true;
   const level = configValues.enforcementLevel || "gateway";
   if (fieldKey === "targetServerId") {
-    // For t5, "server" level means MCP server; "native-tools" is a separate level with no picker
     if (templateId === "t5") return level === "server";
     return level === "server" || level === "tool";
   }
