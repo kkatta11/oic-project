@@ -419,7 +419,7 @@ const Index = () => {
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Created on</span>
-                <span className="text-foreground">{currentProject.createdOn}</span>
+                <span className="text-foreground">{mergedProject.createdOn}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Last updated</span>
