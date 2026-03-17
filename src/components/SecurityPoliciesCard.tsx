@@ -638,7 +638,6 @@ function PIIConfigDialog({
                   <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select server..." /></SelectTrigger>
                   <SelectContent>
                     {mcpServers.filter((s) => s.status === "Active").map((s) => (
-                    {mcpServers.filter((s) => s.status === "Active").map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
