@@ -250,7 +250,6 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   const resetForm = () => {
     setPolicyName("");
-    setToolSource("mcp");
     setSelectedServerId("");
     setSelectedToolId("");
     setConditions([]);
