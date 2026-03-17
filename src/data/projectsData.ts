@@ -43,7 +43,7 @@ export const projects: Project[] = [
     description: "End-to-end supply chain management for travel industry — shipment tracking, customs declarations, supplier onboarding, and route optimization.",
     keywords: "travel, supply chain, logistics, customs, SCM",
     mcpServerEnabled: true,
-    mcpServerUrl: "https://oic-mcp.oracle.com/travel-supply-chain/sse",
+    mcpServerUrl: "https://oic-mcp.oracle.com/travel-supply-chain/mcp",
     createdBy: "jane.smith@oracle.com",
     createdOn: "Jan 20, 2026 09:15:00 AM IST",
   },
