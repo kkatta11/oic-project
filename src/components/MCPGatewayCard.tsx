@@ -55,6 +55,7 @@ interface GatewayServer {
   transport: string;
   auth: string;
   icon: LucideIcon;
+  sourceId?: string;
 }
 
 interface SavedGateway {
