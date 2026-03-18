@@ -55,6 +55,7 @@ interface GatewayServer {
   transport: string;
   auth: string;
   icon: LucideIcon;
+  sourceId?: string;
 }
 
 interface SavedGateway {
@@ -201,7 +202,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     const serverName = newServerName.trim();
     setRegisteredServers((prev) => [
       ...prev,
-      { id: `rs-${Date.now()}`, name: serverName, url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server },
+      { id: `rs-${Date.now()}`, name: serverName, url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server, sourceId: undefined },
     ]);
     setNewServerName("");
     setNewServerUrl("");
@@ -221,7 +222,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     if (!catalogDetailServer) return;
     setRegisteredServers((prev) => [
       ...prev,
-      { id: `cat-${Date.now()}`, name: catalogDetailServer.name, url: catalogUrl, transport: catalogTransport, auth: catalogAuth, icon: catalogDetailServer.icon },
+      { id: `cat-${Date.now()}`, name: catalogDetailServer.name, url: catalogUrl, transport: catalogTransport, auth: catalogAuth, icon: catalogDetailServer.icon, sourceId: catalogDetailServer.id },
     ]);
     setCatalogDetailOpen(false);
     setCatalogDetailServer(null);
@@ -283,8 +284,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setEditGateway(gw);
     setGatewayName(gw.name);
     const restoredServers = gw.servers.map((srv) => {
-      const catalogMatch = catalogServers.find((c) => c.name === srv.name);
-      const mcpMatch = mcpServers.find((ms) => ms.name === srv.name);
+      const catalogMatch = catalogServers.find((c) => srv.sourceId ? c.id === srv.sourceId : c.name === srv.name);
+      const mcpMatch = mcpServers.find((ms) => srv.sourceId ? ms.id === srv.sourceId : ms.name === srv.name);
       return { ...srv, icon: catalogMatch?.icon || mcpMatch?.icon || Server };
     });
     setRegisteredServers(restoredServers);
@@ -316,9 +317,10 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     }
     const tools: { serverName: string; toolName: string; description: string }[] = [];
     for (const gwServer of gw.servers) {
-      const fullServer = mcpServers.find((s) => s.name === gwServer.name);
+      const fullServer = mcpServers.find((s) => gwServer.sourceId ? s.id === gwServer.sourceId : s.name === gwServer.name);
       if (fullServer) {
-        for (const tool of fullServer.tools) {
+        const allAvailableTools = (fullServer as any).allTools || fullServer.tools;
+        for (const tool of allAvailableTools) {
           if (includedToolIds.has(tool.id)) {
             tools.push({ serverName: fullServer.name.replace(/ MCP Server$/, ""), toolName: tool.name, description: tool.description });
           }
@@ -422,6 +424,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                                   transport: fullServer?.transport || "streamable-http",
                                   auth: fullServer?.auth || "none",
                                   icon: s.icon,
+                                  sourceId: s.id,
                                 }]);
                               }} className="h-7 text-xs">{added ? "Added" : "Add"}</Button>
                             </div>
@@ -720,7 +723,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 ) : (
                   <div className="rounded-md border border-border divide-y divide-border">
                     {detailGateway.servers.map((srv) => {
-                      const fullServer = mcpServers.find((s) => s.name === srv.name);
+                      const fullServer = mcpServers.find((s) => srv.sourceId ? s.id === srv.sourceId : s.name === srv.name);
                       return (
                         <div key={srv.id} className="px-4 py-3 space-y-1">
                           <div className="flex items-center gap-2">
