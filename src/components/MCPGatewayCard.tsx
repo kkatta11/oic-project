@@ -723,7 +723,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 ) : (
                   <div className="rounded-md border border-border divide-y divide-border">
                     {detailGateway.servers.map((srv) => {
-                      const fullServer = mcpServers.find((s) => s.name === srv.name);
+                      const fullServer = mcpServers.find((s) => srv.sourceId ? s.id === srv.sourceId : s.name === srv.name);
                       return (
                         <div key={srv.id} className="px-4 py-3 space-y-1">
                           <div className="flex items-center gap-2">
