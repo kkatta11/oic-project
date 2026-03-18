@@ -222,7 +222,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     if (!catalogDetailServer) return;
     setRegisteredServers((prev) => [
       ...prev,
-      { id: `cat-${Date.now()}`, name: catalogDetailServer.name, url: catalogUrl, transport: catalogTransport, auth: catalogAuth, icon: catalogDetailServer.icon },
+      { id: `cat-${Date.now()}`, name: catalogDetailServer.name, url: catalogUrl, transport: catalogTransport, auth: catalogAuth, icon: catalogDetailServer.icon, sourceId: catalogDetailServer.id },
     ]);
     setCatalogDetailOpen(false);
     setCatalogDetailServer(null);
