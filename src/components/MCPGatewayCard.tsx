@@ -424,6 +424,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                                   transport: fullServer?.transport || "streamable-http",
                                   auth: fullServer?.auth || "none",
                                   icon: s.icon,
+                                  sourceId: s.id,
                                 }]);
                               }} className="h-7 text-xs">{added ? "Added" : "Add"}</Button>
                             </div>
