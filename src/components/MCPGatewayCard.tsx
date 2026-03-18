@@ -284,8 +284,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setEditGateway(gw);
     setGatewayName(gw.name);
     const restoredServers = gw.servers.map((srv) => {
-      const catalogMatch = catalogServers.find((c) => c.name === srv.name);
-      const mcpMatch = mcpServers.find((ms) => ms.name === srv.name);
+      const catalogMatch = catalogServers.find((c) => srv.sourceId ? c.id === srv.sourceId : c.name === srv.name);
+      const mcpMatch = mcpServers.find((ms) => srv.sourceId ? ms.id === srv.sourceId : ms.name === srv.name);
       return { ...srv, icon: catalogMatch?.icon || mcpMatch?.icon || Server };
     });
     setRegisteredServers(restoredServers);
