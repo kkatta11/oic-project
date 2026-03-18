@@ -317,9 +317,10 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     }
     const tools: { serverName: string; toolName: string; description: string }[] = [];
     for (const gwServer of gw.servers) {
-      const fullServer = mcpServers.find((s) => s.name === gwServer.name);
+      const fullServer = mcpServers.find((s) => gwServer.sourceId ? s.id === gwServer.sourceId : s.name === gwServer.name);
       if (fullServer) {
-        for (const tool of fullServer.tools) {
+        const allAvailableTools = (fullServer as any).allTools || fullServer.tools;
+        for (const tool of allAvailableTools) {
           if (includedToolIds.has(tool.id)) {
             tools.push({ serverName: fullServer.name.replace(/ MCP Server$/, ""), toolName: tool.name, description: tool.description });
           }
