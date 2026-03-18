@@ -202,7 +202,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     const serverName = newServerName.trim();
     setRegisteredServers((prev) => [
       ...prev,
-      { id: `rs-${Date.now()}`, name: serverName, url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server },
+      { id: `rs-${Date.now()}`, name: serverName, url: newServerUrl.trim(), transport: transportType, auth: authType, icon: Server, sourceId: undefined },
     ]);
     setNewServerName("");
     setNewServerUrl("");
