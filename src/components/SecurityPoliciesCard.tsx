@@ -1192,7 +1192,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         name: template.name,
         description: template.description,
         icon: template.icon,
-        active: true,
+        active: false,
         templateId: template.templateId,
         config: {},
       };
@@ -1258,7 +1258,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         name: finalName,
         description: configTemplate.description,
         icon: configTemplate.icon,
-        active: true,
+        active: false,
         templateId: configTemplate.templateId,
         config: { ...configValues },
       };
@@ -1290,7 +1290,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         name: finalName,
         description: template.description,
         icon: template.icon,
-        active: true,
+        active: false,
         templateId: "t1",
         config: configObj,
       };
@@ -1319,7 +1319,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         name: finalName,
         description: template.description,
         icon: template.icon,
-        active: true,
+        active: false,
         templateId: "t4",
         config: configObj,
       };
@@ -1356,7 +1356,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         name: finalName,
         description: desc,
         icon: "Filter",
-        active: true,
+        active: false,
         templateId: "t9",
         config,
       };
