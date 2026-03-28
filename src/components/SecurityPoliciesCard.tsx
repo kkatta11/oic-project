@@ -1356,7 +1356,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         name: finalName,
         description: desc,
         icon: "Filter",
-        active: true,
+        active: false,
         templateId: "t9",
         config,
       };

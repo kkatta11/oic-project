@@ -284,7 +284,7 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     const newPolicy: BusinessPolicy = {
       id: `bp-${Date.now()}`,
       name: policyName.trim(),
-      active: true,
+      active: false,
       selectedTools: [toolKey],
       conditions: conditions.filter((c) => c.attribute.trim()),
       action: selectedAction,
