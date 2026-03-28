@@ -243,7 +243,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
     const newServer: MCPServer = {
       id: serverId,
       name: catalogDetailServer.name,
-      status: "Active",
+      status: "Configured",
       icon: catalogDetailServer.icon,
       tools: catalogTools,
       allTools: catalogTools,
