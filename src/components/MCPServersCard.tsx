@@ -578,7 +578,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => handleRemove(server.id)} className="text-destructive focus:text-destructive">
                     <Trash2 size={14} className="mr-2" />
-                    Remove
+                    Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
