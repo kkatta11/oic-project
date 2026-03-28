@@ -1192,7 +1192,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         name: template.name,
         description: template.description,
         icon: template.icon,
-        active: true,
+        active: false,
         templateId: template.templateId,
         config: {},
       };
