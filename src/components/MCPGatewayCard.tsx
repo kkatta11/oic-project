@@ -841,8 +841,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 {gw.servers.length} server{gw.servers.length !== 1 ? "s" : ""} · {gw.securityPolicies.length} security · {gw.businessPolicies.length} business
               </p>
             </div>
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${gw.active ? "bg-redwood-green-light text-redwood-green" : "bg-redwood-olive-light text-redwood-olive"}`}>
-              {gw.active ? "Active" : "Inactive"}
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getGatewayStatusStyle(getGatewayStatus(gw))}`}>
+              {getGatewayStatus(gw)}
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
