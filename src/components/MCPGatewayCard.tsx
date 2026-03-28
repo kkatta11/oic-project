@@ -330,6 +330,19 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     return tools;
   };
 
+  const getGatewayStatus = (gw: SavedGateway): string => {
+    if (gw.active) return "Active";
+    return gw.servers.length === 0 ? "Draft" : "Configured";
+  };
+
+  const getGatewayStatusStyle = (status: string) => {
+    switch (status) {
+      case "Active": return "bg-redwood-green-light text-redwood-green";
+      case "Configured": return "bg-redwood-olive-light text-redwood-olive";
+      default: return "bg-muted text-muted-foreground";
+    }
+  };
+
   const getGatewayUrl = (name: string) => {
     const slug = name.toLowerCase().replace(/\s+/g, "-");
     return `https://gateway.example.com/${slug}/v1/mcp`;
@@ -701,7 +714,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                   <div className="flex px-4 py-2.5">
                     <span className="w-28 shrink-0 text-muted-foreground text-xs font-medium">Status</span>
                     <Badge variant={detailGateway.active ? "default" : "secondary"} className="text-[10px]">
-                      {detailGateway.active ? "Active" : "Inactive"}
+                      {getGatewayStatus(detailGateway)}
                     </Badge>
                   </div>
                   <div className="flex px-4 py-2.5">
@@ -828,8 +841,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 {gw.servers.length} server{gw.servers.length !== 1 ? "s" : ""} · {gw.securityPolicies.length} security · {gw.businessPolicies.length} business
               </p>
             </div>
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${gw.active ? "bg-redwood-green-light text-redwood-green" : "bg-redwood-olive-light text-redwood-olive"}`}>
-              {gw.active ? "Active" : "Inactive"}
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${getGatewayStatusStyle(getGatewayStatus(gw))}`}>
+              {getGatewayStatus(gw)}
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
