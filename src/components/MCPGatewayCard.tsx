@@ -330,6 +330,19 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     return tools;
   };
 
+  const getGatewayStatus = (gw: SavedGateway): string => {
+    if (gw.active) return "Active";
+    return gw.servers.length === 0 ? "Draft" : "Configured";
+  };
+
+  const getGatewayStatusStyle = (status: string) => {
+    switch (status) {
+      case "Active": return "bg-redwood-green-light text-redwood-green";
+      case "Configured": return "bg-redwood-olive-light text-redwood-olive";
+      default: return "bg-muted text-muted-foreground";
+    }
+  };
+
   const getGatewayUrl = (name: string) => {
     const slug = name.toLowerCase().replace(/\s+/g, "-");
     return `https://gateway.example.com/${slug}/v1/mcp`;
