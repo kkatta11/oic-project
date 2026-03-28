@@ -1258,7 +1258,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         name: finalName,
         description: configTemplate.description,
         icon: configTemplate.icon,
-        active: true,
+        active: false,
         templateId: configTemplate.templateId,
         config: { ...configValues },
       };
