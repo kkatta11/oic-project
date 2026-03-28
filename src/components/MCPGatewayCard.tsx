@@ -714,7 +714,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                   <div className="flex px-4 py-2.5">
                     <span className="w-28 shrink-0 text-muted-foreground text-xs font-medium">Status</span>
                     <Badge variant={detailGateway.active ? "default" : "secondary"} className="text-[10px]">
-                      {detailGateway.active ? "Active" : "Inactive"}
+                      {getGatewayStatus(detailGateway)}
                     </Badge>
                   </div>
                   <div className="flex px-4 py-2.5">
