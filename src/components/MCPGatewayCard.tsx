@@ -628,48 +628,64 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
               </div>
 
               {/* Execution Priority */}
-              {policyOrder.length > 0 && (
+              {(requestPolicyOrder.length > 0 || responsePolicyOrder.length > 0) && (
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold text-foreground">Execution Priority</h4>
-                  <p className="text-[11px] text-muted-foreground">Policies execute in this order. Use arrows to reorder.</p>
-                  <div className="rounded-md border border-border divide-y divide-border">
-                    {policyOrder.map((pId, idx) => {
-                      const info = lookupPolicy(pId);
-                      if (!info) return null;
-                      const Icon = info.icon;
-                      return (
-                        <div key={pId} className="flex items-center gap-2 px-3 py-2">
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">
-                            {idx + 1}
-                          </span>
-                          <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground shrink-0"><Icon size={12} /></div>
-                          <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
-                            {info.type}
-                          </Badge>
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
-                            {info.scope}
-                          </Badge>
-                          <div className="flex gap-0.5 shrink-0">
-                            <button
-                              onClick={() => movePolicyUp(idx)}
-                              disabled={idx === 0}
-                              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <ArrowUp size={12} />
-                            </button>
-                            <button
-                              onClick={() => movePolicyDown(idx)}
-                              disabled={idx === policyOrder.length - 1}
-                              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <ArrowDown size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <p className="text-[11px] text-muted-foreground">Policies execute in pipeline order. Use arrows to reorder within each pipeline.</p>
+
+                  {requestPolicyOrder.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">Request Pipeline</Badge>
+                      </p>
+                      <div className="rounded-md border border-border divide-y divide-border">
+                        {requestPolicyOrder.map((pId, idx) => {
+                          const info = lookupPolicy(pId);
+                          if (!info) return null;
+                          const Icon = info.icon;
+                          return (
+                            <div key={pId} className="flex items-center gap-2 px-3 py-2">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">{idx + 1}</span>
+                              <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground shrink-0"><Icon size={12} /></div>
+                              <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{info.type}</Badge>
+                              <div className="flex gap-0.5 shrink-0">
+                                <button onClick={() => moveOrderUp(setRequestPolicyOrder, idx)} disabled={idx === 0} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"><ArrowUp size={12} /></button>
+                                <button onClick={() => moveOrderDown(setRequestPolicyOrder, idx)} disabled={idx === requestPolicyOrder.length - 1} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"><ArrowDown size={12} /></button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {responsePolicyOrder.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">Response Pipeline</Badge>
+                      </p>
+                      <div className="rounded-md border border-border divide-y divide-border">
+                        {responsePolicyOrder.map((pId, idx) => {
+                          const info = lookupPolicy(pId);
+                          if (!info) return null;
+                          const Icon = info.icon;
+                          return (
+                            <div key={pId} className="flex items-center gap-2 px-3 py-2">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">{idx + 1}</span>
+                              <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground shrink-0"><Icon size={12} /></div>
+                              <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{info.type}</Badge>
+                              <div className="flex gap-0.5 shrink-0">
+                                <button onClick={() => moveOrderUp(setResponsePolicyOrder, idx)} disabled={idx === 0} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"><ArrowUp size={12} /></button>
+                                <button onClick={() => moveOrderDown(setResponsePolicyOrder, idx)} disabled={idx === responsePolicyOrder.length - 1} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"><ArrowDown size={12} /></button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
