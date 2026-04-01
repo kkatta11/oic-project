@@ -162,7 +162,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setAuthType("none");
     setSelectedSecurityPolicies([]);
     setSelectedBusinessPolicies([]);
-    setPolicyOrder([]);
+    setRequestPolicyOrder([]);
+    setResponsePolicyOrder([]);
     setEditGateway(null);
   };
 
