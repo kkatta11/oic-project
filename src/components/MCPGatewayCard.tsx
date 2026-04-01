@@ -890,12 +890,6 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                   );
                 })()}
               </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
             </div>
           )}
         </DialogContent>
