@@ -839,41 +839,57 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 );
               })()}
 
-              {/* Applied Policies - Ordered by Priority */}
+              {/* Applied Policies - Ordered by Pipeline */}
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-foreground">Applied Policies — Execution Order</h4>
                 {(() => {
-                  const order = detailGateway.policyOrder || [];
-                  const allIds = [...detailGateway.securityPolicies, ...detailGateway.businessPolicies];
-                  const orderedIds = [
-                    ...order.filter((id) => allIds.includes(id)),
-                    ...allIds.filter((id) => !order.includes(id)),
-                  ];
+                  const reqOrder = detailGateway.requestPolicyOrder || [];
+                  const resOrder = detailGateway.responsePolicyOrder || [];
 
-                  if (orderedIds.length === 0) {
+                  if (reqOrder.length === 0 && resOrder.length === 0) {
                     return <p className="text-xs text-muted-foreground">No policies applied.</p>;
                   }
 
-                  return (
+                  const renderPipelineList = (order: string[]) => (
                     <div className="rounded-md border border-border divide-y divide-border">
-                      {orderedIds.map((pId, idx) => {
+                      {order.map((pId, idx) => {
                         const info = lookupPolicy(pId);
                         if (!info) return null;
                         const Icon = info.icon;
                         return (
                           <div key={pId} className="flex items-center gap-2 px-4 py-2.5">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">
-                              {idx + 1}
-                            </span>
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">{idx + 1}</span>
                             <Icon size={12} className="text-muted-foreground shrink-0" />
                             <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                              {info.type}
-                            </Badge>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                              {info.scope}
-                            </Badge>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{info.type}</Badge>
                           </div>
+                        );
+                      })}
+                    </div>
+                  );
+
+                  return (
+                    <div className="space-y-3">
+                      {reqOrder.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">Request Pipeline</Badge>
+                          </p>
+                          {renderPipelineList(reqOrder)}
+                        </div>
+                      )}
+                      {resOrder.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">Response Pipeline</Badge>
+                          </p>
+                          {renderPipelineList(resOrder)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
                         );
                       })}
                     </div>
