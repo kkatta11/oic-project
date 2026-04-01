@@ -1165,8 +1165,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const handleAddFromRepo = (template: typeof securityPolicyRepository[0]) => {
     if (template.templateId === "t9") {
       setToolsFilterEditPolicy(null);
-      setToolsFilterServerId("");
-      setToolsFilterIncluded(new Set());
+      setToolsFilterSelections({});
       setPolicyName(`Tools Filter`);
       setAddOpen(false);
       setToolsFilterOpen(true);
