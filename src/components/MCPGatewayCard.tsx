@@ -279,7 +279,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
         servers: [...registeredServers],
         securityPolicies: [...selectedSecurityPolicies],
         businessPolicies: [...selectedBusinessPolicies],
-        policyOrder: [...policyOrder],
+        requestPolicyOrder: [...requestPolicyOrder],
+        responsePolicyOrder: [...responsePolicyOrder],
         active: false,
       };
       setGateways((prev) => {
