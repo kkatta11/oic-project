@@ -1648,85 +1648,78 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         
       />
 
-      {/* Tools Filter dialog */}
+      {/* Tools Filter dialog (multi-server) */}
       <Dialog open={toolsFilterOpen} onOpenChange={(open) => {
         if (!open) {
           setToolsFilterOpen(false);
           setToolsFilterEditPolicy(null);
-          setToolsFilterServerId("");
-          setToolsFilterIncluded(new Set());
+          setToolsFilterSelections({});
         }
       }}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{toolsFilterEditPolicy ? "Edit Tools Filter" : "Add Tools Filter"}</DialogTitle>
-            <DialogDescription>Select a tool source and choose tools to include.</DialogDescription>
+            <DialogDescription>Select tools from one or more MCP servers to include.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Policy Name</Label>
               <Input className="h-8 text-xs" value={policyName} onChange={(e) => setPolicyName(e.target.value)} placeholder="Tools Filter" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Tool Source</Label>
-              <Select value={toolsFilterServerId} onValueChange={(v) => { setToolsFilterServerId(v); setToolsFilterIncluded(new Set()); }}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select a source" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeServers.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
-            {toolsFilterServerId && serverTools.length > 0 && (
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={toolsFilterIncluded.size === serverTools.length}
-                    ref={(el) => {
-                      if (el) {
-                        (el as unknown as HTMLButtonElement).dataset.state =
-                          toolsFilterIncluded.size > 0 && toolsFilterIncluded.size < serverTools.length
-                            ? "indeterminate"
-                            : toolsFilterIncluded.size === serverTools.length
-                              ? "checked"
-                              : "unchecked";
-                      }
-                    }}
-                    onCheckedChange={() => {
-                      if (toolsFilterIncluded.size < serverTools.length) {
-                        setToolsFilterIncluded(new Set(serverTools.map(t => t.id)));
-                      } else {
-                        setToolsFilterIncluded(new Set());
-                      }
-                    }}
-                  />
-                  <span className="text-xs font-medium">Include Tools ({toolsFilterIncluded.size} of {serverTools.length} included)</span>
-                </label>
-                <div className="space-y-1 rounded-md border border-border p-3 max-h-48 overflow-y-auto">
-                  {serverTools.map((tool) => (
-                    <label key={tool.id} className="flex items-start gap-2 py-1.5 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1">
-                      <Checkbox
-                        checked={toolsFilterIncluded.has(tool.id)}
-                        onCheckedChange={() => toggleIncludedTool(tool.id)}
-                        className="mt-0.5"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground leading-tight">{tool.name}</p>
-                        <p className="text-xs text-muted-foreground">{tool.description}</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Include Tools</Label>
+              {activeServers.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No active MCP servers available.</p>
+              ) : (
+                <div className="rounded-md border border-border max-h-72 overflow-y-auto divide-y divide-border">
+                  {activeServers.map((server) => {
+                    const serverToolsList: MCPServerTool[] = server.allTools ?? [];
+                    if (serverToolsList.length === 0) return null;
+                    const selectedSet = toolsFilterSelections[server.id] || new Set();
+                    const allSelected = serverToolsList.length > 0 && serverToolsList.every((t) => selectedSet.has(t.id));
+                    const someSelected = serverToolsList.some((t) => selectedSet.has(t.id));
+                    return (
+                      <div key={server.id} className="p-3 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={allSelected}
+                            ref={(el) => {
+                              if (el) {
+                                (el as unknown as HTMLButtonElement).dataset.state =
+                                  someSelected && !allSelected ? "indeterminate" : allSelected ? "checked" : "unchecked";
+                              }
+                            }}
+                            onCheckedChange={() => toggleAllServerTools(server.id, serverToolsList.map((t) => t.id))}
+                          />
+                          <span className="text-xs font-medium text-foreground">{server.name}</span>
+                          <span className="text-[10px] text-muted-foreground ml-auto">({selectedSet.size}/{serverToolsList.length})</span>
+                        </label>
+                        <div className="ml-6 space-y-1">
+                          {serverToolsList.map((tool) => (
+                            <label key={tool.id} className="flex items-start gap-2 py-1 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1">
+                              <Checkbox
+                                checked={selectedSet.has(tool.id)}
+                                onCheckedChange={() => toggleIncludedTool(server.id, tool.id)}
+                                className="mt-0.5"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium text-foreground leading-tight">{tool.name}</p>
+                                {tool.description && <p className="text-[10px] text-muted-foreground">{tool.description}</p>}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setToolsFilterOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterIncluded.size === 0 || !selectedServer}>
+            <Button size="sm" onClick={handleToolsFilterSave} disabled={getTotalSelectedTools() === 0}>
               {toolsFilterEditPolicy ? "Save Changes" : "Add Policy"}
             </Button>
           </DialogFooter>

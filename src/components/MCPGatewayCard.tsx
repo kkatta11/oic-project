@@ -355,8 +355,19 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     const includedToolIds = new Set<string>();
     for (const pId of gw.securityPolicies) {
       const pol = securityPolicies.find((p) => p.id === pId);
-      if (pol?.templateId === "t9" && Array.isArray(pol.config?.includedTools)) {
-        pol.config.includedTools.forEach((tid: string) => includedToolIds.add(tid));
+      if (pol?.templateId === "t9") {
+        // New multi-server format
+        if (Array.isArray(pol.config?.servers)) {
+          for (const s of pol.config.servers) {
+            if (Array.isArray(s.includedTools)) {
+              s.includedTools.forEach((tid: string) => includedToolIds.add(tid));
+            }
+          }
+        }
+        // Legacy single-server format fallback
+        else if (Array.isArray(pol.config?.includedTools)) {
+          pol.config.includedTools.forEach((tid: string) => includedToolIds.add(tid));
+        }
       }
     }
     const tools: { serverName: string; toolName: string; description: string }[] = [];
