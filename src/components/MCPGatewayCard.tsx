@@ -178,13 +178,17 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   });
 
   const toggleSecurityPolicy = (id: string) => {
+    const policy = securityPolicies.find((p) => p.id === id);
+    const scope = policy ? getPolicyScope(policy) : "Request";
     setSelectedSecurityPolicies((prev) => {
       const removing = prev.includes(id);
       const next = removing ? prev.filter((p) => p !== id) : [...prev, id];
       if (removing) {
-        setPolicyOrder((ord) => ord.filter((p) => p !== id));
+        if (scope === "Request" || scope === "Both") setRequestPolicyOrder((ord) => ord.filter((p) => p !== id));
+        if (scope === "Response" || scope === "Both") setResponsePolicyOrder((ord) => ord.filter((p) => p !== id));
       } else {
-        setPolicyOrder((ord) => [...ord, id]);
+        if (scope === "Request" || scope === "Both") setRequestPolicyOrder((ord) => [...ord, id]);
+        if (scope === "Response" || scope === "Both") setResponsePolicyOrder((ord) => [...ord, id]);
       }
       return next;
     });
@@ -195,25 +199,25 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       const removing = prev.includes(id);
       const next = removing ? prev.filter((p) => p !== id) : [...prev, id];
       if (removing) {
-        setPolicyOrder((ord) => ord.filter((p) => p !== id));
+        setRequestPolicyOrder((ord) => ord.filter((p) => p !== id));
       } else {
-        setPolicyOrder((ord) => [...ord, id]);
+        setRequestPolicyOrder((ord) => [...ord, id]);
       }
       return next;
     });
   };
 
-  const movePolicyUp = (idx: number) => {
+  const moveOrderUp = (setter: React.Dispatch<React.SetStateAction<string[]>>, idx: number) => {
     if (idx <= 0) return;
-    setPolicyOrder((prev) => {
+    setter((prev) => {
       const next = [...prev];
       [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
       return next;
     });
   };
 
-  const movePolicyDown = (idx: number) => {
-    setPolicyOrder((prev) => {
+  const moveOrderDown = (setter: React.Dispatch<React.SetStateAction<string[]>>, idx: number) => {
+    setter((prev) => {
       if (idx >= prev.length - 1) return prev;
       const next = [...prev];
       [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
