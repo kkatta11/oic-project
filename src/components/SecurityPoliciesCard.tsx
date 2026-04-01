@@ -1217,8 +1217,17 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     setPolicyName(policy.name);
     if (policy.templateId === "t9") {
       setToolsFilterEditPolicy(policy);
-      setToolsFilterServerId(policy.config?.serverId || "");
-      setToolsFilterIncluded(new Set(policy.config?.includedTools || []));
+      // Reconstruct selections from config
+      const selections: Record<string, Set<string>> = {};
+      if (Array.isArray(policy.config?.servers)) {
+        for (const s of policy.config.servers) {
+          selections[s.serverId] = new Set(s.includedTools || []);
+        }
+      } else if (policy.config?.serverId) {
+        // Legacy migration
+        selections[policy.config.serverId] = new Set(policy.config.includedTools || []);
+      }
+      setToolsFilterSelections(selections);
       setToolsFilterOpen(true);
       return;
     }
