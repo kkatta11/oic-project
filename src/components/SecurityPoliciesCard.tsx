@@ -393,6 +393,13 @@ function getConfigSummary(templateId: string, config: Record<string, any>, mcpSe
     return `Action: ${actionLabel} · ${patterns} pattern${patterns !== 1 ? "s" : ""}${thresholdRange}`;
   }
   if (templateId === "t9") {
+    // New multi-server format
+    if (Array.isArray(config?.servers)) {
+      const serverCount = config.servers.length;
+      const totalTools = config.servers.reduce((sum: number, s: any) => sum + (Array.isArray(s.includedTools) ? s.includedTools.length : 0), 0);
+      return `Includes: ${totalTools} tool${totalTools !== 1 ? "s" : ""} across ${serverCount} server${serverCount !== 1 ? "s" : ""}`;
+    }
+    // Legacy single-server format
     const serverName = config?.serverName || "Unknown";
     const included = Array.isArray(config?.includedTools) ? config.includedTools.length : 0;
     return `Server: ${serverName} · Includes: ${included} tool${included !== 1 ? "s" : ""}`;
