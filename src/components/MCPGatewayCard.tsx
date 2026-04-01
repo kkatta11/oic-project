@@ -64,7 +64,10 @@ interface SavedGateway {
   servers: GatewayServer[];
   securityPolicies: string[];
   businessPolicies: string[];
-  policyOrder: string[];
+  requestPolicyOrder: string[];
+  responsePolicyOrder: string[];
+  /** @deprecated migrated to requestPolicyOrder/responsePolicyOrder */
+  policyOrder?: string[];
   active: boolean;
 }
 
@@ -99,8 +102,27 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     try {
       const stored = localStorage.getItem(storageKey);
       if (!stored) return [];
-      const parsed = JSON.parse(stored) as SavedGateway[];
-      return parsed.map((gw) => ({ ...gw, active: gw.active !== false, policyOrder: gw.policyOrder || [] }));
+      const parsed = JSON.parse(stored) as (SavedGateway & { policyOrder?: string[] })[];
+      return parsed.map((gw) => {
+        // Migrate legacy single policyOrder to split pipelines
+        if (gw.policyOrder && !gw.requestPolicyOrder) {
+          const reqOrder: string[] = [];
+          const resOrder: string[] = [];
+          for (const pId of gw.policyOrder) {
+            const sec = securityPolicies.find((p) => p.id === pId);
+            if (sec) {
+              const scope = getPolicyScope(sec);
+              if (scope === "Request" || scope === "Both") reqOrder.push(pId);
+              if (scope === "Response" || scope === "Both") resOrder.push(pId);
+            } else {
+              // Business policies are always request
+              reqOrder.push(pId);
+            }
+          }
+          return { ...gw, active: gw.active !== false, requestPolicyOrder: reqOrder, responsePolicyOrder: resOrder, policyOrder: undefined };
+        }
+        return { ...gw, active: gw.active !== false, requestPolicyOrder: gw.requestPolicyOrder || [], responsePolicyOrder: gw.responsePolicyOrder || [] };
+      });
     } catch { return []; }
   });
 
@@ -116,7 +138,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
 
   const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>([]);
   const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>([]);
-  const [policyOrder, setPolicyOrder] = useState<string[]>([]);
+  const [requestPolicyOrder, setRequestPolicyOrder] = useState<string[]>([]);
+  const [responsePolicyOrder, setResponsePolicyOrder] = useState<string[]>([]);
 
   const [editGateway, setEditGateway] = useState<SavedGateway | null>(null);
   const isEditing = !!editGateway;
@@ -139,7 +162,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setAuthType("none");
     setSelectedSecurityPolicies([]);
     setSelectedBusinessPolicies([]);
-    setPolicyOrder([]);
+    setRequestPolicyOrder([]);
+    setResponsePolicyOrder([]);
     setEditGateway(null);
   };
 
@@ -154,13 +178,17 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
   });
 
   const toggleSecurityPolicy = (id: string) => {
+    const policy = securityPolicies.find((p) => p.id === id);
+    const scope = policy ? getPolicyScope(policy) : "Request";
     setSelectedSecurityPolicies((prev) => {
       const removing = prev.includes(id);
       const next = removing ? prev.filter((p) => p !== id) : [...prev, id];
       if (removing) {
-        setPolicyOrder((ord) => ord.filter((p) => p !== id));
+        if (scope === "Request" || scope === "Both") setRequestPolicyOrder((ord) => ord.filter((p) => p !== id));
+        if (scope === "Response" || scope === "Both") setResponsePolicyOrder((ord) => ord.filter((p) => p !== id));
       } else {
-        setPolicyOrder((ord) => [...ord, id]);
+        if (scope === "Request" || scope === "Both") setRequestPolicyOrder((ord) => [...ord, id]);
+        if (scope === "Response" || scope === "Both") setResponsePolicyOrder((ord) => [...ord, id]);
       }
       return next;
     });
@@ -171,25 +199,25 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       const removing = prev.includes(id);
       const next = removing ? prev.filter((p) => p !== id) : [...prev, id];
       if (removing) {
-        setPolicyOrder((ord) => ord.filter((p) => p !== id));
+        setRequestPolicyOrder((ord) => ord.filter((p) => p !== id));
       } else {
-        setPolicyOrder((ord) => [...ord, id]);
+        setRequestPolicyOrder((ord) => [...ord, id]);
       }
       return next;
     });
   };
 
-  const movePolicyUp = (idx: number) => {
+  const moveOrderUp = (setter: React.Dispatch<React.SetStateAction<string[]>>, idx: number) => {
     if (idx <= 0) return;
-    setPolicyOrder((prev) => {
+    setter((prev) => {
       const next = [...prev];
       [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
       return next;
     });
   };
 
-  const movePolicyDown = (idx: number) => {
-    setPolicyOrder((prev) => {
+  const moveOrderDown = (setter: React.Dispatch<React.SetStateAction<string[]>>, idx: number) => {
+    setter((prev) => {
       if (idx >= prev.length - 1) return prev;
       const next = [...prev];
       [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
@@ -238,7 +266,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       setGateways((prev) => {
         const updated = prev.map((gw) =>
           gw.id === editGateway.id
-            ? { ...gw, name: gatewayName.trim(), servers: [...registeredServers], securityPolicies: [...selectedSecurityPolicies], businessPolicies: [...selectedBusinessPolicies], policyOrder: [...policyOrder] }
+            ? { ...gw, name: gatewayName.trim(), servers: [...registeredServers], securityPolicies: [...selectedSecurityPolicies], businessPolicies: [...selectedBusinessPolicies], requestPolicyOrder: [...requestPolicyOrder], responsePolicyOrder: [...responsePolicyOrder] }
             : gw
         );
         persistGateways(updated);
@@ -251,7 +279,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
         servers: [...registeredServers],
         securityPolicies: [...selectedSecurityPolicies],
         businessPolicies: [...selectedBusinessPolicies],
-        policyOrder: [...policyOrder],
+        requestPolicyOrder: [...requestPolicyOrder],
+        responsePolicyOrder: [...responsePolicyOrder],
         active: false,
       };
       setGateways((prev) => {
@@ -291,14 +320,29 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setRegisteredServers(restoredServers);
     setSelectedSecurityPolicies([...gw.securityPolicies]);
     setSelectedBusinessPolicies([...gw.businessPolicies]);
-    // Restore policy order, appending any newly selected policies not in the saved order
-    const savedOrder = gw.policyOrder || [];
+    // Restore split policy orders
     const allSelected = [...gw.securityPolicies, ...gw.businessPolicies];
-    const restoredOrder = [
-      ...savedOrder.filter((id) => allSelected.includes(id)),
-      ...allSelected.filter((id) => !savedOrder.includes(id)),
-    ];
-    setPolicyOrder(restoredOrder);
+    const savedReq = gw.requestPolicyOrder || [];
+    const savedRes = gw.responsePolicyOrder || [];
+    // Determine which policies belong in each pipeline
+    const reqPolicies = new Set(allSelected.filter((id) => {
+      const sec = securityPolicies.find((p) => p.id === id);
+      if (sec) { const scope = getPolicyScope(sec); return scope === "Request" || scope === "Both"; }
+      return true; // business policies are always request
+    }));
+    const resPolicies = new Set(allSelected.filter((id) => {
+      const sec = securityPolicies.find((p) => p.id === id);
+      if (sec) { const scope = getPolicyScope(sec); return scope === "Response" || scope === "Both"; }
+      return false;
+    }));
+    setRequestPolicyOrder([
+      ...savedReq.filter((id) => reqPolicies.has(id)),
+      ...Array.from(reqPolicies).filter((id) => !savedReq.includes(id)),
+    ]);
+    setResponsePolicyOrder([
+      ...savedRes.filter((id) => resPolicies.has(id)),
+      ...Array.from(resPolicies).filter((id) => !savedRes.includes(id)),
+    ]);
     setOpen(true);
   };
 
@@ -584,48 +628,64 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
               </div>
 
               {/* Execution Priority */}
-              {policyOrder.length > 0 && (
+              {(requestPolicyOrder.length > 0 || responsePolicyOrder.length > 0) && (
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold text-foreground">Execution Priority</h4>
-                  <p className="text-[11px] text-muted-foreground">Policies execute in this order. Use arrows to reorder.</p>
-                  <div className="rounded-md border border-border divide-y divide-border">
-                    {policyOrder.map((pId, idx) => {
-                      const info = lookupPolicy(pId);
-                      if (!info) return null;
-                      const Icon = info.icon;
-                      return (
-                        <div key={pId} className="flex items-center gap-2 px-3 py-2">
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">
-                            {idx + 1}
-                          </span>
-                          <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground shrink-0"><Icon size={12} /></div>
-                          <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
-                            {info.type}
-                          </Badge>
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
-                            {info.scope}
-                          </Badge>
-                          <div className="flex gap-0.5 shrink-0">
-                            <button
-                              onClick={() => movePolicyUp(idx)}
-                              disabled={idx === 0}
-                              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <ArrowUp size={12} />
-                            </button>
-                            <button
-                              onClick={() => movePolicyDown(idx)}
-                              disabled={idx === policyOrder.length - 1}
-                              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <ArrowDown size={12} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <p className="text-[11px] text-muted-foreground">Policies execute in pipeline order. Use arrows to reorder within each pipeline.</p>
+
+                  {requestPolicyOrder.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">Request Pipeline</Badge>
+                      </p>
+                      <div className="rounded-md border border-border divide-y divide-border">
+                        {requestPolicyOrder.map((pId, idx) => {
+                          const info = lookupPolicy(pId);
+                          if (!info) return null;
+                          const Icon = info.icon;
+                          return (
+                            <div key={pId} className="flex items-center gap-2 px-3 py-2">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">{idx + 1}</span>
+                              <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground shrink-0"><Icon size={12} /></div>
+                              <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{info.type}</Badge>
+                              <div className="flex gap-0.5 shrink-0">
+                                <button onClick={() => moveOrderUp(setRequestPolicyOrder, idx)} disabled={idx === 0} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"><ArrowUp size={12} /></button>
+                                <button onClick={() => moveOrderDown(setRequestPolicyOrder, idx)} disabled={idx === requestPolicyOrder.length - 1} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"><ArrowDown size={12} /></button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {responsePolicyOrder.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">Response Pipeline</Badge>
+                      </p>
+                      <div className="rounded-md border border-border divide-y divide-border">
+                        {responsePolicyOrder.map((pId, idx) => {
+                          const info = lookupPolicy(pId);
+                          if (!info) return null;
+                          const Icon = info.icon;
+                          return (
+                            <div key={pId} className="flex items-center gap-2 px-3 py-2">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">{idx + 1}</span>
+                              <div className="flex h-6 w-6 items-center justify-center rounded bg-muted text-muted-foreground shrink-0"><Icon size={12} /></div>
+                              <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{info.type}</Badge>
+                              <div className="flex gap-0.5 shrink-0">
+                                <button onClick={() => moveOrderUp(setResponsePolicyOrder, idx)} disabled={idx === 0} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"><ArrowUp size={12} /></button>
+                                <button onClick={() => moveOrderDown(setResponsePolicyOrder, idx)} disabled={idx === responsePolicyOrder.length - 1} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"><ArrowDown size={12} /></button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -779,43 +839,53 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
                 );
               })()}
 
-              {/* Applied Policies - Ordered by Priority */}
+              {/* Applied Policies - Ordered by Pipeline */}
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-foreground">Applied Policies — Execution Order</h4>
                 {(() => {
-                  const order = detailGateway.policyOrder || [];
-                  const allIds = [...detailGateway.securityPolicies, ...detailGateway.businessPolicies];
-                  const orderedIds = [
-                    ...order.filter((id) => allIds.includes(id)),
-                    ...allIds.filter((id) => !order.includes(id)),
-                  ];
+                  const reqOrder = detailGateway.requestPolicyOrder || [];
+                  const resOrder = detailGateway.responsePolicyOrder || [];
 
-                  if (orderedIds.length === 0) {
+                  if (reqOrder.length === 0 && resOrder.length === 0) {
                     return <p className="text-xs text-muted-foreground">No policies applied.</p>;
                   }
 
-                  return (
+                  const renderPipelineList = (order: string[]) => (
                     <div className="rounded-md border border-border divide-y divide-border">
-                      {orderedIds.map((pId, idx) => {
+                      {order.map((pId, idx) => {
                         const info = lookupPolicy(pId);
                         if (!info) return null;
                         const Icon = info.icon;
                         return (
                           <div key={pId} className="flex items-center gap-2 px-4 py-2.5">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">
-                              {idx + 1}
-                            </span>
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold shrink-0">{idx + 1}</span>
                             <Icon size={12} className="text-muted-foreground shrink-0" />
                             <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{info.name}</span>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                              {info.type}
-                            </Badge>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                              {info.scope}
-                            </Badge>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{info.type}</Badge>
                           </div>
                         );
                       })}
+                    </div>
+                  );
+
+                  return (
+                    <div className="space-y-3">
+                      {reqOrder.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">Request Pipeline</Badge>
+                          </p>
+                          {renderPipelineList(reqOrder)}
+                        </div>
+                      )}
+                      {resOrder.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">Response Pipeline</Badge>
+                          </p>
+                          {renderPipelineList(resOrder)}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
