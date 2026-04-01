@@ -393,6 +393,13 @@ function getConfigSummary(templateId: string, config: Record<string, any>, mcpSe
     return `Action: ${actionLabel} · ${patterns} pattern${patterns !== 1 ? "s" : ""}${thresholdRange}`;
   }
   if (templateId === "t9") {
+    // New multi-server format
+    if (Array.isArray(config?.servers)) {
+      const serverCount = config.servers.length;
+      const totalTools = config.servers.reduce((sum: number, s: any) => sum + (Array.isArray(s.includedTools) ? s.includedTools.length : 0), 0);
+      return `Includes: ${totalTools} tool${totalTools !== 1 ? "s" : ""} across ${serverCount} server${serverCount !== 1 ? "s" : ""}`;
+    }
+    // Legacy single-server format
     const serverName = config?.serverName || "Unknown";
     const included = Array.isArray(config?.includedTools) ? config.includedTools.length : 0;
     return `Server: ${serverName} · Includes: ${included} tool${included !== 1 ? "s" : ""}`;
@@ -1107,10 +1114,9 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const [configValues, setConfigValues] = useState<Record<string, any>>({});
   const [policyName, setPolicyName] = useState("");
 
-  // Tools Filter state
+  // Tools Filter state (multi-server)
   const [toolsFilterOpen, setToolsFilterOpen] = useState(false);
-  const [toolsFilterServerId, setToolsFilterServerId] = useState("");
-  const [toolsFilterIncluded, setToolsFilterIncluded] = useState<Set<string>>(new Set());
+  const [toolsFilterSelections, setToolsFilterSelections] = useState<Record<string, Set<string>>>({});
   const [toolsFilterEditPolicy, setToolsFilterEditPolicy] = useState<SecurityPolicy | null>(null);
 
   // PII Detection state
@@ -1155,15 +1161,11 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   const activeServers = mcpServers.filter((s) => s.status === "Active");
 
-  const selectedServer = mcpServers.find((s) => s.id === toolsFilterServerId);
-  const serverTools: MCPServerTool[] = selectedServer?.allTools ?? [];
-
   // Add flow
   const handleAddFromRepo = (template: typeof securityPolicyRepository[0]) => {
     if (template.templateId === "t9") {
       setToolsFilterEditPolicy(null);
-      setToolsFilterServerId("");
-      setToolsFilterIncluded(new Set());
+      setToolsFilterSelections({});
       setPolicyName(`Tools Filter`);
       setAddOpen(false);
       setToolsFilterOpen(true);
@@ -1215,8 +1217,17 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     setPolicyName(policy.name);
     if (policy.templateId === "t9") {
       setToolsFilterEditPolicy(policy);
-      setToolsFilterServerId(policy.config?.serverId || "");
-      setToolsFilterIncluded(new Set(policy.config?.includedTools || []));
+      // Reconstruct selections from config
+      const selections: Record<string, Set<string>> = {};
+      if (Array.isArray(policy.config?.servers)) {
+        for (const s of policy.config.servers) {
+          selections[s.serverId] = new Set(s.includedTools || []);
+        }
+      } else if (policy.config?.serverId) {
+        // Legacy migration
+        selections[policy.config.serverId] = new Set(policy.config.includedTools || []);
+      }
+      setToolsFilterSelections(selections);
       setToolsFilterOpen(true);
       return;
     }
@@ -1331,17 +1342,24 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     setIdsEditPolicy(null);
   };
 
-  // Save Tools Filter
+  // Save Tools Filter (multi-server)
   const handleToolsFilterSave = () => {
-    if (!toolsFilterServerId || !selectedServer) return;
-    const displayName = selectedServer.name;
-    const config = {
-      serverId: toolsFilterServerId,
-      serverName: displayName,
-      includedTools: Array.from(toolsFilterIncluded),
-    };
-    const finalName = policyName.trim() || `Tools Filter: ${displayName}`;
-    const desc = `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`;
+    const servers: { serverId: string; serverName: string; includedTools: string[] }[] = [];
+    let totalTools = 0;
+    for (const [serverId, toolIds] of Object.entries(toolsFilterSelections)) {
+      if (toolIds.size === 0) continue;
+      const server = mcpServers.find((s) => s.id === serverId);
+      servers.push({
+        serverId,
+        serverName: server?.name || serverId,
+        includedTools: Array.from(toolIds),
+      });
+      totalTools += toolIds.size;
+    }
+    if (servers.length === 0) return;
+    const config = { servers };
+    const finalName = policyName.trim() || "Tools Filter";
+    const desc = `Includes ${totalTools} tool${totalTools !== 1 ? "s" : ""} across ${servers.length} server${servers.length !== 1 ? "s" : ""}`;
     if (toolsFilterEditPolicy) {
       const updated = policies.map((p) =>
         p.id === toolsFilterEditPolicy.id
@@ -1368,13 +1386,25 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     setToolsFilterEditPolicy(null);
   };
 
-  const toggleIncludedTool = (toolId: string) => {
-    setToolsFilterIncluded((prev) => {
-      const next = new Set(prev);
-      if (next.has(toolId)) next.delete(toolId);
-      else next.add(toolId);
-      return next;
+  const toggleIncludedTool = (serverId: string, toolId: string) => {
+    setToolsFilterSelections((prev) => {
+      const serverSet = new Set(prev[serverId] || []);
+      if (serverSet.has(toolId)) serverSet.delete(toolId);
+      else serverSet.add(toolId);
+      return { ...prev, [serverId]: serverSet };
     });
+  };
+
+  const toggleAllServerTools = (serverId: string, allToolIds: string[]) => {
+    setToolsFilterSelections((prev) => {
+      const serverSet = prev[serverId] || new Set();
+      const allSelected = allToolIds.every((id) => serverSet.has(id));
+      return { ...prev, [serverId]: allSelected ? new Set() : new Set(allToolIds) };
+    });
+  };
+
+  const getTotalSelectedTools = () => {
+    return Object.values(toolsFilterSelections).reduce((sum, set) => sum + set.size, 0);
   };
 
   const updateConfigValue = (key: string, value: any) => {
@@ -1618,85 +1648,78 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
         
       />
 
-      {/* Tools Filter dialog */}
+      {/* Tools Filter dialog (multi-server) */}
       <Dialog open={toolsFilterOpen} onOpenChange={(open) => {
         if (!open) {
           setToolsFilterOpen(false);
           setToolsFilterEditPolicy(null);
-          setToolsFilterServerId("");
-          setToolsFilterIncluded(new Set());
+          setToolsFilterSelections({});
         }
       }}>
         <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{toolsFilterEditPolicy ? "Edit Tools Filter" : "Add Tools Filter"}</DialogTitle>
-            <DialogDescription>Select a tool source and choose tools to include.</DialogDescription>
+            <DialogDescription>Select tools from one or more MCP servers to include.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Policy Name</Label>
               <Input className="h-8 text-xs" value={policyName} onChange={(e) => setPolicyName(e.target.value)} placeholder="Tools Filter" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Tool Source</Label>
-              <Select value={toolsFilterServerId} onValueChange={(v) => { setToolsFilterServerId(v); setToolsFilterIncluded(new Set()); }}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select a source" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeServers.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
-            {toolsFilterServerId && serverTools.length > 0 && (
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={toolsFilterIncluded.size === serverTools.length}
-                    ref={(el) => {
-                      if (el) {
-                        (el as unknown as HTMLButtonElement).dataset.state =
-                          toolsFilterIncluded.size > 0 && toolsFilterIncluded.size < serverTools.length
-                            ? "indeterminate"
-                            : toolsFilterIncluded.size === serverTools.length
-                              ? "checked"
-                              : "unchecked";
-                      }
-                    }}
-                    onCheckedChange={() => {
-                      if (toolsFilterIncluded.size < serverTools.length) {
-                        setToolsFilterIncluded(new Set(serverTools.map(t => t.id)));
-                      } else {
-                        setToolsFilterIncluded(new Set());
-                      }
-                    }}
-                  />
-                  <span className="text-xs font-medium">Include Tools ({toolsFilterIncluded.size} of {serverTools.length} included)</span>
-                </label>
-                <div className="space-y-1 rounded-md border border-border p-3 max-h-48 overflow-y-auto">
-                  {serverTools.map((tool) => (
-                    <label key={tool.id} className="flex items-start gap-2 py-1.5 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1">
-                      <Checkbox
-                        checked={toolsFilterIncluded.has(tool.id)}
-                        onCheckedChange={() => toggleIncludedTool(tool.id)}
-                        className="mt-0.5"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground leading-tight">{tool.name}</p>
-                        <p className="text-xs text-muted-foreground">{tool.description}</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Include Tools</Label>
+              {activeServers.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No active MCP servers available.</p>
+              ) : (
+                <div className="rounded-md border border-border max-h-72 overflow-y-auto divide-y divide-border">
+                  {activeServers.map((server) => {
+                    const serverToolsList: MCPServerTool[] = server.allTools ?? [];
+                    if (serverToolsList.length === 0) return null;
+                    const selectedSet = toolsFilterSelections[server.id] || new Set();
+                    const allSelected = serverToolsList.length > 0 && serverToolsList.every((t) => selectedSet.has(t.id));
+                    const someSelected = serverToolsList.some((t) => selectedSet.has(t.id));
+                    return (
+                      <div key={server.id} className="p-3 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={allSelected}
+                            ref={(el) => {
+                              if (el) {
+                                (el as unknown as HTMLButtonElement).dataset.state =
+                                  someSelected && !allSelected ? "indeterminate" : allSelected ? "checked" : "unchecked";
+                              }
+                            }}
+                            onCheckedChange={() => toggleAllServerTools(server.id, serverToolsList.map((t) => t.id))}
+                          />
+                          <span className="text-xs font-medium text-foreground">{server.name}</span>
+                          <span className="text-[10px] text-muted-foreground ml-auto">({selectedSet.size}/{serverToolsList.length})</span>
+                        </label>
+                        <div className="ml-6 space-y-1">
+                          {serverToolsList.map((tool) => (
+                            <label key={tool.id} className="flex items-start gap-2 py-1 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1">
+                              <Checkbox
+                                checked={selectedSet.has(tool.id)}
+                                onCheckedChange={() => toggleIncludedTool(server.id, tool.id)}
+                                className="mt-0.5"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium text-foreground leading-tight">{tool.name}</p>
+                                {tool.description && <p className="text-[10px] text-muted-foreground">{tool.description}</p>}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setToolsFilterOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleToolsFilterSave} disabled={!toolsFilterServerId || toolsFilterIncluded.size === 0 || !selectedServer}>
+            <Button size="sm" onClick={handleToolsFilterSave} disabled={getTotalSelectedTools() === 0}>
               {toolsFilterEditPolicy ? "Save Changes" : "Add Policy"}
             </Button>
           </DialogFooter>
