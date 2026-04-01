@@ -1342,17 +1342,24 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     setIdsEditPolicy(null);
   };
 
-  // Save Tools Filter
+  // Save Tools Filter (multi-server)
   const handleToolsFilterSave = () => {
-    if (!toolsFilterServerId || !selectedServer) return;
-    const displayName = selectedServer.name;
-    const config = {
-      serverId: toolsFilterServerId,
-      serverName: displayName,
-      includedTools: Array.from(toolsFilterIncluded),
-    };
-    const finalName = policyName.trim() || `Tools Filter: ${displayName}`;
-    const desc = `Includes ${toolsFilterIncluded.size} tool${toolsFilterIncluded.size !== 1 ? "s" : ""} from ${displayName}`;
+    const servers: { serverId: string; serverName: string; includedTools: string[] }[] = [];
+    let totalTools = 0;
+    for (const [serverId, toolIds] of Object.entries(toolsFilterSelections)) {
+      if (toolIds.size === 0) continue;
+      const server = mcpServers.find((s) => s.id === serverId);
+      servers.push({
+        serverId,
+        serverName: server?.name || serverId,
+        includedTools: Array.from(toolIds),
+      });
+      totalTools += toolIds.size;
+    }
+    if (servers.length === 0) return;
+    const config = { servers };
+    const finalName = policyName.trim() || "Tools Filter";
+    const desc = `Includes ${totalTools} tool${totalTools !== 1 ? "s" : ""} across ${servers.length} server${servers.length !== 1 ? "s" : ""}`;
     if (toolsFilterEditPolicy) {
       const updated = policies.map((p) =>
         p.id === toolsFilterEditPolicy.id
@@ -1379,13 +1386,25 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     setToolsFilterEditPolicy(null);
   };
 
-  const toggleIncludedTool = (toolId: string) => {
-    setToolsFilterIncluded((prev) => {
-      const next = new Set(prev);
-      if (next.has(toolId)) next.delete(toolId);
-      else next.add(toolId);
-      return next;
+  const toggleIncludedTool = (serverId: string, toolId: string) => {
+    setToolsFilterSelections((prev) => {
+      const serverSet = new Set(prev[serverId] || []);
+      if (serverSet.has(toolId)) serverSet.delete(toolId);
+      else serverSet.add(toolId);
+      return { ...prev, [serverId]: serverSet };
     });
+  };
+
+  const toggleAllServerTools = (serverId: string, allToolIds: string[]) => {
+    setToolsFilterSelections((prev) => {
+      const serverSet = prev[serverId] || new Set();
+      const allSelected = allToolIds.every((id) => serverSet.has(id));
+      return { ...prev, [serverId]: allSelected ? new Set() : new Set(allToolIds) };
+    });
+  };
+
+  const getTotalSelectedTools = () => {
+    return Object.values(toolsFilterSelections).reduce((sum, set) => sum + set.size, 0);
   };
 
   const updateConfigValue = (key: string, value: any) => {
