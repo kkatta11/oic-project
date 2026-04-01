@@ -1114,10 +1114,9 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const [configValues, setConfigValues] = useState<Record<string, any>>({});
   const [policyName, setPolicyName] = useState("");
 
-  // Tools Filter state
+  // Tools Filter state (multi-server)
   const [toolsFilterOpen, setToolsFilterOpen] = useState(false);
-  const [toolsFilterServerId, setToolsFilterServerId] = useState("");
-  const [toolsFilterIncluded, setToolsFilterIncluded] = useState<Set<string>>(new Set());
+  const [toolsFilterSelections, setToolsFilterSelections] = useState<Record<string, Set<string>>>({});
   const [toolsFilterEditPolicy, setToolsFilterEditPolicy] = useState<SecurityPolicy | null>(null);
 
   // PII Detection state
