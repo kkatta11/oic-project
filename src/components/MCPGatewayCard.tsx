@@ -266,7 +266,7 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
       setGateways((prev) => {
         const updated = prev.map((gw) =>
           gw.id === editGateway.id
-            ? { ...gw, name: gatewayName.trim(), servers: [...registeredServers], securityPolicies: [...selectedSecurityPolicies], businessPolicies: [...selectedBusinessPolicies], policyOrder: [...policyOrder] }
+            ? { ...gw, name: gatewayName.trim(), servers: [...registeredServers], securityPolicies: [...selectedSecurityPolicies], businessPolicies: [...selectedBusinessPolicies], requestPolicyOrder: [...requestPolicyOrder], responsePolicyOrder: [...responsePolicyOrder] }
             : gw
         );
         persistGateways(updated);
