@@ -102,8 +102,27 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     try {
       const stored = localStorage.getItem(storageKey);
       if (!stored) return [];
-      const parsed = JSON.parse(stored) as SavedGateway[];
-      return parsed.map((gw) => ({ ...gw, active: gw.active !== false, policyOrder: gw.policyOrder || [] }));
+      const parsed = JSON.parse(stored) as (SavedGateway & { policyOrder?: string[] })[];
+      return parsed.map((gw) => {
+        // Migrate legacy single policyOrder to split pipelines
+        if (gw.policyOrder && !gw.requestPolicyOrder) {
+          const reqOrder: string[] = [];
+          const resOrder: string[] = [];
+          for (const pId of gw.policyOrder) {
+            const sec = securityPolicies.find((p) => p.id === pId);
+            if (sec) {
+              const scope = getPolicyScope(sec);
+              if (scope === "Request" || scope === "Both") reqOrder.push(pId);
+              if (scope === "Response" || scope === "Both") resOrder.push(pId);
+            } else {
+              // Business policies are always request
+              reqOrder.push(pId);
+            }
+          }
+          return { ...gw, active: gw.active !== false, requestPolicyOrder: reqOrder, responsePolicyOrder: resOrder, policyOrder: undefined };
+        }
+        return { ...gw, active: gw.active !== false, requestPolicyOrder: gw.requestPolicyOrder || [], responsePolicyOrder: gw.responsePolicyOrder || [] };
+      });
     } catch { return []; }
   });
 
