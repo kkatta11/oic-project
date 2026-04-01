@@ -320,14 +320,29 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     setRegisteredServers(restoredServers);
     setSelectedSecurityPolicies([...gw.securityPolicies]);
     setSelectedBusinessPolicies([...gw.businessPolicies]);
-    // Restore policy order, appending any newly selected policies not in the saved order
-    const savedOrder = gw.policyOrder || [];
+    // Restore split policy orders
     const allSelected = [...gw.securityPolicies, ...gw.businessPolicies];
-    const restoredOrder = [
-      ...savedOrder.filter((id) => allSelected.includes(id)),
-      ...allSelected.filter((id) => !savedOrder.includes(id)),
-    ];
-    setPolicyOrder(restoredOrder);
+    const savedReq = gw.requestPolicyOrder || [];
+    const savedRes = gw.responsePolicyOrder || [];
+    // Determine which policies belong in each pipeline
+    const reqPolicies = new Set(allSelected.filter((id) => {
+      const sec = securityPolicies.find((p) => p.id === id);
+      if (sec) { const scope = getPolicyScope(sec); return scope === "Request" || scope === "Both"; }
+      return true; // business policies are always request
+    }));
+    const resPolicies = new Set(allSelected.filter((id) => {
+      const sec = securityPolicies.find((p) => p.id === id);
+      if (sec) { const scope = getPolicyScope(sec); return scope === "Response" || scope === "Both"; }
+      return false;
+    }));
+    setRequestPolicyOrder([
+      ...savedReq.filter((id) => reqPolicies.has(id)),
+      ...Array.from(reqPolicies).filter((id) => !savedReq.includes(id)),
+    ]);
+    setResponsePolicyOrder([
+      ...savedRes.filter((id) => resPolicies.has(id)),
+      ...Array.from(resPolicies).filter((id) => !savedRes.includes(id)),
+    ]);
     setOpen(true);
   };
 
