@@ -138,7 +138,8 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
 
   const [selectedSecurityPolicies, setSelectedSecurityPolicies] = useState<string[]>([]);
   const [selectedBusinessPolicies, setSelectedBusinessPolicies] = useState<string[]>([]);
-  const [policyOrder, setPolicyOrder] = useState<string[]>([]);
+  const [requestPolicyOrder, setRequestPolicyOrder] = useState<string[]>([]);
+  const [responsePolicyOrder, setResponsePolicyOrder] = useState<string[]>([]);
 
   const [editGateway, setEditGateway] = useState<SavedGateway | null>(null);
   const isEditing = !!editGateway;
