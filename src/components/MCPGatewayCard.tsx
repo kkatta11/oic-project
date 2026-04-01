@@ -64,7 +64,10 @@ interface SavedGateway {
   servers: GatewayServer[];
   securityPolicies: string[];
   businessPolicies: string[];
-  policyOrder: string[];
+  requestPolicyOrder: string[];
+  responsePolicyOrder: string[];
+  /** @deprecated migrated to requestPolicyOrder/responsePolicyOrder */
+  policyOrder?: string[];
   active: boolean;
 }
 
