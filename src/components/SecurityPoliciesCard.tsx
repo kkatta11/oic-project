@@ -1161,9 +1161,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
 
   const activeServers = mcpServers.filter((s) => s.status === "Active");
 
-  const selectedServer = mcpServers.find((s) => s.id === toolsFilterServerId);
-  const serverTools: MCPServerTool[] = selectedServer?.allTools ?? [];
-
   // Add flow
   const handleAddFromRepo = (template: typeof securityPolicyRepository[0]) => {
     if (template.templateId === "t9") {
