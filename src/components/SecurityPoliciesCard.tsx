@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Database, Lock, Filter, MoreHorizontal, Pencil, X, type LucideIcon } from "lucide-react";
+import ReactivateGatewaysDialog from "@/components/ReactivateGatewaysDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
