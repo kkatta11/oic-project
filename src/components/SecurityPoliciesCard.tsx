@@ -1352,6 +1352,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
+      showReactivate(idsEditPolicy.id, finalName);
     }
     setIdsConfigOpen(false);
     setIdsEditPolicy(null);
