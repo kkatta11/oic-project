@@ -1289,6 +1289,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
+      showReactivate(configEditPolicy.id, finalName);
     }
     setConfigDialogOpen(false);
     setConfigTemplate(null);
