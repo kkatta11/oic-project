@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MoreHorizontal, Plus, Server, Globe, Database, MessageSquare, FileJson, Mail, Trash2, Loader2, Pencil, RefreshCw, Search, type LucideIcon } from "lucide-react";
+import ReactivateGatewaysDialog from "@/components/ReactivateGatewaysDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -137,9 +138,10 @@ const ToolList = ({ tools }: { tools: MCPServerTool[] }) => (
 interface MCPServersCardProps {
   servers?: MCPServer[];
   onServersChange?: (servers: MCPServer[]) => void;
+  projectId?: string;
 }
 
-const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServersCardProps) => {
+const MCPServersCard = ({ servers: externalServers, onServersChange, projectId }: MCPServersCardProps) => {
   const [internalServers, setInternalServers] = useState<MCPServer[]>(defaultServers);
   const [open, setOpen] = useState(false);
   const [serverName, setServerName] = useState("");
@@ -174,13 +176,27 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
 
   const [refreshingServerId, setRefreshingServerId] = useState<string | null>(null);
 
+  // Reactivate dialog state
+  const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [reactivateResourceId, setReactivateResourceId] = useState("");
+  const [reactivateResourceName, setReactivateResourceName] = useState("");
+
+  const showReactivate = (serverId: string, serverName: string) => {
+    if (!projectId) return;
+    setReactivateResourceId(serverId);
+    setReactivateResourceName(serverName);
+    setReactivateOpen(true);
+  };
+
   const handleToggleStatus = (serverId: string) => {
+    const server = servers.find((s) => s.id === serverId);
     const updated = servers.map((s) =>
       s.id === serverId
         ? { ...s, status: (s.status === "Active" ? "Configured" : "Active") as "Active" | "Configured" }
         : s
     );
     updateServers(updated);
+    if (server) showReactivate(serverId, server.name);
   };
 
   const servers = externalServers ?? internalServers;
@@ -278,6 +294,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
       );
       updateServers(updated);
       setRefreshingServerId(null);
+      showReactivate(server.id, server.name);
     }, 800);
   };
 
@@ -302,6 +319,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
     );
     updateServers(updated);
     setEditOpen(false);
+    showReactivate(editServerId, editName.trim());
     setEditServerId(null);
   };
 
@@ -586,6 +604,16 @@ const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServer
           );
         })}
       </div>
+      {projectId && (
+        <ReactivateGatewaysDialog
+          open={reactivateOpen}
+          onOpenChange={setReactivateOpen}
+          resourceName={reactivateResourceName}
+          projectId={projectId}
+          resourceId={reactivateResourceId}
+          resourceType="server"
+        />
+      )}
     </div>
   );
 };

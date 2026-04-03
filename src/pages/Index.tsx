@@ -203,7 +203,7 @@ const Index = () => {
       return (
         <>
           <MCPGatewayCard activeMCPServers={mcpServers} mcpServers={mcpServers} securityPolicies={securityPolicies} businessPolicies={businessPolicies} projectId={projectId} />
-          <MCPServersCard servers={mcpServers} onServersChange={setMcpServers} />
+          <MCPServersCard servers={mcpServers} onServersChange={setMcpServers} projectId={projectId} />
           <SecurityPoliciesCard policies={securityPolicies} onPoliciesChange={setSecurityPolicies} mcpServers={mcpServers} projectId={projectId} />
           <BusinessPoliciesCard policies={businessPolicies} onPoliciesChange={setBusinessPolicies} mcpServers={mcpServers} projectId={projectId} />
         </>

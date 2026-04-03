@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, ShieldCheck, ShieldAlert, FileCheck, Bug, Gauge, Package, Database, Lock, Filter, MoreHorizontal, Pencil, X, type LucideIcon } from "lucide-react";
+import ReactivateGatewaysDialog from "@/components/ReactivateGatewaysDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -1119,6 +1120,18 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const [toolsFilterSelections, setToolsFilterSelections] = useState<Record<string, Set<string>>>({});
   const [toolsFilterEditPolicy, setToolsFilterEditPolicy] = useState<SecurityPolicy | null>(null);
 
+  // Reactivate dialog state
+  const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [reactivateResourceId, setReactivateResourceId] = useState("");
+  const [reactivateResourceName, setReactivateResourceName] = useState("");
+
+  const showReactivate = (policyId: string, policyName: string) => {
+    if (!projectId) return;
+    setReactivateResourceId(policyId);
+    setReactivateResourceName(policyName);
+    setReactivateOpen(true);
+  };
+
   // PII Detection state
   const [piiConfigOpen, setPiiConfigOpen] = useState(false);
   const [piiConfigValues, setPiiConfigValues] = useState<PIIConfig>(getDefaultPIIConfig());
@@ -1276,6 +1289,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
+      showReactivate(configEditPolicy.id, finalName);
     }
     setConfigDialogOpen(false);
     setConfigTemplate(null);
@@ -1308,6 +1322,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
+      showReactivate(piiEditPolicy.id, finalName);
     }
     setPiiConfigOpen(false);
     setPiiEditPolicy(null);
@@ -1337,6 +1352,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
+      showReactivate(idsEditPolicy.id, finalName);
     }
     setIdsConfigOpen(false);
     setIdsEditPolicy(null);
@@ -1381,6 +1397,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
+      showReactivate(toolsFilterEditPolicy.id, finalName);
     }
     setToolsFilterOpen(false);
     setToolsFilterEditPolicy(null);
@@ -1422,9 +1439,11 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   };
 
   const toggleActive = (id: string) => {
+    const policy = policies.find((p) => p.id === id);
     const updated = policies.map((p) => p.id === id ? { ...p, active: !p.active } : p);
     onPoliciesChange(updated);
     save(updated);
+    if (policy) showReactivate(id, policy.name);
   };
 
   const handleDelete = (id: string) => {
@@ -1778,6 +1797,16 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
           );
         })}
       </div>
+      {projectId && (
+        <ReactivateGatewaysDialog
+          open={reactivateOpen}
+          onOpenChange={setReactivateOpen}
+          resourceName={reactivateResourceName}
+          projectId={projectId}
+          resourceId={reactivateResourceId}
+          resourceType="policy"
+        />
+      )}
     </div>
   );
 };

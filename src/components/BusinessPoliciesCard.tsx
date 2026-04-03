@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, X, ListChecks, Eye, FolderSearch, Wrench, MoreHorizontal, Pencil, Server } from "lucide-react";
+import ReactivateGatewaysDialog from "@/components/ReactivateGatewaysDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -247,6 +248,18 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const [conditions, setConditions] = useState<PolicyCondition[]>([]);
   const [selectedAction, setSelectedAction] = useState("block");
 
+  // Reactivate dialog state
+  const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [reactivateResourceId, setReactivateResourceId] = useState("");
+  const [reactivateResourceName, setReactivateResourceName] = useState("");
+
+  const showReactivate = (policyId: string, pName: string) => {
+    if (!projectId) return;
+    setReactivateResourceId(policyId);
+    setReactivateResourceName(pName);
+    setReactivateOpen(true);
+  };
+
   const resetForm = () => {
     setPolicyName("");
     setSelectedServerId("");
@@ -307,14 +320,17 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     );
     onPoliciesChange(updated);
     save(updated);
+    showReactivate(editPolicy.id, editPolicy.name);
     setEditPolicy(null);
     resetForm();
   };
 
   const toggleActive = (id: string) => {
+    const policy = policies.find((p) => p.id === id);
     const updated = policies.map((p) => p.id === id ? { ...p, active: !p.active } : p);
     onPoliciesChange(updated);
     save(updated);
+    if (policy) showReactivate(id, policy.name);
   };
 
   const handleDelete = (id: string) => {
@@ -533,6 +549,16 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
           </div>
         ))}
       </div>
+      {projectId && (
+        <ReactivateGatewaysDialog
+          open={reactivateOpen}
+          onOpenChange={setReactivateOpen}
+          resourceName={reactivateResourceName}
+          projectId={projectId}
+          resourceId={reactivateResourceId}
+          resourceType="policy"
+        />
+      )}
     </div>
   );
 };
