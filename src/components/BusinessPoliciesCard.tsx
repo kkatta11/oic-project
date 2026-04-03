@@ -248,6 +248,18 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const [conditions, setConditions] = useState<PolicyCondition[]>([]);
   const [selectedAction, setSelectedAction] = useState("block");
 
+  // Reactivate dialog state
+  const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [reactivateResourceId, setReactivateResourceId] = useState("");
+  const [reactivateResourceName, setReactivateResourceName] = useState("");
+
+  const showReactivate = (policyId: string, pName: string) => {
+    if (!projectId) return;
+    setReactivateResourceId(policyId);
+    setReactivateResourceName(pName);
+    setReactivateOpen(true);
+  };
+
   const resetForm = () => {
     setPolicyName("");
     setSelectedServerId("");
