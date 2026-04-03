@@ -320,14 +320,17 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
     );
     onPoliciesChange(updated);
     save(updated);
+    showReactivate(editPolicy.id, editPolicy.name);
     setEditPolicy(null);
     resetForm();
   };
 
   const toggleActive = (id: string) => {
+    const policy = policies.find((p) => p.id === id);
     const updated = policies.map((p) => p.id === id ? { ...p, active: !p.active } : p);
     onPoliciesChange(updated);
     save(updated);
+    if (policy) showReactivate(id, policy.name);
   };
 
   const handleDelete = (id: string) => {
