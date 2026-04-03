@@ -549,6 +549,16 @@ const BusinessPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
           </div>
         ))}
       </div>
+      {projectId && (
+        <ReactivateGatewaysDialog
+          open={reactivateOpen}
+          onOpenChange={setReactivateOpen}
+          resourceName={reactivateResourceName}
+          projectId={projectId}
+          resourceId={reactivateResourceId}
+          resourceType="policy"
+        />
+      )}
     </div>
   );
 };
