@@ -604,6 +604,16 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, projectId }
           );
         })}
       </div>
+      {projectId && (
+        <ReactivateGatewaysDialog
+          open={reactivateOpen}
+          onOpenChange={setReactivateOpen}
+          resourceName={reactivateResourceName}
+          projectId={projectId}
+          resourceId={reactivateResourceId}
+          resourceType="server"
+        />
+      )}
     </div>
   );
 };
