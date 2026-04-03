@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MoreHorizontal, Plus, Server, Globe, Database, MessageSquare, FileJson, Mail, Trash2, Loader2, Pencil, RefreshCw, Search, type LucideIcon } from "lucide-react";
+import ReactivateGatewaysDialog from "@/components/ReactivateGatewaysDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
