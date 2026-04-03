@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, X, ListChecks, Eye, FolderSearch, Wrench, MoreHorizontal, Pencil, Server } from "lucide-react";
+import ReactivateGatewaysDialog from "@/components/ReactivateGatewaysDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";

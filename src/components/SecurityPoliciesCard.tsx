@@ -1797,6 +1797,16 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
           );
         })}
       </div>
+      {projectId && (
+        <ReactivateGatewaysDialog
+          open={reactivateOpen}
+          onOpenChange={setReactivateOpen}
+          resourceName={reactivateResourceName}
+          projectId={projectId}
+          resourceId={reactivateResourceId}
+          resourceType="policy"
+        />
+      )}
     </div>
   );
 };
