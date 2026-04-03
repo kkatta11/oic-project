@@ -137,9 +137,10 @@ const ToolList = ({ tools }: { tools: MCPServerTool[] }) => (
 interface MCPServersCardProps {
   servers?: MCPServer[];
   onServersChange?: (servers: MCPServer[]) => void;
+  projectId?: string;
 }
 
-const MCPServersCard = ({ servers: externalServers, onServersChange }: MCPServersCardProps) => {
+const MCPServersCard = ({ servers: externalServers, onServersChange, projectId }: MCPServersCardProps) => {
   const [internalServers, setInternalServers] = useState<MCPServer[]>(defaultServers);
   const [open, setOpen] = useState(false);
   const [serverName, setServerName] = useState("");
