@@ -1120,6 +1120,18 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
   const [toolsFilterSelections, setToolsFilterSelections] = useState<Record<string, Set<string>>>({});
   const [toolsFilterEditPolicy, setToolsFilterEditPolicy] = useState<SecurityPolicy | null>(null);
 
+  // Reactivate dialog state
+  const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [reactivateResourceId, setReactivateResourceId] = useState("");
+  const [reactivateResourceName, setReactivateResourceName] = useState("");
+
+  const showReactivate = (policyId: string, policyName: string) => {
+    if (!projectId) return;
+    setReactivateResourceId(policyId);
+    setReactivateResourceName(policyName);
+    setReactivateOpen(true);
+  };
+
   // PII Detection state
   const [piiConfigOpen, setPiiConfigOpen] = useState(false);
   const [piiConfigValues, setPiiConfigValues] = useState<PIIConfig>(getDefaultPIIConfig());
