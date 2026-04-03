@@ -1397,6 +1397,7 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
+      showReactivate(toolsFilterEditPolicy.id, finalName);
     }
     setToolsFilterOpen(false);
     setToolsFilterEditPolicy(null);
