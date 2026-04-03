@@ -176,13 +176,27 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, projectId }
 
   const [refreshingServerId, setRefreshingServerId] = useState<string | null>(null);
 
+  // Reactivate dialog state
+  const [reactivateOpen, setReactivateOpen] = useState(false);
+  const [reactivateResourceId, setReactivateResourceId] = useState("");
+  const [reactivateResourceName, setReactivateResourceName] = useState("");
+
+  const showReactivate = (serverId: string, serverName: string) => {
+    if (!projectId) return;
+    setReactivateResourceId(serverId);
+    setReactivateResourceName(serverName);
+    setReactivateOpen(true);
+  };
+
   const handleToggleStatus = (serverId: string) => {
+    const server = servers.find((s) => s.id === serverId);
     const updated = servers.map((s) =>
       s.id === serverId
         ? { ...s, status: (s.status === "Active" ? "Configured" : "Active") as "Active" | "Configured" }
         : s
     );
     updateServers(updated);
+    if (server) showReactivate(serverId, server.name);
   };
 
   const servers = externalServers ?? internalServers;
