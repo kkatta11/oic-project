@@ -294,6 +294,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, projectId }
       );
       updateServers(updated);
       setRefreshingServerId(null);
+      showReactivate(server.id, server.name);
     }, 800);
   };
 
@@ -318,6 +319,7 @@ const MCPServersCard = ({ servers: externalServers, onServersChange, projectId }
     );
     updateServers(updated);
     setEditOpen(false);
+    showReactivate(editServerId, editName.trim());
     setEditServerId(null);
   };
 
