@@ -1289,7 +1289,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
-      showReactivate(configEditPolicy.id, finalName);
     }
     setConfigDialogOpen(false);
     setConfigTemplate(null);
@@ -1322,7 +1321,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
-      showReactivate(piiEditPolicy.id, finalName);
     }
     setPiiConfigOpen(false);
     setPiiEditPolicy(null);
@@ -1352,7 +1350,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
-      showReactivate(idsEditPolicy.id, finalName);
     }
     setIdsConfigOpen(false);
     setIdsEditPolicy(null);
@@ -1397,7 +1394,6 @@ const SecurityPoliciesCard = ({ policies, onPoliciesChange, mcpServers = [], pro
       const updated = [...policies, newPolicy];
       onPoliciesChange(updated);
       save(updated);
-      showReactivate(toolsFilterEditPolicy.id, finalName);
     }
     setToolsFilterOpen(false);
     setToolsFilterEditPolicy(null);
