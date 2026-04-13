@@ -268,6 +268,7 @@ interface PIIConfig {
   timeBased: boolean;
   timeStart: string;
   timeEnd: string;
+  bodyExclusions: Record<string, string[]>;
 }
 
 function getDefaultPIIConfig(): PIIConfig {
