@@ -1,85 +1,32 @@
 
 
-# Save & Reactivate Dependent Gateways
+# Revert Tools Filter to Single-Server-Per-Policy Model
 
 ## Problem
-When an MCP server's metadata changes (e.g., tools refreshed) or a security/business policy configuration is updated and activated, the gateways using those resources are unaware. Users have no visibility into which gateways depend on the changed resource and no way to reactivate them to pick up the changes.
-
-## Solution
-Add a "Save & Reactivate" dialog (inspired by the screenshot) that appears after activating or saving changes to an MCP server or policy. The dialog shows dependent gateways split into **Active gateways** and **Inactive gateways** (Draft/Configured) tabs, letting users selectively reactivate active gateways to apply the updated configuration.
+The current Tools Filter shows all MCP servers' tools in one consolidated list. The user wants each Tools Filter policy to target a single MCP server, requiring users to create separate policies per server.
 
 ## Changes
 
-### 1. Gateway dependency lookup utility
+### `src/components/SecurityPoliciesCard.tsx`
 
-Create a shared helper (inside `MCPGatewayCard.tsx` or a new small util) that reads gateways from localStorage and finds which gateways reference a given server ID or policy ID:
+**1. Add server selector state** — Add `toolsFilterServerId` state to track the selected MCP server.
 
-```typescript
-function findDependentGateways(projectId: string, resourceId: string, resourceType: 'server' | 'policy'): SavedGateway[]
-```
+**2. Update dialog UI** — Replace the multi-server expandable list with:
+- A "Tool Source" dropdown (`Select`) listing active MCP servers
+- Once a server is selected, show that server's tools as checkboxes
+- Keep the policy name input
 
-Since gateways are stored in localStorage (`mcp-gateways-{projectId}`), this function reads and filters them. Export the `SavedGateway` interface from MCPGatewayCard.
+**3. Simplify state** — Replace `toolsFilterSelections: Record<string, Set<string>>` with a simple `toolsFilterIncludedTools: Set<string>` since only one server's tools are relevant at a time.
 
-### 2. Reactivate dialog component
+**4. Update save handler** — `handleToolsFilterSave` saves config as `{ serverId, serverName, includedTools[] }` (single server, no `servers` array).
 
-Create a reusable `ReactivateGatewaysDialog` component that:
-- Accepts: `open`, `onOpenChange`, `resourceName` (what changed), `projectId`
-- On open, reads dependent gateways and splits into Active vs Inactive (Draft/Configured)
-- Displays an info banner: "There are unsaved changes. Click save & reactivate if you want to apply the changes to active gateways."
-- Shows two tabs: **Active gateways (N)** and **Inactive gateways (N)**
-- Each tab lists gateway name + status badge
-- Footer buttons: **Close**, **Save**, **Save & reactivate**
-  - **Save**: just closes (changes already saved)
-  - **Save & reactivate**: triggers a "reactivation" timestamp update on all active dependent gateways in localStorage (simulating a redeploy)
+**5. Update edit handler** — When editing, populate `toolsFilterServerId` and `toolsFilterIncludedTools` from the stored config. Handle backward compat: if config has `servers` array (from the multi-server format), take the first entry.
 
-### 3. Integrate into MCPServersCard
+**6. Update summary** — `getConfigSummary` for t9: show "Includes N tools from {serverName}" instead of "across N servers".
 
-After these actions trigger the dialog:
-- **Activate** (status toggle to Active)
-- **Refresh Metadata** (tools re-fetched)
-- **Edit Save** (server details changed)
+**7. Update toggle helpers** — Replace `toggleIncludedTool(serverId, toolId)` and `toggleAllServerTools` with simpler versions that operate on the single included tools set.
 
-Pass `projectId` prop to MCPServersCard (currently not passed — add it in Index.tsx).
+### `src/components/MCPGatewayCard.tsx`
 
-### 4. Integrate into SecurityPoliciesCard
-
-After these actions:
-- **Activate** (toggleActive)
-- **Edit/Save** policy configuration
-
-Show the dialog with dependent gateways that reference the changed policy ID.
-
-### 5. Integrate into BusinessPoliciesCard
-
-Same pattern as SecurityPoliciesCard — after activate or edit/save, show dependent gateways.
-
-### 6. Update Index.tsx
-
-Pass `projectId` to `MCPServersCard` (it's already passed to the others).
-
-## UI Layout (Reactivate Dialog)
-
-```text
-Save & reactivate
-{Resource Name}
-─────────────────────────────────────
-ⓘ There are unsaved changes. Click save &
-  reactivate if you want to apply the changes
-  to active gateways.
-
-Active gateways (1)    Inactive gateways (1)
-─────────────────────────────────────
-🔍
-🛡 Invoice Validation Gateway    Active
-
-                [Close] [Save] [Save & reactivate]
-```
-
-## Files Modified
-- `src/components/MCPGatewayCard.tsx` — Export `SavedGateway` interface and gateway storage key helper
-- `src/components/ReactivateGatewaysDialog.tsx` — New reusable dialog component
-- `src/components/MCPServersCard.tsx` — Add `projectId` prop, show reactivate dialog after activate/edit/refresh
-- `src/components/SecurityPoliciesCard.tsx` — Show reactivate dialog after activate/edit
-- `src/components/BusinessPoliciesCard.tsx` — Show reactivate dialog after activate/edit
-- `src/pages/Index.tsx` — Pass `projectId` to MCPServersCard
+**8. Update tool resolution** — `getNamespacedTools` reads `config.includedTools` directly (single array). Add fallback: if `config.servers` exists (legacy multi-server), flatten all server tools.
 
