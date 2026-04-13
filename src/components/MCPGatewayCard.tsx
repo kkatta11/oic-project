@@ -356,17 +356,17 @@ const MCPGatewayCard = ({ activeMCPServers = [], mcpServers = [], securityPolici
     for (const pId of gw.securityPolicies) {
       const pol = securityPolicies.find((p) => p.id === pId);
       if (pol?.templateId === "t9") {
-        // New multi-server format
-        if (Array.isArray(pol.config?.servers)) {
+        // Single-server format
+        if (Array.isArray(pol.config?.includedTools)) {
+          pol.config.includedTools.forEach((tid: string) => includedToolIds.add(tid));
+        }
+        // Legacy multi-server format fallback
+        else if (Array.isArray(pol.config?.servers)) {
           for (const s of pol.config.servers) {
             if (Array.isArray(s.includedTools)) {
               s.includedTools.forEach((tid: string) => includedToolIds.add(tid));
             }
           }
-        }
-        // Legacy single-server format fallback
-        else if (Array.isArray(pol.config?.includedTools)) {
-          pol.config.includedTools.forEach((tid: string) => includedToolIds.add(tid));
         }
       }
     }
