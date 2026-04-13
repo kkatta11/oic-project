@@ -776,9 +776,9 @@ function PIIConfigDialog({
               </div>
             </div>
 
-            {config.scanTargets.includes("body") && mcpServers.filter(s => s.status === "active").length > 0 && (() => {
+            {config.scanTargets.includes("body") && mcpServers.filter(s => s.status === "Active").length > 0 && (() => {
               const totalExcluded = Object.values(config.bodyExclusions).reduce((sum, arr) => sum + arr.length, 0);
-              const activeServers = mcpServers.filter(s => s.status === "active");
+              const activeServers = mcpServers.filter(s => s.status === "Active");
               const toggleBodyExclusion = (toolName: string, attr: string) => {
                 const current = config.bodyExclusions[toolName] || [];
                 const next = current.includes(attr)
