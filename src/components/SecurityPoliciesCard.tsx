@@ -297,6 +297,7 @@ function getDefaultPIIConfig(): PIIConfig {
     timeBased: false,
     timeStart: "09:00",
     timeEnd: "17:00",
+    bodyExclusions: {},
   };
 }
 
