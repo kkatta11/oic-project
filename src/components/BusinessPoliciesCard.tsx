@@ -46,7 +46,7 @@ const operators = [
   { value: "is_not_empty", label: "Is Not Empty" },
 ];
 
-const toolPayloadAttributes: Record<string, string[]> = {
+export const toolPayloadAttributes: Record<string, string[]> = {
   "List Files": ["path", "recursive", "pattern"],
   "Read File": ["file_path", "encoding"],
   "Write File": ["file_path", "content", "overwrite"],
