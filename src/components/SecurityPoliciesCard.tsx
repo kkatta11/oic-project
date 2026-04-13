@@ -852,6 +852,7 @@ function PIIConfigDialog({
             })()}
 
 
+            <div className="space-y-1.5">
               <Label className="text-xs font-medium">PII Count Threshold</Label>
               <Input type="number" className="h-8 text-xs w-24" min={1} value={config.piiCountThreshold} onChange={(e) => update("piiCountThreshold", Number(e.target.value))} />
               <p className="text-[10px] text-muted-foreground">Only trigger if this many PII fields are detected</p>
