@@ -776,7 +776,82 @@ function PIIConfigDialog({
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            {config.scanTargets.includes("body") && mcpServers.filter(s => s.status === "active").length > 0 && (() => {
+              const totalExcluded = Object.values(config.bodyExclusions).reduce((sum, arr) => sum + arr.length, 0);
+              const activeServers = mcpServers.filter(s => s.status === "active");
+              const toggleBodyExclusion = (toolName: string, attr: string) => {
+                const current = config.bodyExclusions[toolName] || [];
+                const next = current.includes(attr)
+                  ? current.filter(a => a !== attr)
+                  : [...current, attr];
+                const updated = { ...config.bodyExclusions };
+                if (next.length === 0) { delete updated[toolName]; } else { updated[toolName] = next; }
+                update("bodyExclusions", updated);
+              };
+              return (
+                <Collapsible className="rounded-md border border-border">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium hover:bg-muted/50 group">
+                    <span className="flex items-center gap-2">
+                      <ChevronRight className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-90" />
+                      Attribute Exclusions
+                      {totalExcluded > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">{totalExcluded} excluded</span>
+                      )}
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="px-3 pb-3">
+                    <p className="text-[10px] text-muted-foreground mb-2">Checked attributes will be excluded from PII scanning.</p>
+                    <div className="space-y-2 max-h-52 overflow-y-auto">
+                      {activeServers.map(server => {
+                        const serverTools = (server.tools || []).filter(t => (toolPayloadAttributes[t.name] || []).length > 0);
+                        if (serverTools.length === 0) return null;
+                        return (
+                          <Collapsible key={server.id} className="rounded border border-border/50">
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 text-[11px] font-medium hover:bg-muted/30 group">
+                              <ChevronRight className="h-3 w-3 transition-transform group-data-[state=open]:rotate-90" />
+                              {server.name}
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pl-5 pr-2 pb-2 space-y-1.5">
+                              {serverTools.map(tool => {
+                                const attrs = toolPayloadAttributes[tool.name] || [];
+                                const excluded = config.bodyExclusions[tool.name] || [];
+                                return (
+                                  <Collapsible key={tool.id} className="rounded border border-border/30">
+                                    <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1 text-[11px] hover:bg-muted/20 group">
+                                      <span className="flex items-center gap-1.5">
+                                        <ChevronRight className="h-2.5 w-2.5 transition-transform group-data-[state=open]:rotate-90" />
+                                        {tool.name}
+                                      </span>
+                                      {excluded.length > 0 && (
+                                        <span className="text-[9px] text-muted-foreground">{excluded.length} excluded</span>
+                                      )}
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="pl-5 pr-2 pb-1.5 pt-0.5 space-y-0.5">
+                                      {attrs.map(attr => (
+                                        <label key={attr} className="flex items-center gap-1.5 text-[11px] cursor-pointer py-0.5">
+                                          <Checkbox
+                                            checked={excluded.includes(attr)}
+                                            onCheckedChange={() => toggleBodyExclusion(tool.name, attr)}
+                                            className="h-3.5 w-3.5"
+                                          />
+                                          <span className="font-mono text-muted-foreground">{attr}</span>
+                                        </label>
+                                      ))}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                );
+                              })}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        );
+                      })}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })()}
+
+
               <Label className="text-xs font-medium">PII Count Threshold</Label>
               <Input type="number" className="h-8 text-xs w-24" min={1} value={config.piiCountThreshold} onChange={(e) => update("piiCountThreshold", Number(e.target.value))} />
               <p className="text-[10px] text-muted-foreground">Only trigger if this many PII fields are detected</p>
