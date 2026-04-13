@@ -778,7 +778,12 @@ function PIIConfigDialog({
 
             {config.scanTargets.includes("body") && mcpServers.filter(s => s.status === "Active").length > 0 && (() => {
               const totalExcluded = Object.values(config.bodyExclusions).reduce((sum, arr) => sum + arr.length, 0);
-              const activeServers = mcpServers.filter(s => s.status === "Active");
+              const allActive = mcpServers.filter(s => s.status === "Active");
+              // Scope servers/tools based on enforcement level
+              const scopedServers = config.enforcementLevel === "server" || config.enforcementLevel === "tool"
+                ? allActive.filter(s => s.id === config.targetServerId)
+                : allActive;
+              const targetToolId = config.enforcementLevel === "tool" ? config.targetToolId : "";
               const toggleBodyExclusion = (toolName: string, attr: string) => {
                 const current = config.bodyExclusions[toolName] || [];
                 const next = current.includes(attr)
@@ -788,6 +793,7 @@ function PIIConfigDialog({
                 if (next.length === 0) { delete updated[toolName]; } else { updated[toolName] = next; }
                 update("bodyExclusions", updated);
               };
+              if (scopedServers.length === 0) return null;
               return (
                 <Collapsible className="rounded-md border border-border">
                   <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium hover:bg-muted/50 group">
@@ -802,8 +808,11 @@ function PIIConfigDialog({
                   <CollapsibleContent className="px-3 pb-3">
                     <p className="text-[10px] text-muted-foreground mb-2">Checked attributes will be excluded from PII scanning.</p>
                     <div className="space-y-2 max-h-52 overflow-y-auto">
-                      {activeServers.map(server => {
-                        const serverTools = (server.tools || []).filter(t => (toolPayloadAttributes[t.name] || []).length > 0);
+                      {scopedServers.map(server => {
+                        const allServerTools = (server.tools || []).filter(t => (toolPayloadAttributes[t.name] || []).length > 0);
+                        const serverTools = targetToolId
+                          ? allServerTools.filter(t => t.id === targetToolId)
+                          : allServerTools;
                         if (serverTools.length === 0) return null;
                         return (
                           <Collapsible key={server.id} className="rounded border border-border/50">
