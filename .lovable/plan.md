@@ -1,32 +1,59 @@
 
 
-# Revert Tools Filter to Single-Server-Per-Policy Model
+# PII Body Scan Exclusion List — Per-Tool Attribute Exclusions
 
 ## Problem
-The current Tools Filter shows all MCP servers' tools in one consolidated list. The user wants each Tools Filter policy to target a single MCP server, requiring users to create separate policies per server.
+When "Body" is selected as a scan target in the PII Detection policy's Scope tab, all payload attributes across all tools are scanned. Users need the ability to exclude specific attributes (e.g., `invoice_data`, `query`) from PII scanning on a per-tool basis to reduce false positives and avoid scanning known-safe fields.
+
+## Solution
+Add a conditional "Body Exclusions" section that appears when "Body" is checked in Scan Targets. It reuses the existing `toolPayloadAttributes` catalog from `BusinessPoliciesCard.tsx` and presents a grouped, collapsible tool-attribute picker where users can select attributes to exclude from scanning.
 
 ## Changes
 
 ### `src/components/SecurityPoliciesCard.tsx`
 
-**1. Add server selector state** — Add `toolsFilterServerId` state to track the selected MCP server.
+**1. Update PIIConfig type** — Add `bodyExclusions: Record<string, string[]>` (map of tool name to excluded attribute names).
 
-**2. Update dialog UI** — Replace the multi-server expandable list with:
-- A "Tool Source" dropdown (`Select`) listing active MCP servers
-- Once a server is selected, show that server's tools as checkboxes
-- Keep the policy name input
+**2. Update getDefaultPIIConfig** — Add `bodyExclusions: {}` default.
 
-**3. Simplify state** — Replace `toolsFilterSelections: Record<string, Set<string>>` with a simple `toolsFilterIncludedTools: Set<string>` since only one server's tools are relevant at a time.
+**3. Add exclusion UI in Scope tab** — After the Scan Targets checkboxes, when `config.scanTargets.includes("body")`, render a "Body Exclusions" section:
+- Collapsible section with header: "Attribute Exclusions" + count badge
+- Lists active MCP servers and their tools (from `mcpServers` prop)
+- Each tool is expandable, showing its payload attributes from `toolPayloadAttributes`
+- Each attribute has a checkbox to toggle exclusion
+- Format: Server > Tool > Attributes (grouped)
 
-**4. Update save handler** — `handleToolsFilterSave` saves config as `{ serverId, serverName, includedTools[] }` (single server, no `servers` array).
+**4. Add toggle helpers** — `toggleBodyExclusion(toolName, attribute)` to add/remove from `bodyExclusions[toolName]`.
 
-**5. Update edit handler** — When editing, populate `toolsFilterServerId` and `toolsFilterIncludedTools` from the stored config. Handle backward compat: if config has `servers` array (from the multi-server format), take the first entry.
+**5. Import toolPayloadAttributes** — Export `toolPayloadAttributes` from `BusinessPoliciesCard.tsx` and import it in `SecurityPoliciesCard.tsx`.
 
-**6. Update summary** — `getConfigSummary` for t9: show "Includes N tools from {serverName}" instead of "across N servers".
+### `src/components/BusinessPoliciesCard.tsx`
 
-**7. Update toggle helpers** — Replace `toggleIncludedTool(serverId, toolId)` and `toggleAllServerTools` with simpler versions that operate on the single included tools set.
+**6. Export toolPayloadAttributes** — Add `export` keyword to the existing `toolPayloadAttributes` constant.
 
-### `src/components/MCPGatewayCard.tsx`
+## UI Layout (inside Scope tab, below Scan Targets)
 
-**8. Update tool resolution** — `getNamespacedTools` reads `config.includedTools` directly (single array). Add fallback: if `config.servers` exists (legacy multi-server), flatten all server tools.
+```text
+Scan Targets
+[✓] Body  [ ] Headers  [ ] Query Params  [ ] Metadata
+
+▼ Attribute Exclusions (3 excluded)
+┌─────────────────────────────────────────┐
+│ ▼ Jira MCP Server                       │
+│   ▼ Create Issue                        │
+│     [✓] repo                            │
+│     [✓] title                           │
+│     [ ] body                            │
+│     [✓] labels                          │
+│   ▸ Get PR                              │
+│                                         │
+│ ▸ Slack MCP Server                      │
+└─────────────────────────────────────────┘
+```
+
+Checked = excluded from PII scanning. The section is hidden when "Body" is not a selected scan target.
+
+## Files Modified
+- `src/components/SecurityPoliciesCard.tsx` — Add exclusion UI, state, and config field
+- `src/components/BusinessPoliciesCard.tsx` — Export `toolPayloadAttributes`
 
